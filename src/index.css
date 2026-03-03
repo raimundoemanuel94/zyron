@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --color-industrial-bg: #0A0A0A;
+  --color-industrial-card: #171717;
+  --color-industrial-accent: #FDE047;
+  --color-industrial-success: #10b981;
+}
+
+:root {
+  --primary-yellow: #FDE047; /* Amarelo Vibrante */
+  --industrial-black: #0A0A0A; /* Fundo Profundo */
+  --surface-gray: #171717; /* Cards e Widgets */
+  --accent-gold: #EAB308; /* Tons de destaque */
+
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: var(--industrial-black); /* Carbon Black */
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #020617;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Custom scrollbar for Industrial look */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--industrial-black);
+}
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 10px;
+  border: 1px solid rgba(253, 224, 71, 0.1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gold);
+}
+
+/* Glassmorphism Utilities */
+.glass {
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Global Animations */
+@keyframes gradient-x {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 3s ease infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+/* Input Chrome/Safari removal */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Industrial VFX Keyframes */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes neon-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(253, 224, 71, 0.4), 0 0 20px rgba(253, 224, 71, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(253, 224, 71, 0.8), 0 0 35px rgba(253, 224, 71, 0.6);
+  }
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
