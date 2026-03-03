@@ -394,7 +394,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   );
 
   return (
-    <div className={`min-h-screen bg-neutral-950 text-slate-100 font-sans pb-32 transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}>
+    <div className={`min-h-screen bg-black text-slate-100 font-sans pb-32 transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}>
       
       {/* Background Decor */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-20 overflow-hidden z-0">
@@ -436,7 +436,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       </AnimatePresence>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-xl border-b border-white/5 p-4">
+      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 p-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-neutral-800 border-2 border-yellow-500 overflow-hidden relative shrink-0">

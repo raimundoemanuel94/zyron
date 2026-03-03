@@ -84,7 +84,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 font-sans selection:bg-yellow-400 selection:text-black">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 font-sans selection:bg-yellow-400 selection:text-black">
       {/* Efeito de Luz de Fundo (Glow) */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-yellow-500/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -105,7 +105,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             <img 
               src="/images/zyron-logo.png" 
               alt="ZYRON" 
-              className="relative w-48 h-auto object-contain brightness-110 contrast-150 mix-blend-screen"
+              className="relative w-48 h-auto object-contain brightness-110 contrast-150 saturate-125 mix-blend-screen"
             />
           </motion.div>
           <TypewriterSlogan />
