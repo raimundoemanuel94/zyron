@@ -218,6 +218,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                     type="password"
                     required
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -309,6 +310,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                     type="password"
                     required
                     placeholder="••••••••"
+                    autoComplete="current-password"
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
