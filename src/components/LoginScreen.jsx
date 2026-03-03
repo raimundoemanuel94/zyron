@@ -107,7 +107,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             <img 
               src="/images/zyron-logo.png" 
               alt="ZYRON" 
-              className="relative w-64 h-auto object-contain brightness-110 contrast-125 mix-blend-screen drop-shadow-[0_0_20px_rgba(255,212,0,0.3)]"
+              className="relative w-64 h-auto object-contain brightness-125 contrast-200 saturate-150 mix-blend-screen drop-shadow-[0_0_20px_rgba(255,212,0,0.3)]"
             />
           </motion.div>
           <TypewriterSlogan />
