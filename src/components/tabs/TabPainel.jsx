@@ -138,7 +138,7 @@ export default function TabPainel({
           <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         </div>
         <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
-          <LayoutDashboard className="text-yellow-400" size={24} />
+          <span className="text-2xl">📊</span>
         </div>
       </div>
 
@@ -148,7 +148,7 @@ export default function TabPainel({
           <div>
             <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-1">Momentum</span>
             <h3 className="text-lg font-black uppercase italic tracking-tight text-white flex items-center gap-2">
-              Sequência de Treinos <Flame className="text-orange-500" size={20} fill="currentColor" />
+              Sequência de Treinos <span className="text-orange-500">🔥</span>
             </h3>
           </div>
           <div className="text-right">
@@ -171,7 +171,7 @@ export default function TabPainel({
                       ? 'bg-neutral-900 border-yellow-400/30 text-yellow-400/50'
                       : 'bg-neutral-900 border-neutral-800 text-neutral-700'
                 }`}>
-                  {isActive ? <CheckCircle2 size={14} strokeWidth={3} /> : <div className="w-1.5 h-1.5 rounded-full bg-neutral-800"></div>}
+                  {isActive ? <span className="font-bold text-xs">✓</span> : <div className="w-1.5 h-1.5 rounded-full bg-neutral-800"></div>}
                 </div>
               </div>
             )
@@ -210,7 +210,7 @@ export default function TabPainel({
             onClick={() => startSession(today)}
             className="group relative w-full bg-yellow-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(253,224,71,0.2)] hover:shadow-[0_0_40px_rgba(253,224,71,0.4)] transition-all active:scale-95 overflow-hidden"
           >
-            <span className="relative z-10 flex items-center gap-2">Iniciar Sessão <Zap size={18} fill="currentColor" className="group-hover:animate-pulse" /></span>
+            <span className="relative z-10 flex items-center gap-2">Iniciar Sessão ⚡</span>
             {/* Shimmer Effect */}
             <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
           </button>
@@ -230,7 +230,7 @@ export default function TabPainel({
             <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.3em]">Status do Plano</span>
             <h3 className="text-2xl font-black text-white italic tracking-tighter mt-1">BLACK PREMIUM</h3>
           </div>
-          <Crown size={24} className="text-yellow-400" />
+          <span className="text-2xl">👑</span>
         </div>
 
         <div className="flex justify-between items-end relative z-10">
@@ -239,12 +239,12 @@ export default function TabPainel({
             <p className="text-lg font-mono font-black text-white tracking-widest">15/05/2026</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-full">
-            <CreditCard size={14} className="text-yellow-400" />
+            <span className="text-xs">💳</span>
             <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">Ativo</span>
           </div>
         </div>
         <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-20 hover:opacity-100 transition-opacity">
-           <Zap size={64} className="text-yellow-500" strokeWidth={1} />
+           <span className="text-5xl">⚡</span>
         </div>
       </motion.div>
 
@@ -255,7 +255,7 @@ export default function TabPainel({
         <div className="space-y-4 bg-neutral-900/40 p-4 rounded-3xl border border-white/5 shadow-lg relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/10 transition-colors"></div>
           <div className="flex items-center gap-2 relative z-10">
-            <Droplets className="text-blue-400" size={18} />
+            <span className="text-blue-400 text-lg">💧</span>
             <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Hidratação</span>
           </div>
           <div className={`relative h-32 w-full bg-neutral-950/80 rounded-2xl border ${isHydrationAlert && water < waterGoal ? 'border-yellow-400 shadow-[0_0_15px_rgba(253,224,71,0.3)] animate-pulse' : 'border-white/5'} overflow-hidden flex items-center justify-center transition-all z-10`}>
@@ -272,7 +272,7 @@ export default function TabPainel({
             {[0.25, 0.5].map(val => (
               <button 
                 key={val}
-                onClick={() => handleWaterDrink(val)}
+                onClick={() => handleWaterDrink(Number(val))}
                 className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] active:scale-95 text-neutral-400"
               >
                 +{val >= 1 ? val : val.toString().substring(1)}L
@@ -285,7 +285,7 @@ export default function TabPainel({
         <div className="space-y-4 bg-neutral-900/40 p-4 rounded-3xl border border-white/5 shadow-lg flex flex-col relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-colors"></div>
           <div className="flex items-center gap-2 relative z-10">
-            <Beef className="text-red-400" size={18} />
+            <span className="text-red-400 text-lg">🥩</span>
             <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">Proteína</span>
           </div>
           <div className="relative h-32 w-full bg-neutral-950/80 rounded-2xl border border-white/5 overflow-hidden flex items-center justify-center z-10">
@@ -308,7 +308,7 @@ export default function TabPainel({
             {[30, 50].map(val => (
               <button 
                 key={val}
-                onClick={() => setProtein(protein + val)}
+                onClick={() => setProtein(prev => prev + Number(val))}
                 className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-red-500 hover:text-white hover:border-red-500 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.4)] active:scale-95 text-neutral-400"
               >
                 +{val}g
@@ -332,8 +332,8 @@ export default function TabPainel({
               
               <div className="flex justify-between items-start relative z-10 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-500/30">
-                    <BellRing className="text-indigo-400 animate-pulse" size={24} />
+                  <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-500/30 font-bold text-xl">
+                    🔔
                   </div>
                   <div>
                     <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Mensagem da Administração</h4>

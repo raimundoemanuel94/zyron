@@ -86,12 +86,12 @@ export const EXERCISE_VIDEOS = {
 };
 
 const QUICK_ACTIONS = [
-  { id: 'session', icon: 'Zap', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
-  { id: 'water', icon: 'Droplets', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
-  { id: 'protein', icon: 'Beef', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
-  { id: 'coach', icon: 'Coffee', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
-  { id: 'photo', icon: 'Camera', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
-  { id: 'weight', icon: 'Scale', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
+  { id: 'session', icon: '⚡', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
+  { id: 'water', icon: '💧', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
+  { id: 'protein', icon: '🥩', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
+  { id: 'coach', icon: '💬', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
+  { id: 'photo', icon: '📸', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
+  { id: 'weight', icon: '⚖️', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
 ];
 
 const QUICK_ICON_MAP = { 
@@ -144,29 +144,33 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const savedSession = localStorage.getItem('gym_active_session');
     const todayStr = new Date().toDateString();
 
-    if (savedLogs) setLoads(JSON.parse(savedLogs));
-    if (savedPRs) setPrHistory(JSON.parse(savedPRs));
-    if (savedWeight) setWeight(parseFloat(savedWeight));
-    
-    if (savedSession) {
-      const session = JSON.parse(savedSession);
-      if (session.date === todayStr) {
-        setIsTraining(session.isTraining);
-        setSelectedWorkoutKey(session.selectedWorkoutKey);
-        setCompletedExercises(session.completedExercises || []);
-        setSessionTime(session.sessionTime || 0);
-        if (session.isTraining) setActiveTab('workout');
+    try {
+      if (savedLogs) setLoads(JSON.parse(savedLogs) || {});
+      if (savedPRs) setPrHistory(JSON.parse(savedPRs) || {});
+      if (savedWeight) setWeight(parseFloat(savedWeight) || 80);
+      
+      if (savedSession) {
+        const session = JSON.parse(savedSession);
+        if (session && session.date === todayStr) {
+          setIsTraining(!!session.isTraining);
+          setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
+          setCompletedExercises(Array.isArray(session.completedExercises) ? session.completedExercises : []);
+          setSessionTime(Number(session.sessionTime) || 0);
+          if (session.isTraining) setActiveTab('workout');
+        }
       }
-    }
 
-
-    if (savedDaily) {
-      const daily = JSON.parse(savedDaily);
-      if (daily.date === todayStr) {
-        setWater(daily.water || 0);
-        setProtein(daily.protein || 0);
-        if (daily.lastWaterTime) setLastWaterTime(daily.lastWaterTime);
+      if (savedDaily) {
+        const daily = JSON.parse(savedDaily);
+        if (daily && daily.date === todayStr) {
+          setWater(Number(daily.water) || 0);
+          setProtein(Number(daily.protein) || 0);
+          if (daily.lastWaterTime) setLastWaterTime(Number(daily.lastWaterTime));
+        }
       }
+    } catch (e) {
+      console.error("Erro ao carregar dados do LocalStorage:", e);
+      // Limpa dados corrompidos se necessário
     }
     
     setIsLoaded(true);
@@ -212,18 +216,23 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   // Save Daily Stats & Weight
   useEffect(() => {
-    if (!isLoaded) return;
     const todayStr = new Date().toDateString();
     try {
+      // Higienização rigorosa para evitar estruturas circulares (ex: eventos React/SVG)
+      const safeWater = typeof water === 'number' ? water : (parseFloat(water) || 0);
+      const safeProtein = typeof protein === 'number' ? protein : (parseFloat(protein) || 0);
+      const safeWeight = typeof weight === 'number' ? weight : (parseFloat(weight) || 80);
+      const safeWaterTime = typeof lastWaterTime === 'number' ? lastWaterTime : Date.now();
+
       localStorage.setItem('gym_daily', JSON.stringify({
-        date: todayStr,
-        water: Number(water) || 0,
-        protein: Number(protein) || 0,
-        lastWaterTime: Number(lastWaterTime) || Date.now()
+        date: String(todayStr),
+        water: safeWater,
+        protein: safeProtein,
+        lastWaterTime: safeWaterTime
       }));
-      localStorage.setItem('gym_weight', Number(weight).toString());
+      localStorage.setItem('gym_weight', String(safeWeight));
     } catch (e) {
-      console.error("Critical: Failed to save daily stats to localStorage.", e);
+      console.error("Falha ao persistir dados diários no localStorage:", e);
     }
 
     // Sync com Supabase (Fire and forget, Offline-First)
@@ -234,13 +243,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         date: todayIso,
         water_amount: Number(water) || 0,
         protein_amount: Number(protein) || 0
-      }, { onConflict: 'user_id, date' }).catch(e => {
-         // Silently catch to prevent 400 errors from spamming console if table/schema is missing
-      });
+      }, { onConflict: 'user_id, date' });
 
-      supabase.from('profiles').update({ weight: Number(weight) || 0 }).eq('id', user.id).catch(e => {
-        // Silently catch
-      });
+      supabase.from('profiles').update({ weight: Number(weight) || 0 }).eq('id', user.id);
     }
   }, [water, protein, weight, lastWaterTime, isLoaded, user]);
 
@@ -250,20 +255,18 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     if (isTraining) {
       try {
         const todayStr = new Date().toDateString();
-        // Defensive: ensure completedExercises only contains strings/ids
-        const safeCompleted = Array.isArray(completedExercises) 
-          ? completedExercises.filter(item => typeof item === 'string') 
-          : [];
-          
-        localStorage.setItem('gym_active_session', JSON.stringify({
+        // NUCLEAR CLEANING: Somente primitivos, impede circularidade
+        const cleanSession = {
           date: String(todayStr),
           isTraining: Boolean(isTraining),
-          selectedWorkoutKey: selectedWorkoutKey !== null ? Number(selectedWorkoutKey) : null,
-          completedExercises: safeCompleted,
+          selectedWorkoutKey: (typeof selectedWorkoutKey === 'number' || typeof selectedWorkoutKey === 'string') ? selectedWorkoutKey : null,
+          completedExercises: Array.isArray(completedExercises) ? completedExercises.filter(i => typeof i === 'string') : [],
           sessionTime: Number(sessionTime) || 0
-        }));
+        };
+        
+        localStorage.setItem('gym_active_session', JSON.stringify(cleanSession));
       } catch (e) {
-        console.error("Critical: Failed to save session to localStorage due to non-serializable data.", e);
+        console.error("Falha ao salvar sessão (Estrutura Circular Detectada):", e);
       }
     } else {
       localStorage.removeItem('gym_active_session');
@@ -309,11 +312,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setCompletedExercises([]);
   };
 
-  const handleExerciseComplete = (id) => {
-    if (!completedExercises.includes(id)) {
-      setCompletedExercises([...completedExercises, id]);
-      setRestTimer(60); 
+  const handleExerciseComplete = (id, isFinal = true) => {
+    if (isFinal) {
+      if (!completedExercises.includes(id)) {
+        setCompletedExercises([...completedExercises, id]);
+      }
     }
+    setRestTimer(60); 
   };
 
   const handleFinishSession = () => {
@@ -386,7 +391,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       try {
         const newPRs = { ...prHistory, [exerciseId]: newWeight };
         setPrHistory(newPRs);
-        localStorage.setItem('gym_prs', JSON.stringify(newPRs));
+        
+        // Higienização de PRs (Garantir apenas números)
+        const cleanPRs = {};
+        Object.keys(newPRs).forEach(k => {
+          if (typeof newPRs[k] === 'number') cleanPRs[k] = newPRs[k];
+          else if (!isNaN(parseFloat(newPRs[k]))) cleanPRs[k] = parseFloat(newPRs[k]);
+        });
+        
+        localStorage.setItem('gym_prs', JSON.stringify(cleanPRs));
         setShowPR(exerciseId);
         setTimeout(() => setShowPR(null), 3000);
 
@@ -395,7 +408,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             user_id: user.id,
             exercise_id: exerciseId,
             max_load: newWeight
-          }, { onConflict: 'user_id, exercise_id' }).catch(e => console.error("PR sync error:", e));
+          }, { onConflict: 'user_id, exercise_id' });
         }
       } catch (e) {
         console.error("Failed to save PR to localStorage:", e);
@@ -403,11 +416,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
 
     try {
-      const newLoads = { ...loads, [exerciseId]: value };
-      setLoads(newLoads);
-      localStorage.setItem('gym_logs', JSON.stringify(newLoads));
+      // Sanitização profunda do objeto de cargas
+      const cleanLoads = {};
+      Object.keys(newLoads).forEach(key => {
+        if (typeof newLoads[key] === 'string' || typeof newLoads[key] === 'number') {
+          cleanLoads[key] = String(newLoads[key]);
+        }
+      });
+      localStorage.setItem('gym_logs', JSON.stringify(cleanLoads));
     } catch (e) {
-      console.error("Failed to save logs to localStorage:", e);
+      console.error("Erro ao salvar cargas:", e);
     }
   };
 
@@ -424,20 +442,30 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const remainingProtein = Math.max(0, proteinGoal - protein);
 
   // UI Components
-  const NavButton = ({ id, icon: Icon, label }) => (
-    <button
-      onClick={() => setActiveTab(id)}
-      className={`flex flex-col items-center justify-center py-2 px-1 transition-all duration-300 ${
-        activeTab === id ? 'text-yellow-300 scale-110' : 'text-neutral-500 hover:text-slate-300'
-      }`}
-    >
-      <Icon size={24} strokeWidth={activeTab === id ? 2.5 : 2} />
-      <span className="text-[10px] uppercase font-black mt-1 tracking-tighter">{label}</span>
-      {activeTab === id && (
-        <motion.div layoutId="nav-dot" className="h-1 w-1 bg-yellow-400 rounded-full mt-1" />
-      )}
-    </button>
-  );
+  const NavButton = ({ id, icon: Icon, label }) => {
+    const emojiMap = {
+      painel: '📊',
+      workout: '💪',
+      coach: '💬',
+      perfil: '👤'
+    };
+    return (
+      <button
+        onClick={() => {
+          if (id) setActiveTab(String(id));
+        }}
+        className={`flex flex-col items-center justify-center py-2 px-1 transition-all duration-300 ${
+          activeTab === id ? 'text-yellow-300 scale-110' : 'text-neutral-500 hover:text-slate-300'
+        }`}
+      >
+        <span className="text-xl mb-1">{emojiMap[id] || '📍'}</span>
+        <span className="text-[10px] uppercase font-black tracking-tighter">{label}</span>
+        {activeTab === id && (
+          <motion.div layoutId="nav-dot" className="h-1 w-1 bg-yellow-400 rounded-full mt-1" />
+        )}
+      </button>
+    );
+  };
 
   const GlassCard = ({ children, className = "", gradient = false }) => (
     <div className={`relative overflow-hidden bg-neutral-900/50 backdrop-blur-md border border-neutral-800 rounded-2xl p-6 shadow-[0_0_20px_rgba(37,99,235,0.05)] hover:border-yellow-500/30 transition-all duration-500 ${className}`}>
@@ -757,13 +785,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <button
                     onClick={(e) => {
                       // CRITICAL FIX: explicitly prevent the Event object from passing through
-                      e.preventDefault();
-                      e.stopPropagation();
+                      if (e && e.preventDefault) e.preventDefault();
+                      if (e && e.stopPropagation) e.stopPropagation();
                       setFabOpen(false);
                       
                       const actionId = item.id;
                       if (actionId === 'session') {
-                        startSession(today); // Explicitly pass a number, not an event
+                        startSession(Number(today)); 
                       } else if (actionId === 'water') {
                         handleWaterDrink(0.25);
                       } else if (actionId === 'protein') {
@@ -779,12 +807,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
                     <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
-                      {item.icon === 'Zap' && <Zap size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
-                      {item.icon === 'Droplets' && <Droplets size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
-                      {item.icon === 'Beef' && <Beef size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
-                      {item.icon === 'Coffee' && <Coffee size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
-                      {item.icon === 'Camera' && <Camera size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
-                      {item.icon === 'Scale' && <Scale size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      <span className="text-xl font-bold">{item.icon}</span>
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/90 whitespace-nowrap bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
                       {item.label}
@@ -803,11 +826,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <NavButton id="workout" icon={Dumbbell} label="Treino" />
         
         <button 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setFabOpen(prev => !prev);
-          }}
+          onClick={() => setFabOpen(!fabOpen)}
           className={`relative h-16 w-16 rounded-full -mt-16 border-4 border-neutral-950 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden ${
             fabOpen 
               ? 'bg-red-500 shadow-red-500/40' 
@@ -815,13 +834,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           }`}
         >
           <div className="absolute inset-0 bg-linear-to-tr from-white/20 to-transparent"></div>
-          <motion.div
-            animate={{ rotate: fabOpen ? 45 : 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="relative z-10 pointer-events-none"
+          <div
+            className={`relative z-10 pointer-events-none flex items-center justify-center transition-transform duration-300 ${fabOpen ? 'rotate-45' : ''}`}
           >
-            <Plus className="text-neutral-950" strokeWidth={3} size={28} />
-          </motion.div>
+            {/* REMOVIDO TODO SVG E MOTION PARA ISOLAR CRASH CIRCULAR */}
+            <span className="text-3xl font-black text-neutral-950" style={{ marginTop: '-4px' }}>+</span>
+          </div>
         </button>
 
         <NavButton id="coach" icon={Zap} label="Coach" />

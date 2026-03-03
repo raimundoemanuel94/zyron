@@ -43,7 +43,7 @@ export default function TabTreino({
           <div className="flex justify-between items-center px-1">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
-                <Dumbbell className="text-yellow-400" size={24} />
+                <span className="text-xl">💪</span>
               </div>
               <div>
                 <h3 className="text-lg font-black uppercase tracking-tight italic">Selecionar Rotina</h3>
@@ -103,18 +103,18 @@ export default function TabTreino({
                         
                         <button 
                           onClick={(e) => {
-                            e.stopPropagation();
+                            if(e && e.stopPropagation) e.stopPropagation();
                             startSession(parseInt(key));
                           }}
                           className="mt-6 w-full py-4 bg-yellow-500 border border-yellow-400 text-white font-black rounded-2xl hover:bg-yellow-400 transition-all uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 group/btn"
                         >
-                          {today === parseInt(key) ? <Zap size={14} className="text-white" /> : <Play size={14} fill="currentColor" />}
+                          <span className="text-white">{today === parseInt(key) ? '⚡' : '▶️'}</span>
                           Selecionar
                         </button>
 
                         <button
                           onClick={(e) => {
-                            e.stopPropagation();
+                            if(e && e.stopPropagation) e.stopPropagation();
                             const firstEx = workout.exercises[0];
                             if (firstEx) {
                               setVideoModal({ 
@@ -125,7 +125,7 @@ export default function TabTreino({
                           }}
                           className="mt-2 w-full py-2 bg-neutral-900/50 text-neutral-400 hover:text-white font-black rounded-xl border border-white/5 hover:border-yellow-400/30 transition-all uppercase text-[8px] tracking-[0.2em] flex items-center justify-center gap-2"
                         >
-                          <PlayCircle size={12} />
+                          <span className="text-xs">🎥</span>
                           Pré-visualizar Técnica
                         </button>
                       </div>
@@ -137,7 +137,7 @@ export default function TabTreino({
 
           {today === 0 || today === 6 ? (
             <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3">
-              <ShieldAlert className="text-amber-500" size={18} />
+              <span className="text-amber-500 text-lg">⚠️</span>
               <p className="text-[10px] font-black text-amber-500 uppercase italic">Hoje é dia de descanso. Mantenha a guarda.</p>
             </div>
           ) : (
@@ -146,7 +146,7 @@ export default function TabTreino({
                 onClick={() => startSession(today)}
                 className="w-full relative overflow-hidden bg-neutral-900 border border-white/5 hover:bg-neutral-800 p-5 rounded-2xl font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-3 transition-all group"
               >
-                <Zap size={20} className="text-yellow-400 group-hover:scale-110 transition-transform" /> 
+                <span className="text-yellow-400 text-xl group-hover:scale-110 transition-transform">⚡</span> 
                 RESUMO DO TREINO ATUAL
               </button>
             </div>
@@ -169,7 +169,7 @@ export default function TabTreino({
               {restTimer === 0 && <p className="text-[10px] font-black text-emerald-500 uppercase mt-2">Pronto para o próximo set</p>}
             </div>
             <div className="p-3 bg-neutral-900 rounded-2xl border border-white/5">
-              <Coffee className="text-neutral-500" size={20} />
+              <span className="text-neutral-500 text-xl">☕</span>
             </div>
           </div>
 
@@ -179,7 +179,7 @@ export default function TabTreino({
 
           {!currentWorkout?.exercises?.length ? (
             <div className="text-center p-16 bg-neutral-900/40 backdrop-blur-md rounded-3xl border border-dashed border-neutral-700">
-              <ShieldAlert className="mx-auto text-neutral-700 mb-6" size={64} />
+              <span className="block text-4xl mb-6 opacity-30">⚠️</span>
               <p className="text-neutral-500 font-black uppercase tracking-widest text-lg">OFF DAY - Descanso Ativo</p>
             </div>
           ) : (
@@ -202,7 +202,7 @@ export default function TabTreino({
             onClick={() => setIsTraining(false)}
             className="w-full bg-neutral-900/50 hover:bg-red-600 border border-white/5 hover:border-red-500 p-6 rounded-3xl font-black uppercase tracking-[0.3em] italic text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-4 mt-8"
           >
-            <Zap size={20} /> FINALIZAR SESSÃO
+            <span className="text-xl">🛑</span> FINALIZAR SESSÃO
           </button>
         </motion.div>
       )}

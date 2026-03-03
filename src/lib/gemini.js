@@ -99,7 +99,7 @@ export async function sendMessageToGemini(history, userMessage, systemInstructio
           console.log(`[ZYRON Coach] Rate limit em ${model}, tentando próximo...`);
           continue;
         }
-        throw new Error(JSON.stringify(err));
+        throw new Error(err.message || String(err));
       }
 
       const data = await res.json();
