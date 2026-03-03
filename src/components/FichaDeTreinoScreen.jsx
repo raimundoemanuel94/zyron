@@ -440,7 +440,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-neutral-800 border-2 border-yellow-500 overflow-hidden relative shrink-0">
-              <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain" />
+              <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain mix-blend-screen" />
             </div>
             <div>
               <h1 className="text-base font-black italic tracking-tighter uppercase leading-none text-slate-100">
