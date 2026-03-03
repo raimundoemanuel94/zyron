@@ -166,7 +166,14 @@ export default function TabTreino({
           <div className="flex justify-between items-end mb-4 px-2">
             <div>
               <h2 className="text-3xl font-black uppercase tracking-tighter italic leading-none">Sessão Ativa</h2>
-              {restTimer === 0 && <p className="text-[10px] font-black text-emerald-500 uppercase mt-2">Pronto para o próximo set</p>}
+              <div className="flex flex-col gap-1 mt-2">
+                {restTimer === 0 && <p className="text-[10px] font-black text-emerald-500 uppercase">Pronto para o próximo set</p>}
+                {currentWorkout?.cardio && (
+                  <p className="text-[10px] font-black text-yellow-400 uppercase italic flex items-center gap-1">
+                    <Zap size={10} /> Cardio: {currentWorkout.cardio}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="p-3 bg-neutral-900 rounded-2xl border border-white/5">
               <span className="text-neutral-500 text-xl">☕</span>

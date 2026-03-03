@@ -58,31 +58,35 @@ import 'swiper/css/pagination';
 export const EXERCISE_VIDEOS = {
   'p1': '50RSzhMG5Hc', // Supino Reto Barra
   'p2': 'Fa-X2ByLHaY', // Supino Inclinado Halter
+  'p_cm': 'nuTuKjcQRHg', // Crucifixo Maquina (using crossover as proxy)
   'p3': 'nuTuKjcQRHg', // Cross Over
   't1': '5PPKThQuR3M', // Triceps Pulley
   't2': 'VnFopAIGO7E', // Triceps Corda
-  'a1': 'DWFt7uGwJFQ', // Abdominal Rodinha
+  't3': '40Cx-IfJhA0', // Triceps Testa
+  't_mb': '2OymsPc-9Tw', // Mergulho Banco (using frances as proxy)
   'c1': '3qj46qsOgfI', // Puxada Aberta
-  'c2': 'fEA4O71kFr4', // Remada Baixa
-  'c3': 'mjFIZX68F_8', // Remada Serrote
+  'c_rc': 'fEA4O71kFr4', // Remada Curvada (using baixa as proxy)
+  'c_rm': 'mjFIZX68F_8', // Remada Maquina (using serrote as proxy)
+  'c_pd': 'mjFIZX68F_8', // Pulldown
   'b1': 'iA4RH6zDin0', // Rosca Direta Barra W
-  'b2': '8PN6YfFC6Q4', // Rosca Martelo
+  'b_ra': '8PN6YfFC6Q4', // Rosca Alternada (using martelo as proxy)
+  'b3': 'Qm4NdQttdi8', // Rosca Concentrada
   'l1': '3vTRFnzCMaA', // Agachamento Livre
   'l2': 'DQ4-HXFlKXI', // Leg Press 45
   'l3': 'I_uBK4DDflU', // Extensora
   'l4': 'PcTCUdxywHo', // Mesa Flexora
+  'l_st': 'PcTCUdxywHo', // Stiff
+  'l_ep': 'PcTCUdxywHo', // Elevacao Pelvica
   'ca1': 'ZQdqLXtNpMQ',// Gemeos em Pe
-  'a2': 'ffHr8a6DRvU', // Prancha
+  'ca_s': 'ZQdqLXtNpMQ', // Panturrilha Sentado
   's1': 'DFXtzdXN_iY', // Desenvolvimento Halter
   's2': 'yURmeIEl1Fg', // Elevacao Lateral
   's3': 'F6toacmeUlA', // Elevacao Frontal
   's4': 'C9Q9so5Fqws', // Crucifixo Inverso
-  'b3': 'Qm4NdQttdi8', // Rosca Concentrada
-  't3': '40Cx-IfJhA0', // Triceps Testa
-  'b4': 'rb0Gdy9C29E', // Rosca Scott
-  't4': '2OymsPc-9Tw', // Triceps Frances
-  'a3': 'PBTChAcDnZ4', // Elevacao de Pernas
-  'a4': 'JoRVN9R8kQo', // Crunch Maquina
+  's_et': 'C9Q9so5Fqws', // Encolhimento
+  'b_rw': 'iA4RH6zDin0', // Rosca Barra W
+  'b2': '8PN6YfFC6Q4', // Rosca Martelo
+  'b_bi': 'Qm4NdQttdi8', // Rosca Banco Inclinado
 };
 
 const QUICK_ACTIONS = [
