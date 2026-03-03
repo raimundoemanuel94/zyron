@@ -29,7 +29,9 @@ import {
   FileText,
   Download,
   QrCode,
-  User
+  User,
+  Camera,
+  Scale
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -103,6 +105,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [selectedWorkoutKey, setSelectedWorkoutKey] = useState(null);
   const [availableWorkouts, setAvailableWorkouts] = useState(workoutData);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   
   const timerRef = useRef(null);
   const restTimerRef = useRef(null);
@@ -661,17 +664,104 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         </AnimatePresence>
       </main>
 
+      {/* FAB Backdrop Overlay */}
+      <AnimatePresence>
+        {fabOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
+            onClick={() => setFabOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* FAB Quick Actions Menu */}
+      <AnimatePresence>
+        {fabOpen && (
+          <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+            {[
+              { id: 'session', icon: Zap, label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
+              { id: 'water', icon: Droplets, label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
+              { id: 'protein', icon: Beef, label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
+              { id: 'coach', icon: Coffee, label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
+              { id: 'photo', icon: Camera, label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
+              { id: 'weight', icon: Scale, label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
+            ].map((item, index) => {
+              const totalItems = 6;
+              const spreadAngle = 160;
+              const startAngle = -90 - spreadAngle / 2;
+              const angleStep = spreadAngle / (totalItems - 1);
+              const angle = (startAngle + index * angleStep) * (Math.PI / 180);
+              const radius = 130;
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
+
+              const handleAction = () => {
+                setFabOpen(false);
+                switch(item.id) {
+                  case 'session': startSession(); break;
+                  case 'water': handleWaterDrink(250); break;
+                  case 'protein': setProtein(prev => prev + 30); break;
+                  case 'coach': setActiveTab('coach'); break;
+                  case 'photo': setActiveTab('progress'); break;
+                  case 'weight': setActiveTab('perfil'); break;
+                }
+              };
+
+              const Icon = item.icon;
+
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+                  animate={{ opacity: 1, x, y, scale: 1 }}
+                  exit={{ opacity: 0, x: 0, y: 0, scale: 0 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 22, delay: index * 0.04 }}
+                  className="absolute pointer-events-auto"
+                  style={{ left: '50%', top: '50%', transform: `translate(-50%, -50%)` }}
+                >
+                  <button
+                    onClick={handleAction}
+                    className="group flex flex-col items-center gap-1.5 focus:outline-none"
+                  >
+                    <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
+                      <Icon size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-wider text-white/90 whitespace-nowrap bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                      {item.label}
+                    </span>
+                  </button>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* FIXED NAVIGATION */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-neutral-900/60 backdrop-blur-3xl border border-white/10 rounded-full p-3 flex justify-between items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50">
         <NavButton id="painel" icon={LayoutDashboard} label="Painel" />
         <NavButton id="workout" icon={Dumbbell} label="Treino" />
         
         <button 
-          onClick={startSession}
-          className="relative bg-yellow-400 h-16 w-16 rounded-full -mt-16 border-4 border-neutral-950 shadow-2xl shadow-yellow-400/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden"
+          onClick={() => setFabOpen(!fabOpen)}
+          className={`relative h-16 w-16 rounded-full -mt-16 border-4 border-neutral-950 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden ${
+            fabOpen 
+              ? 'bg-red-500 shadow-red-500/40' 
+              : 'bg-yellow-400 shadow-yellow-400/40'
+          }`}
         >
           <div className="absolute inset-0 bg-linear-to-tr from-white/20 to-transparent"></div>
-          <Plus className="text-neutral-950 group-hover:rotate-90 transition-transform relative z-10" strokeWidth={3} size={28} />
+          <motion.div
+            animate={{ rotate: fabOpen ? 45 : 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="relative z-10"
+          >
+            <Plus className="text-neutral-950" strokeWidth={3} size={28} />
+          </motion.div>
         </button>
 
         <NavButton id="coach" icon={Zap} label="Coach" />
@@ -690,7 +780,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           animation: gradient-x 3s ease infinite;
         }
       `}</style>
-
     </div>
   );
 }
