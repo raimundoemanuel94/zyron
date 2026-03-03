@@ -92,7 +92,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="w-full max-w-md relative"
+        className="w-full max-w-sm relative"
       >
         {/* Logo & Header */}
         <div className="text-center mb-6">
@@ -105,18 +105,18 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             <img 
               src="/images/zyron-logo.png" 
               alt="ZYRON" 
-              className="relative w-64 h-auto object-contain brightness-110 contrast-150 mix-blend-screen"
+              className="relative w-48 h-auto object-contain brightness-110 contrast-150 mix-blend-screen"
             />
           </motion.div>
           <TypewriterSlogan />
         </div>
 
         {/* Card Glassmorphism */}
-        <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/5 rounded-4xl p-8 shadow-2xl relative overflow-hidden">
+        <div className="bg-zinc-900/40 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
           {/* Barra de Detalhe Industrial */}
           <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-yellow-400 to-transparent opacity-50" />
 
-          <form onSubmit={handleLogin} className="space-y-6">
+          <form onSubmit={handleLogin} className="space-y-4">
             {/* Input E-mail */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-yellow-400 uppercase ml-1 tracking-widest">
@@ -131,7 +131,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                   type="email"
                   required
                   placeholder="exemplo@email.com"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -160,7 +160,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                   type="password"
                   required
                   placeholder="••••••••"
-                  className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -171,7 +171,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl shadow-[0_10px_20px_rgba(253,224,71,0.2)] flex items-center justify-center gap-2 transition-all uppercase italic tracking-wider"
+              className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 rounded-xl shadow-[0_10px_20px_rgba(253,224,71,0.2)] flex items-center justify-center gap-2 transition-all uppercase italic tracking-wider text-sm"
               disabled={loading}
             >
               {loading ? (
