@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-industrial-bg: #0A0A0A;
-  --color-industrial-card: #171717;
-  --color-industrial-accent: #FDE047;
+  --color-industrial-bg: #000000;
+  --color-industrial-card: #111111;
+  --color-industrial-accent: #ffd400;
   --color-industrial-success: #10b981;
 }
 
 :root {
-  --primary-yellow: #FDE047; /* Amarelo Vibrante */
-  --industrial-black: #0A0A0A; /* Fundo Profundo */
-  --surface-gray: #171717; /* Cards e Widgets */
-  --accent-gold: #EAB308; /* Tons de destaque */
+  --primary-yellow: #ffd400; /* Amarelo Vibrante Oficial ZYRON */
+  --industrial-black: #000000; /* Fundo Profundo Puro */
+  --surface-gray: #111111; /* Cards e Widgets */
+  --accent-gold: #ffd400; /* Tons de destaque */
 
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -32,7 +32,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow-x: hidden;
-  background-color: #020617;
+  background-color: #000000;
 }
 
 #root {
@@ -65,9 +65,15 @@ body {
 
 /* Global Animations */
 @keyframes gradient-x {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 .animate-gradient-x {
   background-size: 200% 200%;
@@ -75,8 +81,12 @@ body {
 }
 
 @keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .animate-spin-slow {
   animation: spin-slow 8s linear infinite;
@@ -91,7 +101,7 @@ input::-webkit-inner-spin-button {
 }
 
 /* Firefox */
-input[type=number] {
+input[type="number"] {
   appearance: textfield;
   -moz-appearance: textfield;
 }
@@ -104,11 +114,16 @@ input[type=number] {
 }
 
 @keyframes neon-pulse {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(253, 224, 71, 0.4), 0 0 20px rgba(253, 224, 71, 0.2);
+  0%,
+  100% {
+    box-shadow:
+      0 0 10px rgba(253, 224, 71, 0.4),
+      0 0 20px rgba(253, 224, 71, 0.2);
   }
   50% {
-    box-shadow: 0 0 20px rgba(253, 224, 71, 0.8), 0 0 35px rgba(253, 224, 71, 0.6);
+    box-shadow:
+      0 0 20px rgba(253, 224, 71, 0.8),
+      0 0 35px rgba(253, 224, 71, 0.6);
   }
 }
 
