@@ -755,14 +755,26 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   style={{ left: '50%', top: '50%', transform: `translate(-50%, -50%)` }}
                 >
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      // CRITICAL FIX: explicitly prevent the Event object from passing through
+                      e.preventDefault();
+                      e.stopPropagation();
                       setFabOpen(false);
-                      if (item.id === 'session') startSession();
-                      else if (item.id === 'water') handleWaterDrink(0.25);
-                      else if (item.id === 'protein') setProtein(prev => prev + 30);
-                      else if (item.id === 'coach') setActiveTab('coach');
-                      else if (item.id === 'photo') setActiveTab('progress');
-                      else if (item.id === 'weight') setActiveTab('perfil');
+                      
+                      const actionId = item.id;
+                      if (actionId === 'session') {
+                        startSession(today); // Explicitly pass a number, not an event
+                      } else if (actionId === 'water') {
+                        handleWaterDrink(0.25);
+                      } else if (actionId === 'protein') {
+                        setProtein(prev => prev + 30);
+                      } else if (actionId === 'coach') {
+                        setActiveTab('coach');
+                      } else if (actionId === 'photo') {
+                        setActiveTab('progress');
+                      } else if (actionId === 'weight') {
+                        setActiveTab('perfil');
+                      }
                     }}
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
@@ -791,7 +803,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <NavButton id="workout" icon={Dumbbell} label="Treino" />
         
         <button 
-          onClick={() => setFabOpen(!fabOpen)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setFabOpen(prev => !prev);
+          }}
           className={`relative h-16 w-16 rounded-full -mt-16 border-4 border-neutral-950 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden ${
             fabOpen 
               ? 'bg-red-500 shadow-red-500/40' 
@@ -802,7 +818,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           <motion.div
             animate={{ rotate: fabOpen ? 45 : 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="relative z-10"
+            className="relative z-10 pointer-events-none"
           >
             <Plus className="text-neutral-950" strokeWidth={3} size={28} />
           </motion.div>
