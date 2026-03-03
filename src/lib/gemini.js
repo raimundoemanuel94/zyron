@@ -1,5 +1,5 @@
 /**
- * AXIRON Coach — Groq AI Integration
+ * ZYRON Coach — Groq AI Integration
  * Groq offers Llama 3.3-70B for free: https://console.groq.com
  * Free tier: 30 req/min, 14,400 req/day
  */
@@ -27,7 +27,7 @@ export function buildSystemPrompt(user, prHistory, workoutData) {
     .map(([id, load]) => `  • ${id}: ${load}kg`)
     .join('\n') || '  Nenhum PR registrado ainda.';
 
-  return `Você é o AXIRON Coach, um personal trainer de IA de elite integrado ao app AXIRON.
+  return `Você é o ZYRON Coach, um personal trainer de IA de elite integrado ao app ZYRON.
 
 Seu estilo: direto, motivador, técnico, sem enrolação. Foco absoluto em resultados.
 Idioma: português brasileiro. Use emojis esportivos com moderação (⚡💪🔥).
@@ -76,7 +76,7 @@ export async function sendMessageToGemini(history, userMessage, systemInstructio
   for (let i = 0; i < MODELS.length; i++) {
     const model = MODELS[i];
     try {
-      console.log(`[AXIRON Coach] Usando Groq/${model}`);
+      console.log(`[ZYRON Coach] Usando Groq/${model}`);
 
       const res = await fetch(GROQ_URL, {
         method: 'POST',
@@ -96,7 +96,7 @@ export async function sendMessageToGemini(history, userMessage, systemInstructio
         const err = await res.json();
         const is429 = res.status === 429;
         if (is429 && i < MODELS.length - 1) {
-          console.log(`[AXIRON Coach] Rate limit em ${model}, tentando próximo...`);
+          console.log(`[ZYRON Coach] Rate limit em ${model}, tentando próximo...`);
           continue;
         }
         throw new Error(JSON.stringify(err));

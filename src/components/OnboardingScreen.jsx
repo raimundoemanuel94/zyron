@@ -344,7 +344,7 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
                       <Zap size={40} className="text-yellow-400 animate-pulse" fill="currentColor" />
                     </div>
                     <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white mb-2">Processando Bio-Dados</h2>
-                    <p className="text-[10px] text-yellow-400 font-mono uppercase tracking-[0.2em] animate-pulse">Calibrando Motor AXIRON...</p>
+                    <p className="text-[10px] text-yellow-400 font-mono uppercase tracking-[0.2em] animate-pulse">Calibrando Motor ZYRON...</p>
                   </motion.div>
                 ) : (
                   <div className="w-full flex flex-col h-full">

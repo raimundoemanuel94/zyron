@@ -67,7 +67,7 @@ export default function TabCoach({ user, prHistory, workoutData }) {
   const [messages, setMessages] = useState([
     {
       role: 'model',
-      text: `Olá, ${user?.name?.split(' ')[0] || 'Atleta'}! ⚡ Sou o **AXIRON Coach**, sua IA de alta performance.\n\nEstou com acesso ao seu perfil, treino de hoje e seus PRs. Me pergunte qualquer coisa — treino, nutrição, recuperação, estratégia. Vamos forjar sua evolução!`,
+      text: `Olá, ${user?.name?.split(' ')[0] || 'Atleta'}! ⚡ Sou o **ZYRON Coach**, sua IA de alta performance.\n\nEstou com acesso ao seu perfil, treino de hoje e seus PRs. Me pergunte qualquer coisa — treino, nutrição, recuperação, estratégia. Vamos forjar sua evolução!`,
     }
   ]);
   const [input, setInput] = useState('');
@@ -109,7 +109,7 @@ export default function TabCoach({ user, prHistory, workoutData }) {
       const response = await sendMessageToGemini(history, messageText, systemPrompt);
       setMessages(prev => [...prev, { role: 'model', text: response }]);
     } catch (err) {
-      console.error('AXIRON Coach Error:', err);
+      console.error('ZYRON Coach Error:', err);
       setError(err.message || 'Erro ao conectar com a IA. Verifique sua API Key.');
     } finally {
       setLoading(false);
@@ -148,7 +148,7 @@ export default function TabCoach({ user, prHistory, workoutData }) {
             <Zap size={20} className="text-black fill-black" />
           </div>
           <div>
-            <h2 className="text-xl font-black uppercase tracking-tight italic">AXIRON Coach</h2>
+            <h2 className="text-xl font-black uppercase tracking-tight italic">ZYRON Coach</h2>
             <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">IA Personal Trainer</p>
           </div>
         </div>
@@ -251,7 +251,7 @@ export default function TabCoach({ user, prHistory, workoutData }) {
           </motion.button>
         </div>
         <p className="text-center text-[9px] text-neutral-700 font-bold uppercase tracking-widest mt-2">
-          Powered by Groq AI • AXIRON Coach
+          Powered by Groq AI • ZYRON Coach
         </p>
       </div>
     </motion.div>

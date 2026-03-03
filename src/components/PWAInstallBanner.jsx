@@ -68,7 +68,7 @@ export default function PWAInstallBanner() {
           </div>
           
           <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-black text-white uppercase tracking-tight">Instalar AXIRON</h4>
+            <h4 className="text-sm font-black text-white uppercase tracking-tight">Instalar ZYRON</h4>
             {isIOS ? (
               <p className="text-[10px] text-neutral-400 font-bold mt-0.5">
                 Toque em <span className="text-yellow-400">Compartilhar ↑</span> → "Adicionar à Tela de Início"

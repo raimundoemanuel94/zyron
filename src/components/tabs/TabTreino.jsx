@@ -47,7 +47,7 @@ export default function TabTreino({
               </div>
               <div>
                 <h3 className="text-lg font-black uppercase tracking-tight italic">Selecionar Rotina</h3>
-                <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">AXIRON Session Prep</p>
+                <p className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">ZYRON Session Prep</p>
               </div>
             </div>
           </div>

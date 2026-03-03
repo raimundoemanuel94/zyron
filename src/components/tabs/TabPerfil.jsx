@@ -99,7 +99,7 @@ export default function TabPerfil({
           <h2 className="text-2xl font-black uppercase tracking-tighter italic leading-none text-white">
             {user?.name || 'ATLETA'}
           </h2>
-          <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.3em] mt-1">AXIRON PRO</p>
+          <p className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.3em] mt-1">ZYRON PRO</p>
           <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-wider mt-1">{user?.email || ''}</p>
         </div>
         <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
@@ -230,7 +230,7 @@ export default function TabPerfil({
             <div className="flex items-center justify-between mb-8">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-neutral-600 uppercase tracking-[0.2em] mb-1">Prancha Isométrica</span>
-                <h3 className="text-lg font-black uppercase italic tracking-tight">AXIRON Voz Ativa</h3>
+                <h3 className="text-lg font-black uppercase italic tracking-tight">ZYRON Voz Ativa</h3>
               </div>
               <div className="p-3 bg-neutral-950 rounded-2xl border border-white/5">
                 <TimerIcon className={`text-indigo-500 ${voiceTimerActive ? 'animate-pulse' : ''}`} size={24} />

@@ -298,7 +298,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     if (voiceTimerActive) {
       clearInterval(plankIntervalRef.current);
       setVoiceTimerActive(false);
-      speak("Sessão finalizada. Excelente trabalho, AXIRON.");
+      speak("Sessão finalizada. Excelente trabalho, ZYRON.");
     } else {
       setPlankTime(0);
       setVoiceTimerActive(true);
@@ -440,13 +440,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-neutral-800 border-2 border-yellow-500 overflow-hidden relative shrink-0">
-              <img src="/images/axiron-logo.png" alt="AXIRON" className="w-full h-full object-contain" />
+              <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain" />
             </div>
             <div>
               <h1 className="text-base font-black italic tracking-tighter uppercase leading-none text-slate-100">
                 {user?.name || 'ALUNO'}
               </h1>
-              <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mt-0.5">AXIRON</p>
+              <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mt-0.5">ZYRON</p>
             </div>
           </div>
           
@@ -590,7 +590,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
                 {/* Modal Footer */}
                 <div className="px-5 py-3 bg-neutral-950/50 flex justify-between items-center">
-                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • AXIRON</p>
+                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • ZYRON</p>
                   <button
                     onClick={() => setVideoModal(null)}
                     className="text-[9px] font-black text-neutral-400 hover:text-white uppercase tracking-widest transition-colors"
@@ -647,7 +647,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
                 {/* Modal Footer */}
                 <div className="px-5 py-3 bg-neutral-950/50 flex justify-between items-center">
-                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • AXIRON</p>
+                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • ZYRON</p>
                   <button
                     onClick={() => setVideoModal(null)}
                     className="text-[9px] font-black text-neutral-400 hover:text-white uppercase tracking-widest transition-colors"

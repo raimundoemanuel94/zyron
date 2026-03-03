@@ -51,17 +51,15 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
         {/* Logo & Header */}
         <div className="text-center mb-10">
           <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 shadow-[0_0_30px_rgba(253,224,71,0.3)] overflow-hidden"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="inline-flex items-center justify-center w-56 h-28 rounded-3xl mb-6 shadow-[0_0_60px_rgba(255,212,0,0.25)] overflow-hidden border border-yellow-400/20"
           >
-            <img src="/images/axiron-logo.png" alt="AXIRON" className="w-full h-full object-contain" />
+            <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain p-2" />
           </motion.div>
-          <h1 className="text-4xl font-black tracking-tighter text-white uppercase italic">
-            <span className="text-yellow-400">AXIRON</span>
-          </h1>
-          <p className="text-zinc-500 text-sm mt-2 font-medium tracking-wide uppercase">
-            Forje Sua Evolução.
+          <p className="text-zinc-400 text-sm mt-1 font-bold tracking-[0.2em] uppercase">
+            A Força da Sua Evolução.
           </p>
         </div>
 
@@ -157,7 +155,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
 
         {/* Versão do Admin */}
         <p className="text-center mt-8 text-[10px] text-zinc-700 font-mono tracking-[0.3em] uppercase">
-          Powered by AXIRON
+          Powered by ZYRON
         </p>
       </motion.div>
     </div>
