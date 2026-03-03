@@ -683,12 +683,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         {fabOpen && (
           <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
             {[
-              { id: 'session', icon: Zap, label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
-              { id: 'water', icon: Droplets, label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
-              { id: 'protein', icon: Beef, label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
-              { id: 'coach', icon: Coffee, label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
-              { id: 'photo', icon: Camera, label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
-              { id: 'weight', icon: Scale, label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
+              { id: 'session', icon: 'Zap', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
+              { id: 'water', icon: 'Droplets', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
+              { id: 'protein', icon: 'Beef', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
+              { id: 'coach', icon: 'Coffee', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
+              { id: 'photo', icon: 'Camera', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
+              { id: 'weight', icon: 'Scale', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
             ].map((item, index) => {
               const totalItems = 6;
               const spreadAngle = 160;
@@ -699,19 +699,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               const x = Math.cos(angle) * radius;
               const y = Math.sin(angle) * radius;
 
-              const handleAction = () => {
-                setFabOpen(false);
-                switch(item.id) {
-                  case 'session': startSession(); break;
-                  case 'water': handleWaterDrink(250); break;
-                  case 'protein': setProtein(prev => prev + 30); break;
-                  case 'coach': setActiveTab('coach'); break;
-                  case 'photo': setActiveTab('progress'); break;
-                  case 'weight': setActiveTab('perfil'); break;
-                }
-              };
-
-              const Icon = item.icon;
+              const Icon = { Zap, Droplets, Beef, Coffee, Camera, Scale }[item.icon];
 
               return (
                 <motion.div
@@ -724,7 +712,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   style={{ left: '50%', top: '50%', transform: `translate(-50%, -50%)` }}
                 >
                   <button
-                    onClick={handleAction}
+                    onClick={() => {
+                      setFabOpen(false);
+                      if (item.id === 'session') startSession();
+                      else if (item.id === 'water') handleWaterDrink(250);
+                      else if (item.id === 'protein') setProtein(prev => prev + 30);
+                      else if (item.id === 'coach') setActiveTab('coach');
+                      else if (item.id === 'photo') setActiveTab('progress');
+                      else if (item.id === 'weight') setActiveTab('perfil');
+                    }}
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
                     <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
