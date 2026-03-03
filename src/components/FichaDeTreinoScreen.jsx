@@ -295,8 +295,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   }, [restTimer]);
 
   const startSession = (workoutKey) => {
+    // SECURITY FIX: React onClick passes the Event object if no arguments are provided.
+    // If workoutKey is an object (like an SVGSVGElement Event), fallback to `today`.
+    let safeKey = today;
+    if (typeof workoutKey === 'number' || typeof workoutKey === 'string') {
+      safeKey = Number(workoutKey);
+    }
+
     setIsTraining(true);
-    setSelectedWorkoutKey(workoutKey ?? today);
+    setSelectedWorkoutKey(safeKey);
     setActiveTab('workout');
     setSessionTime(0);
     setCompletedExercises([]);
