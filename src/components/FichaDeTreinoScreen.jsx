@@ -85,6 +85,27 @@ export const EXERCISE_VIDEOS = {
   'a4': 'JoRVN9R8kQo', // Crunch Maquina
 };
 
+const QUICK_ACTIONS = [
+  { id: 'session', icon: 'Zap', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
+  { id: 'water', icon: 'Droplets', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
+  { id: 'protein', icon: 'Beef', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
+  { id: 'coach', icon: 'Coffee', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
+  { id: 'photo', icon: 'Camera', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
+  { id: 'weight', icon: 'Scale', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
+];
+
+const QUICK_ICON_MAP = { 
+  Zap, 
+  Droplets, 
+  Beef, 
+  Coffee, 
+  Camera, 
+  Scale,
+  Dumbbell,
+  LayoutDashboard,
+  Target
+};
+
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
@@ -682,15 +703,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       <AnimatePresence>
         {fabOpen && (
           <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-            {[
-              { id: 'session', icon: 'Zap', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
-              { id: 'water', icon: 'Droplets', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
-              { id: 'protein', icon: 'Beef', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
-              { id: 'coach', icon: 'Coffee', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
-              { id: 'photo', icon: 'Camera', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
-              { id: 'weight', icon: 'Scale', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
-            ].map((item, index) => {
-              const totalItems = 6;
+            {QUICK_ACTIONS.map((item, index) => {
+              const totalItems = QUICK_ACTIONS.length;
               const spreadAngle = 160;
               const startAngle = -90 - spreadAngle / 2;
               const angleStep = spreadAngle / (totalItems - 1);
@@ -699,7 +713,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               const x = Math.cos(angle) * radius;
               const y = Math.sin(angle) * radius;
 
-              const Icon = { Zap, Droplets, Beef, Coffee, Camera, Scale }[item.icon];
+              const IconComponent = QUICK_ICON_MAP[item.icon];
 
               return (
                 <motion.div
@@ -724,7 +738,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
                     <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
-                      <Icon size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />
+                      {IconComponent && <IconComponent size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/90 whitespace-nowrap bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
                       {item.label}
