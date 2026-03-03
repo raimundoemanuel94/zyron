@@ -95,12 +95,12 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
         className="w-full max-w-md relative"
       >
         {/* Logo & Header */}
-        <div className="text-center mb-10">
+        <div className="text-center mb-6">
           <motion.div
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.7, ease: 'easeOut' }}
-            className="relative inline-flex items-center justify-center mb-6"
+            className="relative inline-flex items-center justify-center mb-2"
           >
             <img 
               src="/images/zyron-logo.png" 
