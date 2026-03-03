@@ -102,12 +102,10 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             transition={{ duration: 0.7, ease: 'easeOut' }}
             className="relative inline-flex items-center justify-center mb-6"
           >
-            {/* Glow atrás da logo */}
-            <div className="absolute inset-0 blur-2xl bg-yellow-400/20 rounded-full scale-75 top-1/2 -translate-y-1/2" />
             <img 
               src="/images/zyron-logo.png" 
               alt="ZYRON" 
-              className="relative w-64 h-auto object-contain brightness-125 contrast-200 saturate-150 mix-blend-screen drop-shadow-[0_0_20px_rgba(255,212,0,0.3)]"
+              className="relative w-64 h-auto object-contain brightness-110 contrast-150 mix-blend-screen"
             />
           </motion.div>
           <TypewriterSlogan />
