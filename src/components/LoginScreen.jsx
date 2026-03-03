@@ -4,40 +4,47 @@ import { Mail, Lock, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
 
-// Typewriter hook
-function useTypewriter(text, speed = 65, delay = 1200) {
+// Typewriter hook — loop infinito
+function useTypewriter(text, speed = 65, eraseSpeed = 35, hold = 2000, delay = 1200) {
   const [displayed, setDisplayed] = useState('');
-  const [done, setDone] = useState(false);
+  const [phase, setPhase] = useState('wait'); // 'wait' | 'type' | 'hold' | 'erase'
+
   useEffect(() => {
-    let i = 0;
-    let interval;
-    setDisplayed('');
-    setDone(false);
-    const timeout = setTimeout(() => {
-      interval = setInterval(() => {
-        i++;
-        setDisplayed(text.slice(0, i));
-        if (i >= text.length) {
-          clearInterval(interval);
-          setDone(true);
-        }
-      }, speed);
-    }, delay);
-    return () => { clearTimeout(timeout); clearInterval(interval); };
-  }, [text, speed, delay]);
-  return { displayed, done };
+    let timeout;
+    if (phase === 'wait') {
+      timeout = setTimeout(() => setPhase('type'), delay);
+    } else if (phase === 'type') {
+      if (displayed.length < text.length) {
+        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+      } else {
+        timeout = setTimeout(() => setPhase('hold'), hold);
+      }
+    } else if (phase === 'hold') {
+      setPhase('erase');
+    } else if (phase === 'erase') {
+      if (displayed.length > 0) {
+        timeout = setTimeout(() => setDisplayed(text.slice(0, displayed.length - 1)), eraseSpeed);
+      } else {
+        timeout = setTimeout(() => setPhase('type'), 500);
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [phase, displayed, text, speed, eraseSpeed, hold, delay]);
+
+  return { displayed, isTyping: phase === 'type' || phase === 'wait' };
 }
 
 const TypewriterSlogan = () => {
-  const { displayed, done } = useTypewriter('A Força da Sua Evolução.', 65, 1200);
+  const { displayed, isTyping } = useTypewriter('A Força da Sua Evolução.', 65, 30, 2500, 1200);
   return (
-    <p className="text-sm mt-1 font-bold tracking-[0.2em] uppercase h-6 flex items-center justify-center gap-0.5">
-      <span className="text-zinc-400">{displayed}</span>
+    <p className="text-sm mt-1 font-black tracking-[0.25em] uppercase h-6 flex items-center justify-center">
+      <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-300 via-yellow-400 to-amber-500 drop-shadow-[0_0_8px_rgba(255,212,0,0.6)]">
+        {displayed}
+      </span>
       <motion.span
         animate={{ opacity: [1, 0] }}
-        transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
-        className={`inline-block w-0.5 h-4 bg-yellow-400 ${done ? 'opacity-0' : ''}`}
-        style={done ? { animation: 'none', opacity: 0 } : {}}
+        transition={{ duration: 0.5, repeat: Infinity, repeatType: 'reverse' }}
+        className="inline-block w-[2px] h-4 bg-yellow-400 ml-0.5 shadow-[0_0_6px_rgba(255,212,0,0.8)]"
       />
     </p>
   );
