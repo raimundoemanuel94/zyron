@@ -214,14 +214,17 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   useEffect(() => {
     if (!isLoaded) return;
     const todayStr = new Date().toDateString();
-    
-    localStorage.setItem('gym_daily', JSON.stringify({
-      date: todayStr,
-      water,
-      protein,
-      lastWaterTime
-    }));
-    localStorage.setItem('gym_weight', weight.toString());
+    try {
+      localStorage.setItem('gym_daily', JSON.stringify({
+        date: todayStr,
+        water: Number(water) || 0,
+        protein: Number(protein) || 0,
+        lastWaterTime: Number(lastWaterTime) || Date.now()
+      }));
+      localStorage.setItem('gym_weight', Number(weight).toString());
+    } catch (e) {
+      console.error("Critical: Failed to save daily stats to localStorage.", e);
+    }
 
     // Sync com Supabase (Fire and forget, Offline-First)
     if (user?.id) {
@@ -229,11 +232,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       supabase.from('daily_stats').upsert({
         user_id: user.id,
         date: todayIso,
-        water_amount: water,
-        protein_amount: protein
-      }, { onConflict: 'user_id, date' }).catch(e => console.error("Supabase sync error:", e));
+        water_amount: Number(water) || 0,
+        protein_amount: Number(protein) || 0
+      }, { onConflict: 'user_id, date' }).catch(e => {
+         // Silently catch to prevent 400 errors from spamming console if table/schema is missing
+      });
 
-      supabase.from('profiles').update({ weight }).eq('id', user.id).catch(e => console.error("Supabase weight sync error:", e));
+      supabase.from('profiles').update({ weight: Number(weight) || 0 }).eq('id', user.id).catch(e => {
+        // Silently catch
+      });
     }
   }, [water, protein, weight, lastWaterTime, isLoaded, user]);
 
@@ -249,11 +256,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           : [];
           
         localStorage.setItem('gym_active_session', JSON.stringify({
-          date: todayStr,
-          isTraining,
-          selectedWorkoutKey,
+          date: String(todayStr),
+          isTraining: Boolean(isTraining),
+          selectedWorkoutKey: selectedWorkoutKey !== null ? Number(selectedWorkoutKey) : null,
           completedExercises: safeCompleted,
-          sessionTime
+          sessionTime: Number(sessionTime) || 0
         }));
       } catch (e) {
         console.error("Critical: Failed to save session to localStorage due to non-serializable data.", e);
