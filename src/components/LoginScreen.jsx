@@ -53,10 +53,24 @@ const TypewriterSlogan = () => {
 const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
+  const [showUpdatePassword, setShowUpdatePassword] = useState(false);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setShowUpdatePassword(true);
+        setShowRecovery(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -112,6 +126,42 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
     }
   };
 
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: "error", text: "As senhas não coincidem." });
+      return;
+    }
+
+    setRecoveryLoading(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      setMessage({
+        type: "success",
+        text: "Senha atualizada com sucesso! Você já pode entrar.",
+      });
+      
+      setTimeout(() => {
+        setShowUpdatePassword(false);
+        setMessage({ type: "", text: "" });
+      }, 3000);
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error.message || "Erro ao atualizar senha.",
+      });
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4 font-sans selection:bg-yellow-400 selection:text-black">
       {/* Efeito de Luz de Fundo (Glow) */}
@@ -153,7 +203,64 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
             </div>
           )}
 
-          {!showRecovery ? (
+          {showUpdatePassword ? (
+            <form onSubmit={handleUpdatePassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-yellow-400 uppercase ml-1 tracking-widest">
+                  Nova Senha
+                </label>
+                <div className="relative group">
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-yellow-400 transition-colors"
+                    size={20}
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-yellow-400 uppercase ml-1 tracking-widest">
+                  Confirmar Nova Senha
+                </label>
+                <div className="relative group">
+                  <Lock
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-yellow-400 transition-colors"
+                    size={20}
+                  />
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••"
+                    className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-3.5 rounded-xl shadow-[0_10px_20px_rgba(253,224,71,0.2)] flex items-center justify-center gap-2 transition-all uppercase italic tracking-wider text-sm"
+                disabled={recoveryLoading}
+              >
+                {recoveryLoading ? (
+                  <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Confirmar Nova Senha <ArrowRight size={20} />
+                  </>
+                )}
+              </motion.button>
+            </form>
+          ) : !showRecovery ? (
             <form onSubmit={handleLogin} className="space-y-4">
               {/* Input E-mail */}
               <div className="space-y-2">
