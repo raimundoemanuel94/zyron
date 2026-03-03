@@ -105,7 +105,6 @@ const QUICK_ICON_MAP = {
   LayoutDashboard,
   Target
 };
-*/
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('painel');
