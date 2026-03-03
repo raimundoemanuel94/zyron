@@ -1,8 +1,47 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, ArrowRight, ShieldCheck, Zap } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
+
+// Typewriter hook
+function useTypewriter(text, speed = 65, delay = 1200) {
+  const [displayed, setDisplayed] = useState('');
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    let i = 0;
+    let interval;
+    setDisplayed('');
+    setDone(false);
+    const timeout = setTimeout(() => {
+      interval = setInterval(() => {
+        i++;
+        setDisplayed(text.slice(0, i));
+        if (i >= text.length) {
+          clearInterval(interval);
+          setDone(true);
+        }
+      }, speed);
+    }, delay);
+    return () => { clearTimeout(timeout); clearInterval(interval); };
+  }, [text, speed, delay]);
+  return { displayed, done };
+}
+
+const TypewriterSlogan = () => {
+  const { displayed, done } = useTypewriter('A Força da Sua Evolução.', 65, 1200);
+  return (
+    <p className="text-sm mt-1 font-bold tracking-[0.2em] uppercase h-6 flex items-center justify-center gap-0.5">
+      <span className="text-zinc-400">{displayed}</span>
+      <motion.span
+        animate={{ opacity: [1, 0] }}
+        transition={{ duration: 0.6, repeat: Infinity, repeatType: 'reverse' }}
+        className={`inline-block w-0.5 h-4 bg-yellow-400 ${done ? 'opacity-0' : ''}`}
+        style={done ? { animation: 'none', opacity: 0 } : {}}
+      />
+    </p>
+  );
+};
 
 const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
   const [email, setEmail] = useState("");
@@ -58,9 +97,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
           >
             <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain p-2" />
           </motion.div>
-          <p className="text-zinc-400 text-sm mt-1 font-bold tracking-[0.2em] uppercase">
-            A Força da Sua Evolução.
-          </p>
+          <TypewriterSlogan />
         </div>
 
         {/* Card Glassmorphism */}
