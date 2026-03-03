@@ -15,6 +15,22 @@ function App() {
 
   // Auth Listener
   useEffect(() => {
+    // NUCLEAR CACHE BUSTER FOR PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        names.forEach(name => {
+          caches.delete(name);
+        })
+      });
+    }
+
     // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
