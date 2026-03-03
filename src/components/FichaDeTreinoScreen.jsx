@@ -105,6 +105,7 @@ const QUICK_ICON_MAP = {
   LayoutDashboard,
   Target
 };
+*/
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('painel');
@@ -713,8 +714,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               const x = Math.cos(angle) * radius;
               const y = Math.sin(angle) * radius;
 
-              const IconComponent = QUICK_ICON_MAP[item.icon];
-
               return (
                 <motion.div
                   key={item.id}
@@ -738,7 +737,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
                     <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
-                      {IconComponent && <IconComponent size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Zap' && <Zap size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Droplets' && <Droplets size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Beef' && <Beef size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Coffee' && <Coffee size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Camera' && <Camera size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
+                      {item.icon === 'Scale' && <Scale size={20} className="text-white drop-shadow-md" strokeWidth={2.5} />}
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/90 whitespace-nowrap bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
                       {item.label}
