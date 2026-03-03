@@ -5,6 +5,7 @@ import OnboardingScreen from './components/OnboardingScreen';
 import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from './lib/supabase';
 import AdminScreen from './components/AdminScreen';
+import PWAInstallBanner from './components/PWAInstallBanner';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -66,6 +67,7 @@ function App() {
   };
 
   return (
+    <>
     <AnimatePresence mode="wait">
       {showOnboarding ? (
         <motion.div key="onboarding" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
@@ -85,6 +87,8 @@ function App() {
         </motion.div>
       )}
     </AnimatePresence>
+    <PWAInstallBanner />
+    </>
   );
 }
 
