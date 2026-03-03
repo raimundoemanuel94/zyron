@@ -97,12 +97,18 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
         {/* Logo & Header */}
         <div className="text-center mb-10">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className="inline-flex items-center justify-center w-56 h-28 rounded-3xl mb-6 shadow-[0_0_60px_rgba(255,212,0,0.25)] overflow-hidden border border-yellow-400/20"
+            transition={{ duration: 0.7, ease: 'easeOut' }}
+            className="relative inline-flex items-center justify-center mb-6"
           >
-            <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain p-2" />
+            {/* Glow atrás da logo */}
+            <div className="absolute inset-0 blur-2xl bg-yellow-400/20 rounded-full scale-75 top-1/2 -translate-y-1/2" />
+            <img 
+              src="/images/zyron-logo.png" 
+              alt="ZYRON" 
+              className="relative w-64 h-auto object-contain drop-shadow-[0_0_20px_rgba(255,212,0,0.4)]"
+            />
           </motion.div>
           <TypewriterSlogan />
         </div>
