@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus } from 'lucide-react';
+import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History } from 'lucide-react';
 
 export default function WorkoutCard({
   ex,

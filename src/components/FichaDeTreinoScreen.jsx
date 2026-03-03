@@ -231,9 +231,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         date: todayIso,
         water_amount: water,
         protein_amount: protein
-      }, { onConflict: 'user_id, date' }).then();
+      }, { onConflict: 'user_id, date' }).catch(e => console.error("Supabase sync error:", e));
 
-      supabase.from('profiles').update({ weight }).eq('id', user.id).then();
+      supabase.from('profiles').update({ weight }).eq('id', user.id).catch(e => console.error("Supabase weight sync error:", e));
     }
   }, [water, protein, weight, lastWaterTime, isLoaded, user]);
 
@@ -241,14 +241,23 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   useEffect(() => {
     if (!isLoaded) return;
     if (isTraining) {
-      const todayStr = new Date().toDateString();
-      localStorage.setItem('gym_active_session', JSON.stringify({
-        date: todayStr,
-        isTraining,
-        selectedWorkoutKey,
-        completedExercises,
-        sessionTime
-      }));
+      try {
+        const todayStr = new Date().toDateString();
+        // Defensive: ensure completedExercises only contains strings/ids
+        const safeCompleted = Array.isArray(completedExercises) 
+          ? completedExercises.filter(item => typeof item === 'string') 
+          : [];
+          
+        localStorage.setItem('gym_active_session', JSON.stringify({
+          date: todayStr,
+          isTraining,
+          selectedWorkoutKey,
+          completedExercises: safeCompleted,
+          sessionTime
+        }));
+      } catch (e) {
+        console.error("Critical: Failed to save session to localStorage due to non-serializable data.", e);
+      }
     } else {
       localStorage.removeItem('gym_active_session');
     }
@@ -360,24 +369,32 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     
     // Progressive Overload Check
     if (newWeight > oldPR) {
-      const newPRs = { ...prHistory, [exerciseId]: newWeight };
-      setPrHistory(newPRs);
-      localStorage.setItem('gym_prs', JSON.stringify(newPRs));
-      setShowPR(exerciseId);
-      setTimeout(() => setShowPR(null), 3000);
+      try {
+        const newPRs = { ...prHistory, [exerciseId]: newWeight };
+        setPrHistory(newPRs);
+        localStorage.setItem('gym_prs', JSON.stringify(newPRs));
+        setShowPR(exerciseId);
+        setTimeout(() => setShowPR(null), 3000);
 
-      if (user?.id) {
-        supabase.from('exercise_prs').upsert({
-          user_id: user.id,
-          exercise_id: exerciseId,
-          max_load: newWeight
-        }, { onConflict: 'user_id, exercise_id' }).then();
+        if (user?.id) {
+          supabase.from('exercise_prs').upsert({
+            user_id: user.id,
+            exercise_id: exerciseId,
+            max_load: newWeight
+          }, { onConflict: 'user_id, exercise_id' }).catch(e => console.error("PR sync error:", e));
+        }
+      } catch (e) {
+        console.error("Failed to save PR to localStorage:", e);
       }
     }
 
-    const newLoads = { ...loads, [exerciseId]: value };
-    setLoads(newLoads);
-    localStorage.setItem('gym_logs', JSON.stringify(newLoads));
+    try {
+      const newLoads = { ...loads, [exerciseId]: value };
+      setLoads(newLoads);
+      localStorage.setItem('gym_logs', JSON.stringify(newLoads));
+    } catch (e) {
+      console.error("Failed to save logs to localStorage:", e);
+    }
   };
 
   const handleWaterDrink = (val) => {
@@ -727,7 +744,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     onClick={() => {
                       setFabOpen(false);
                       if (item.id === 'session') startSession();
-                      else if (item.id === 'water') handleWaterDrink(250);
+                      else if (item.id === 'water') handleWaterDrink(0.25);
                       else if (item.id === 'protein') setProtein(prev => prev + 30);
                       else if (item.id === 'coach') setActiveTab('coach');
                       else if (item.id === 'photo') setActiveTab('progress');
