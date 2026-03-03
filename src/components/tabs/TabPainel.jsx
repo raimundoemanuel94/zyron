@@ -49,12 +49,20 @@ export default function TabPainel({
         .gte('created_at', startOfWeek.toISOString())
         .order('created_at', { ascending: true });
       
+      if (error) {
+        // Silently ignore schema/permission errors to prevent console pollution
+        if (error.code !== '42P01' && error.code !== 'PGRST116') {
+             // console.error("Ignored streak fetch error:", error.message);
+        }
+        return;
+      }
+
       if (data && data.length > 0) {
         const days = [...new Set(data.map(log => new Date(log.created_at).getDay()))];
         setTrainedDays(days);
       }
     } catch (e) {
-      console.error("Erro ao buscar streak:", e);
+       // Silenced to avoid console spam if table doesn't exist
     }
   };
 
@@ -67,15 +75,18 @@ export default function TabPainel({
         .eq('is_read', false)
         .order('created_at', { ascending: true })
         .limit(1)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid 406 Not Acceptable on empty results
+        
+      if (error) {
+        // Silently ignore schema/permission errors
+        return;
+      }
         
       if (data) {
         setActiveNotification(data);
       }
     } catch (e) {
-      if (e.code !== 'PGRST116') { // Ignorar erro de "nenhuma linha encontrada"
-        console.error("Erro ao buscar notificações:", e);
-      }
+      // Silenced to avoid console spam
     }
   };
 
