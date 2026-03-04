@@ -60,7 +60,7 @@ export default function GlobalPlayer({ constraintsRef }) {
       animate={controls}
       onDragEnd={handleDragEnd}
       whileDrag={{ scale: 1.05, opacity: 0.9, cursor: 'grabbing' }}
-      className={`fixed z-[9999] cursor-grab touch-none select-none
+      className={`fixed z-9999 cursor-grab touch-none select-none
         ${isMinimized 
           ? 'w-16 h-16 rounded-full' 
           : 'w-[320px] rounded-full p-1.5'
