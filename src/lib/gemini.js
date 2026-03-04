@@ -48,7 +48,7 @@ ${todayWorkout?.cardio ? `- Cardio: ${todayWorkout.cardio}` : ''}
 ## Diretrizes Técnicas (ZYRON 5x)
 - Descanso: 90s para multiarticulares (compostos) e 60s para isolados.
 - Progressão: Aumentar carga progressivamente ao atingir o máximo de reps com boa execução.
-- Cardio: Esteira pós-treino (exceto em dias de perna).
+- Cardio: Esteira pós-treino (exceto na quarta-feira, onde é feito ANTES do treino de perna).
 - Intensidade: Foco em falha controlada e cadência perfeita.
 
 ## Melhores Marcas (PRs)

@@ -12,7 +12,7 @@ export const workoutData = {
       { id: "t3", name: "Tríceps testa", group: "Tríceps", sets: 3, reps: "8-10", rest: 60 },
       { id: "t_mb", name: "Mergulho banco", group: "Tríceps", sets: 3, reps: "Falha", rest: 60 },
     ],
-    cardio: "Esteira 15-20 min (Moderado)"
+    cardio: "Esteira 15-20 min (Pós-treino)"
   },
   2: {
     title: "Costas + Bíceps",
@@ -27,7 +27,7 @@ export const workoutData = {
       { id: "b_ra", name: "Rosca alternada halter", group: "Bíceps", sets: 3, reps: "10", rest: 60 },
       { id: "b3", name: "Rosca concentrada", group: "Bíceps", sets: 3, reps: "12", rest: 60 },
     ],
-    cardio: "Esteira 15-20 min (Moderado)"
+    cardio: "Esteira 15-20 min (Pós-treino)"
   },
   3: {
     title: "Pernas completas + Panturrilha",
@@ -42,7 +42,8 @@ export const workoutData = {
       { id: "l_ep", name: "Elevação pélvica", group: "Perna", sets: 3, reps: "10-12", rest: 90 },
       { id: "ca1", name: "Panturrilha em pé", group: "Panturrilha", sets: 4, reps: "12-15", rest: 60 },
       { id: "ca_s", name: "Panturrilha sentado", group: "Panturrilha", sets: 3, reps: "15", rest: 60 },
-    ]
+    ],
+    preCardio: "Esteira 10-15 min (Aquecimento/Preparatório)"
   },
   4: {
     title: "Ombro",
@@ -55,7 +56,7 @@ export const workoutData = {
       { id: "s4", name: "Crucifixo invertido", group: "Ombro", sets: 3, reps: "12", rest: 60 },
       { id: "s_et", name: "Encolhimento trapézio", group: "Ombro", sets: 3, reps: "12", rest: 60 },
     ],
-    cardio: "Esteira 15-20 min (Moderado)"
+    cardio: "Esteira 15-20 min (Pós-treino)"
   },
   5: {
     title: "Bíceps + Tríceps",
@@ -69,7 +70,7 @@ export const workoutData = {
       { id: "t2", name: "Tríceps corda", group: "Tríceps", sets: 3, reps: "12", rest: 60 },
       { id: "t_mb2", name: "Tríceps banco", group: "Tríceps", sets: 3, reps: "Falha", rest: 60 },
     ],
-    cardio: "Esteira 15 min (Moderado)"
+    cardio: "Esteira 15 min (Pós-treino)"
   },
   0: { title: "Descanso Ativo", focus: "Recuperação", exercises: [] },
   6: { title: "Descanso Ativo", focus: "Recuperação", exercises: [] },
