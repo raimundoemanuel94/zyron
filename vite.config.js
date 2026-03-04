@@ -10,7 +10,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["images/zyron-logo.png"],
+      includeAssets: [
+        'favicon.ico', 
+        'apple-touch-icon.png', 
+        'images/zyron-logo.png',
+        'images/zyron-192.png',
+        'images/zyron-512.png'
+      ],
       manifest: {
         name: "ZYRON — A Força da Sua Evolução",
         short_name: "ZYRON",
@@ -26,14 +32,26 @@ export default defineConfig({
             src: "/images/zyron-192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/images/zyron-512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
+          {
+            src: "/images/zyron-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable"
+          },
+          {
+            src: "/images/zyron-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable"
+          }
         ],
       },
       workbox: {

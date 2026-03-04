@@ -15,7 +15,7 @@ export default function MiniPlayer() {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-20 left-4 right-4 z-[45] bg-black/60 backdrop-blur-xl border border-yellow-400/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] overflow-hidden"
+          className="fixed bottom-20 left-4 right-4 z-[45] bg-black/60 backdrop-blur-[20px] border border-yellow-400/20 rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.8)] overflow-hidden"
         >
         {/* Progress Bar Top */}
         <div className="absolute top-0 left-0 h-[2px] bg-white/5 w-full">
@@ -54,26 +54,26 @@ export default function MiniPlayer() {
           {/* Controls */}
           <div className="flex items-center gap-4 shrink-0 px-2">
             <button 
-              onClick={(e) => { e.stopPropagation(); prevTrack(); }}
-              className="text-neutral-400 hover:text-white transition-colors p-1"
+              onTouchStart={(e) => { e.stopPropagation(); prevTrack(); }}
+              className="text-neutral-400 active:text-white transition-colors p-1"
             >
               <SkipBack size={18} />
             </button>
             
             <button 
-              onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+              onTouchStart={(e) => { e.stopPropagation(); togglePlay(); }}
               className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-all ${
                 isPlaying 
                   ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30' 
-                  : 'bg-white text-black hover:bg-yellow-400'
+                  : 'bg-white text-black active:bg-yellow-400'
               }`}
             >
               {isPlaying ? <Pause size={18} className="fill-current" /> : <Play size={18} className="fill-current ml-1" />}
             </button>
             
             <button 
-              onClick={(e) => { e.stopPropagation(); nextTrack(); }}
-              className="text-neutral-400 hover:text-white transition-colors p-1"
+              onTouchStart={(e) => { e.stopPropagation(); nextTrack(); }}
+              className="text-neutral-400 active:text-white transition-colors p-1"
             >
               <SkipForward size={18} />
             </button>

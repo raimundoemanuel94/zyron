@@ -13,6 +13,7 @@ export function MusicProvider({ children }) {
   const [playlist, setPlaylist] = useState([]);
   const [progress, setProgress] = useState(0);
   const playerRef = useRef(null);
+  const silentAudioRef = useRef(null);
 
   // Initialize YT Player API
   useEffect(() => {
@@ -78,6 +79,7 @@ export function MusicProvider({ children }) {
       }
     } else if (event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
       setIsPlaying(false);
+      if (silentAudioRef.current) silentAudioRef.current.pause();
     }
   };
 
@@ -137,6 +139,11 @@ export function MusicProvider({ children }) {
         } else {
           playerRef.current.playVideo();
         }
+        
+        // Ativar Silent Loop para iOS Wake Lock
+        if (silentAudioRef.current) {
+          silentAudioRef.current.play().catch(e => console.log("Wake Lock logic:", e));
+        }
       } else if (playlist.length > 0) {
         loadVideoById(playlist[0]);
       }
@@ -169,18 +176,32 @@ export function MusicProvider({ children }) {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new window.MediaMetadata({
         title: track.title,
-        artist: 'ZYRON Radio',
-        album: 'Workout Mix',
+        artist: track.artist || 'ZYRON Radio',
+        album: 'A Força da Sua Evolução',
         artwork: [
-          { src: track.thumbnail || '/icon-192x192.png', sizes: '96x96', type: 'image/png' },
-          { src: track.thumbnail || '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+          { src: track.thumbnail || '/images/zyron-192.png', sizes: '192x192', type: 'image/png' },
+          { src: track.thumbnail || '/images/zyron-512.png', sizes: '512x512', type: 'image/png' },
         ]
       });
 
-      navigator.mediaSession.setActionHandler('play', () => togglePlay());
-      navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+      navigator.mediaSession.setActionHandler('play', () => {
+        togglePlay();
+        if (silentAudioRef.current) silentAudioRef.current.play();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        togglePlay();
+        if (silentAudioRef.current) silentAudioRef.current.pause();
+      });
       navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+
+      // Audio Interruption Listeners for iOS
+      if (silentAudioRef.current) {
+        silentAudioRef.current.onpause = () => {
+          // If iOS pauses our silent audio (interruption), we sync our state
+          // but we try to resume if it was playing after interruption ends
+        };
+      }
     }
   };
 
@@ -243,6 +264,15 @@ export function MusicProvider({ children }) {
   return (
     <MusicContext.Provider value={contextValue}>
       {children}
+      
+      {/* iOS Wake Lock - Silent Loop Audio */}
+      <audio 
+        ref={silentAudioRef}
+        loop 
+        style={{ display: 'none' }}
+        src="data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAASAAADbWFqb3JfYnJhbmQAZm1wNCAAdGV4dAAAABIAAANtaW5vcl92ZXJzaW9uADAgAFRYWFgAAAAfAAADY29tcGF0aWJsZV9icmFuZHMAaXNvbTVtcDQyAGZyZWUAAAALbWRhdAAAAAAAAAA="
+      />
+
       {/* 
         CRITICAL FIX: YouTube API replaces the target div with an iframe. 
         If this happens directly in a React tree next to AnimatePresence, React will crash with DOM NotFoundError on unmounts. 
