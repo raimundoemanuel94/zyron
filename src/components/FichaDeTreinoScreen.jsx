@@ -146,23 +146,36 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const savedPRs = localStorage.getItem('gym_prs');
     const savedWeight = localStorage.getItem('gym_weight');
     const savedSession = localStorage.getItem('gym_active_session');
+    const savedVersion = localStorage.getItem('gym_version');
     const todayStr = new Date().toDateString();
+
+    const CURRENT_VERSION = 'zyron-v2';
+
+    // Se a versão do app mudou (nova ficha), limpa a sessão antiga para forçar o novo treino
+    if (savedVersion !== CURRENT_VERSION) {
+      localStorage.removeItem('gym_active_session');
+      localStorage.setItem('gym_version', CURRENT_VERSION);
+    } else {
+      try {
+        if (savedSession) {
+          const session = JSON.parse(savedSession);
+          if (session && session.date === todayStr) {
+            setIsTraining(!!session.isTraining);
+            setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
+            setCompletedExercises(Array.isArray(session.completedExercises) ? session.completedExercises : []);
+            setSessionTime(Number(session.sessionTime) || 0);
+            if (session.isTraining) setActiveTab('workout');
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao carregar sessão do LocalStorage:", e);
+      }
+    }
 
     try {
       if (savedLogs) setLoads(JSON.parse(savedLogs) || {});
       if (savedPRs) setPrHistory(JSON.parse(savedPRs) || {});
       if (savedWeight) setWeight(parseFloat(savedWeight) || 80);
-      
-      if (savedSession) {
-        const session = JSON.parse(savedSession);
-        if (session && session.date === todayStr) {
-          setIsTraining(!!session.isTraining);
-          setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
-          setCompletedExercises(Array.isArray(session.completedExercises) ? session.completedExercises : []);
-          setSessionTime(Number(session.sessionTime) || 0);
-          if (session.isTraining) setActiveTab('workout');
-        }
-      }
 
       if (savedDaily) {
         const daily = JSON.parse(savedDaily);
@@ -174,7 +187,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       }
     } catch (e) {
       console.error("Erro ao carregar dados do LocalStorage:", e);
-      // Limpa dados corrompidos se necessário
     }
     
     setIsLoaded(true);
