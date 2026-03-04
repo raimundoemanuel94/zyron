@@ -1,35 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from './lib/supabase';
 import LoginScreen from './components/LoginScreen';
 import OnboardingScreen from './components/OnboardingScreen';
-import { AnimatePresence, motion } from 'framer-motion';
-import { supabase } from './lib/supabase';
+import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
 import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
-import DraggablePlayer from './components/DraggablePlayer';
-import { useRef } from 'react';
+import GlobalPlayer from './components/GlobalPlayer';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [viewManager, setViewManager] = useState('app'); // 'app' | 'admin'
-  const appRef = useRef(null);
+  const globalConstraintsRef = useRef(null);
 
-  // Auth Listener
+  // Initial Auth Sync
   useEffect(() => {
-    // Check active session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        fetchProfile(session.user);
+        setIsAuthenticated(true);
+        setUser(session.user);
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
-        fetchProfile(session.user);
+        setIsAuthenticated(true);
+        setUser(session.user);
       } else {
         setIsAuthenticated(false);
         setUser(null);
@@ -39,61 +38,79 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (authUser) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-        
-      if (data) {
-        setIsAuthenticated(true);
-        setUser({ ...data });
-      } else {
-         // Fallback manual if profile not found
-         setIsAuthenticated(true);
-         setUser({ name: authUser.email?.split('@')[0] || 'Aluno', role: 'PRO', email: authUser.email });
-      }
-    } catch (e) {
-      console.error("Error fetching profile:", e);
-    }
-  };
-
-  const handleLogin = (userData) => {
-    // supabase onAuthStateChange handles the actual login state.
-    // We just need to close the onboarding modal here.
+  const handleLogin = (sessionUser) => {
+    setUser(sessionUser);
+    setIsAuthenticated(true);
     setShowOnboarding(false);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setIsAuthenticated(false);
+    setUser(null);
+    setViewManager('app');
   };
 
   return (
     <MusicProvider>
-      <div ref={appRef} className="fixed inset-0 pointer-events-none z-0" />
-      <AnimatePresence mode="wait">
-        {showOnboarding ? (
-          <motion.div key="onboarding" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-            <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
-          </motion.div>
-        ) : !isAuthenticated ? (
-          <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-            <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
-          </motion.div>
-        ) : viewManager === 'admin' && user?.role === 'ADMIN' ? (
-          <motion.div key="admin" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-            <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
-          </motion.div>
-        ) : (
-          <motion.div key="app" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-            <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
-          </motion.div>
+      {/* 
+         THE BACKBONE: This container holds the constraints for the entire app.
+         The media layer lives here as a sibling to the views, ensuring it NEVER unmounts.
+      */}
+      <div 
+        ref={globalConstraintsRef} 
+        className="relative min-h-screen w-full bg-black overflow-x-hidden selection:bg-yellow-400 selection:text-black"
+      >
+        <AnimatePresence mode="wait">
+          {!isAuthenticated ? (
+            showOnboarding ? (
+              <motion.div 
+                key="onboarding" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="w-full"
+              >
+                <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="login" 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="w-full"
+              >
+                <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
+              </motion.div>
+            )
+          ) : (
+            <motion.div 
+              key="main-content"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="w-full"
+            >
+              {viewManager === 'admin' && user?.role === 'ADMIN' ? (
+                <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
+              ) : (
+                <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 
+           GLOBAL MEDIA LAYER: Outside conditional logic but inside MusicProvider.
+           Persistent across ALL application states.
+        */}
+        {isAuthenticated && (
+          <GlobalPlayer constraintsRef={globalConstraintsRef} />
         )}
-      </AnimatePresence>
-      {isAuthenticated && <DraggablePlayer constraintsRef={appRef} />}
-      <PWAInstallBanner />
+
+        <PWAInstallBanner />
+      </div>
     </MusicProvider>
   );
 }
