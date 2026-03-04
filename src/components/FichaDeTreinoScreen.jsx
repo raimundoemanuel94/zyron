@@ -64,7 +64,6 @@ import TabPainel from './tabs/TabPainel';
 import TabTreino from './tabs/TabTreino';
 import TabEvolucao from './tabs/TabEvolucao';
 import TabPerfil from './tabs/TabPerfil';
-import MiniPlayer from './MiniPlayer';
 import TabCoach from './tabs/TabCoach';
 
 // Import Swiper styles
@@ -153,6 +152,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   
   const timerRef = useRef(null);
   const restTimerRef = useRef(null);
+  const appConstraintsRef = useRef(null);
 
   // Auto-day detection (Default)
   const today = new Date().getDay();
@@ -520,7 +520,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   );
 
   return (
-    <div className={`min-h-screen bg-black text-slate-100 font-sans pb-32 transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}>
+    <div ref={appConstraintsRef} className={`min-h-screen bg-black text-slate-100 font-sans pb-32 transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}>
       
       {/* Background Decor */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none opacity-20 overflow-hidden z-0">
@@ -794,7 +794,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         )}
       </AnimatePresence>
 
-      <MiniPlayer />
+      {/* Navigation moved below Player in App.jsx or kept here if it's tab-specific */}
 
       {/* FIXED NAVIGATION */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-neutral-900/60 backdrop-blur-3xl border border-white/10 rounded-full p-3 flex justify-between items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50">

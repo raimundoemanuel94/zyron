@@ -7,12 +7,15 @@ import { supabase } from './lib/supabase';
 import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
+import DraggablePlayer from './components/DraggablePlayer';
+import { useRef } from 'react';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [viewManager, setViewManager] = useState('app'); // 'app' | 'admin'
+  const appRef = useRef(null);
 
   // Auth Listener
   useEffect(() => {
@@ -85,6 +88,7 @@ function App() {
 
   return (
     <MusicProvider>
+      <div ref={appRef} className="fixed inset-0 pointer-events-none z-0" />
       <AnimatePresence mode="wait">
         {showOnboarding ? (
           <motion.div key="onboarding" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
@@ -104,6 +108,7 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      {isAuthenticated && <DraggablePlayer constraintsRef={appRef} />}
       <PWAInstallBanner />
     </MusicProvider>
   );

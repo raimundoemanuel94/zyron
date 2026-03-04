@@ -12,6 +12,8 @@ export function MusicProvider({ children }) {
   const [volume, setVolume] = useState(100);
   const [playlist, setPlaylist] = useState([]);
   const [progress, setProgress] = useState(0);
+  const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
+  const [isMinimized, setIsMinimized] = useState(false);
   const playerRef = useRef(null);
   const silentAudioRef = useRef(null);
 
@@ -25,6 +27,22 @@ export function MusicProvider({ children }) {
       } catch (e) {
         console.error("Error parsing saved track", e);
       }
+    }
+
+    // Load player position
+    const savedPos = localStorage.getItem('zyron_player_pos');
+    if (savedPos) {
+      try {
+        setPlayerPosition(JSON.parse(savedPos));
+      } catch (e) {
+        console.error("Error parsing saved position", e);
+      }
+    }
+
+    // Load minimized state
+    const savedMinimized = localStorage.getItem('zyron_player_minimized');
+    if (savedMinimized) {
+      setIsMinimized(savedMinimized === 'true');
     }
 
     if (!document.getElementById('yt-api-script')) {
@@ -172,6 +190,17 @@ export function MusicProvider({ children }) {
     }
   };
 
+  const updatePlayerPosition = (pos) => {
+    setPlayerPosition(pos);
+    localStorage.setItem('zyron_player_pos', JSON.stringify(pos));
+  };
+
+  const toggleMinimized = () => {
+    const newState = !isMinimized;
+    setIsMinimized(newState);
+    localStorage.setItem('zyron_player_minimized', String(newState));
+  };
+
   const updateMediaSession = (track) => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new window.MediaMetadata({
@@ -252,13 +281,17 @@ export function MusicProvider({ children }) {
     volume,
     playlist,
     progress,
+    playerPosition,
+    isMinimized,
     togglePlay,
     nextTrack,
     prevTrack,
     changeVolume,
     setPlaylist,
     searchMusic,
-    loadVideoById
+    loadVideoById,
+    updatePlayerPosition,
+    toggleMinimized
   };
 
   return (
