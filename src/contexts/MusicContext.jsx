@@ -235,44 +235,49 @@ export function MusicProvider({ children }) {
   };
 
   const searchMusic = async (query) => {
-    try {
-      // Usando uma API pública Piped/Invidious para buscar vídeos do YouTube sem custo nem chave de API.
-      // O endpoint 'filter=music_songs' força a focar em opções de áudio.
-      const response = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
-      
-      if (!response.ok) {
-        throw new Error('API pública instável ou limite excedido');
+    const instances = [
+      'https://pipedapi.kavin.rocks',
+      'https://piped-api.lunar.icu',
+      'https://pipedapi.rivo.pw',
+      'https://api.piped.privacydev.net'
+    ];
+
+    for (const instance of instances) {
+      try {
+        console.log(`ZYRON Radio: Tentando busca via ${instance}...`);
+        const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`, {
+          signal: AbortSignal.timeout(5000) // Timeout de 5s por tentativa
+        });
+        
+        if (!response.ok) continue;
+        
+        const data = await response.json();
+        
+        if (data && data.items && data.items.length > 0) {
+          const results = data.items
+            .filter(item => item.type === 'stream')
+            .slice(0, 15)
+            .map(item => ({
+               id: item.url.replace('/watch?v=', ''),
+               title: item.title,
+               thumbnail: item.thumbnail,
+               artist: item.uploaderName || 'YouTube Audio'
+            }));
+            
+          return results;
+        }
+      } catch (error) {
+        console.warn(`ZYRON Radio: Erro em ${instance}:`, error.message);
+        continue;
       }
-      
-      const data = await response.json();
-      
-      if (data && data.items && data.items.length > 0) {
-        // Mapear os itens retornados (streams/vídeos) pro formato do contexto ZYRON
-        const results = data.items
-          .filter(item => item.type === 'stream') // garantir que é um vídeo, não uma playlist
-          .slice(0, 15) // pegar os top 15
-          .map(item => ({
-             id: item.url.replace('/watch?v=', ''),
-             title: item.title,
-             thumbnail: item.thumbnail,
-             artist: item.uploaderName || 'YouTube Audio'
-          }));
-          
-        return results;
-      }
-      
-      throw new Error('Nenhum resultado encontrado.');
-      
-    } catch (error) {
-      console.warn("ZYRON Radio: Fallback para as playlists hardcoded. Motivo:", error.message);
-      // Se a API pública falhar (algo que pode ocorrer em picos de acesso a instâncias gratuitas), 
-      // retornamos o fallback garantido de alta performance:
-      return [
-        { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
-        { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - Beats to Relax/Study to', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
-        { id: '5qap5aO4i9A', title: 'Lofi Girl - chill beats to relax/study to', thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/default.jpg', artist: 'Lofi Girl' },
-      ];
     }
+
+    // Fallback garantido
+    console.warn("ZYRON Radio: Todas as instâncias falharam. Usando fallback hardcoded.");
+    return [
+      { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
+      { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
+    ];
   };
 
   const contextValue = {
