@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, ShieldAlert, Zap, Play, PlayCircle, Coffee } from 'lucide-react';
+import { Dumbbell, ShieldAlert, Zap, Play, PlayCircle, Coffee, Flame } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow } from 'swiper/modules';
 import 'swiper/css';
@@ -28,6 +28,28 @@ export default function TabTreino({
   prHistory,
   showPR
 }) {
+  const [cardioRunning, setCardioRunning] = useState(false);
+  const [cardioTime, setCardioTime] = useState(0);
+  const cardioTimerRef = useRef(null);
+
+  // Cardio Timer Logic
+  useEffect(() => {
+    if (cardioRunning) {
+      cardioTimerRef.current = setInterval(() => {
+        setCardioTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(cardioTimerRef.current);
+    }
+    return () => clearInterval(cardioTimerRef.current);
+  }, [cardioRunning]);
+
+  const formatCardioTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <AnimatePresence mode="wait">
       
@@ -215,15 +237,49 @@ export default function TabTreino({
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
-              className="mt-8 p-6 bg-neutral-900/80 border border-yellow-500/30 rounded-3xl flex flex-col items-center gap-3 text-center"
+              className={`mt-8 p-6 rounded-3xl flex flex-col items-center gap-4 text-center transition-all duration-300 border ${
+                cardioRunning ? 'bg-yellow-400 text-neutral-950 shadow-[0_0_30px_rgba(253,224,71,0.4)] border-yellow-400' : 'bg-neutral-900/80 border-yellow-500/30'
+              }`}
             >
-              <div className="p-3 bg-yellow-500/10 rounded-full">
-                <Flame size={24} className="text-yellow-400" />
+              <div className={`p-3 rounded-full ${cardioRunning ? 'bg-neutral-950/20' : 'bg-yellow-500/10'}`}>
+                <Flame size={24} className={cardioRunning ? 'text-neutral-950 animate-pulse' : 'text-yellow-400'} />
               </div>
-              <div>
-                <h4 className="text-white font-black uppercase tracking-tight italic">Finalização: Cardio</h4>
-                <p className="text-yellow-400 text-[10px] font-black uppercase tracking-widest mt-1">{currentWorkout.cardio}</p>
+              
+              <div className="w-full">
+                <h4 className={`font-black uppercase tracking-tight italic ${cardioRunning ? 'text-neutral-950' : 'text-white'}`}>Finalização: Cardio</h4>
+                <p className={`text-[12px] font-black uppercase tracking-widest mt-1 ${cardioRunning ? 'text-neutral-800' : 'text-yellow-400'}`}>{currentWorkout.cardio}</p>
               </div>
+
+              <motion.button 
+                layout
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCardioRunning(!cardioRunning);
+                }}
+                className={`mt-2 w-full h-16 rounded-xl flex items-center justify-between px-6 transition-all duration-300 ${
+                  cardioRunning 
+                    ? 'bg-neutral-950 text-yellow-400 shadow-[0_0_20px_rgba(0,0,0,0.6)]' 
+                    : 'bg-yellow-400 text-neutral-950 border-2 border-yellow-400 shadow-[0_0_15px_rgba(253,224,71,0.2)]'
+                }`}
+              >
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                    {cardioRunning ? 'Em Execução' : 'Pronto para Queimar?'}
+                  </span>
+                  <span className="text-xl font-black italic uppercase tracking-tighter shrink-0">
+                    {cardioRunning ? '■ FINALIZAR' : '> INICIAR CARDIO'}
+                  </span>
+                </div>
+                
+                {cardioRunning && (
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-red-600 rounded-full animate-ping" />
+                    <span className="text-2xl font-black font-mono tracking-tighter">
+                      {formatCardioTime(cardioTime)}
+                    </span>
+                  </div>
+                )}
+              </motion.button>
             </motion.div>
           )}
 

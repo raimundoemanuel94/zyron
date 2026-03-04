@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, Play, LogOut, QrCode, ArrowBigUp, Camera, User } from 'lucide-react';
+import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, Play, LogOut, QrCode, ArrowBigUp, Camera, User, Music, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useMusic } from '../../contexts/MusicContext';
 
 // Generic GlassCard component
 const GlassCard = ({ children }) => (
@@ -23,6 +24,35 @@ export default function TabPerfil({
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  
+  // Music State
+  const { searchMusic, setPlaylist, loadVideoById } = useMusic();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([
+    // Default HQ Playlists
+    { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg' },
+    { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - Relax', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg' },
+  ]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setIsSearching(true);
+    try {
+      const results = await searchMusic(searchQuery);
+      setSearchResults(results);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const playSelectedTrack = (track, index) => {
+    setPlaylist(searchResults);
+    loadVideoById(track);
+  };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -109,7 +139,7 @@ export default function TabPerfil({
 
       {/* Perfil Sub-Navigation */}
       <div className="flex gap-2 p-1 bg-neutral-900/50 rounded-2xl border border-white/5 mb-6">
-        {['geral', 'docs', 'financeiro'].map(tab => (
+        {['geral', 'docs', 'financeiro', 'music'].map(tab => (
           <button 
             key={tab}
             onClick={() => setPerfilTab(tab)}
@@ -119,10 +149,68 @@ export default function TabPerfil({
                 : 'text-neutral-500 hover:text-white'
             }`}
           >
-            {tab === 'geral' ? 'Gamificação' : tab === 'docs' ? 'Documentos' : 'Mensalidade'}
+            {tab === 'geral' ? 'Geral' : tab === 'docs' ? 'Docs' : tab === 'financeiro' ? 'PIX' : 'Música'}
           </button>
         ))}
       </div>
+
+      {/* TAB MENSALIDADE / FINANCEIRO */}
+      {perfilTab === 'music' && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <GlassCard>
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-3 bg-yellow-400/10 rounded-2xl border border-yellow-400/20">
+                <Music className="text-yellow-400" size={24} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black uppercase italic tracking-tight">ZYRON Radio</h3>
+                <p className="text-[10px] uppercase font-bold text-neutral-500 tracking-widest">Global PWA Player</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSearch} className="relative mb-6">
+              <input 
+                type="text" 
+                placeholder="Buscar música no YouTube..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-neutral-950 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/30 transition-all font-bold placeholder:text-neutral-600"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" size={18} />
+              <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase tracking-widest bg-yellow-400 text-black px-3 py-1.5 rounded-lg hover:bg-yellow-300 transition-colors">
+                Buscar
+              </button>
+            </form>
+
+            <div className="space-y-3">
+              {isSearching ? (
+                <div className="animate-pulse flex flex-col gap-3">
+                   {[1,2,3].map(i => <div key={i} className="h-16 bg-white/5 rounded-xl w-full" />)}
+                </div>
+              ) : (
+                searchResults.map((track, idx) => (
+                  <div 
+                    key={track.id} 
+                    onClick={() => playSelectedTrack(track, idx)}
+                    className="flex items-center gap-4 p-3 rounded-xl bg-neutral-900 border border-white/5 hover:border-yellow-400/30 cursor-pointer transition-all group"
+                  >
+                    <div className="w-12 h-12 rounded-lg bg-neutral-800 overflow-hidden relative">
+                      {track.thumbnail && <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                         <Play size={16} className="text-yellow-400 fill-current" />
+                      </div>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-black text-white truncate">{track.title}</h4>
+                      <p className="text-[9px] text-neutral-500 uppercase tracking-widest font-bold">YouTube Audio</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       {/* TAB MENSALIDADE / FINANCEIRO */}
       {perfilTab === 'financeiro' && (
@@ -254,6 +342,17 @@ export default function TabPerfil({
               </button>
             </div>
           </GlassCard>
+
+          {/* Botão de Logout Centralizado */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onLogout}
+            className="w-full py-5 rounded-3xl bg-neutral-900 border border-red-500/30 text-red-500 font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-red-500 hover:text-white transition-all shadow-[0_10px_30px_rgba(239,68,68,0.1)] active:scale-95"
+          >
+            <LogOut size={20} />
+            Encerrar Sessão Segura
+          </motion.button>
         </div>
       )}
     </motion.div>

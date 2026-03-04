@@ -61,6 +61,17 @@ export default defineConfig({
               },
             },
           },
+          {
+            urlPattern: /^https:\/\/www\.youtube\.com\/iframe_api/i,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "youtube-api",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24, // 1 day
+              },
+            },
+          },
         ],
       },
     }),

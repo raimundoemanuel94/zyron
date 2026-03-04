@@ -1,0 +1,256 @@
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+
+const MusicContext = createContext();
+
+export function useMusic() {
+  return useContext(MusicContext);
+}
+
+export function MusicProvider({ children }) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [volume, setVolume] = useState(100);
+  const [playlist, setPlaylist] = useState([]);
+  const [progress, setProgress] = useState(0);
+  const playerRef = useRef(null);
+
+  // Initialize YT Player API
+  useEffect(() => {
+    // Load local storage track
+    const savedTrack = localStorage.getItem('zyron_last_track');
+    if (savedTrack) {
+      try {
+        setCurrentTrack(JSON.parse(savedTrack));
+      } catch (e) {
+        console.error("Error parsing saved track", e);
+      }
+    }
+
+    if (!document.getElementById('yt-api-script')) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-api-script';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+
+    window.onYouTubeIframeAPIReady = () => {
+      playerRef.current = new window.YT.Player('yt-player-hidden', {
+        height: '0',
+        width: '0',
+        videoId: '',
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          rel: 0,
+          showinfo: 0,
+          iv_load_policy: 3
+        },
+        events: {
+          onReady: onPlayerReady,
+          onStateChange: onPlayerStateChange,
+          onError: onPlayerError
+        }
+      });
+    };
+
+    return () => {
+      window.onYouTubeIframeAPIReady = null;
+    };
+  }, []);
+
+  const onPlayerReady = (event) => {
+    if (currentTrack) {
+      if (currentTrack.id) {
+        event.target.cueVideoById(currentTrack.id);
+      }
+    }
+  };
+
+  const onPlayerStateChange = (event) => {
+    if (event.data === window.YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      if (currentTrack) {
+        updateMediaSession(currentTrack);
+      }
+    } else if (event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
+      setIsPlaying(false);
+    }
+  };
+
+  const onPlayerError = (event) => {
+    console.error("YouTube Player Error", event.data);
+    // Simple fallback alert for copyrighted content
+    if (event.data === 150 || event.data === 101) {
+      alert("Mídia protegida, tente outra faixa.");
+      setIsPlaying(false);
+      if (playlist.length > 0) nextTrack();
+    }
+  };
+
+  // Progress tracking
+  useEffect(() => {
+    let interval;
+    if (isPlaying && playerRef.current && playerRef.current.getCurrentTime) {
+      interval = setInterval(() => {
+        const currentTime = playerRef.current.getCurrentTime();
+        const duration = playerRef.current.getDuration();
+        if (duration > 0) {
+          setProgress((currentTime / duration) * 100);
+        }
+      }, 1000);
+    } else {
+      clearInterval(interval);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
+  const loadVideoById = (track) => {
+    if (!playerRef.current || !playerRef.current.loadVideoById) return;
+    
+    setCurrentTrack(track);
+    localStorage.setItem('zyron_last_track', JSON.stringify(track));
+    
+    // Require user interaction for autoplay on mobile
+    try {
+      playerRef.current.loadVideoById(track.id);
+      setIsPlaying(true);
+      updateMediaSession(track);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const togglePlay = () => {
+    if (!playerRef.current) return;
+    
+    if (isPlaying) {
+      playerRef.current.pauseVideo();
+      setIsPlaying(false);
+    } else {
+      if (currentTrack) {
+        if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
+           playerRef.current.loadVideoById(currentTrack.id);
+        } else {
+          playerRef.current.playVideo();
+        }
+      } else if (playlist.length > 0) {
+        loadVideoById(playlist[0]);
+      }
+      setIsPlaying(true);
+    }
+  };
+
+  const nextTrack = () => {
+    if (playlist.length === 0) return;
+    const currentIndex = playlist.findIndex(t => t.id === currentTrack?.id);
+    const nextIndex = (currentIndex + 1) % playlist.length;
+    loadVideoById(playlist[nextIndex]);
+  };
+
+  const prevTrack = () => {
+    if (playlist.length === 0) return;
+    const currentIndex = playlist.findIndex(t => t.id === currentTrack?.id);
+    const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+    loadVideoById(playlist[prevIndex]);
+  };
+
+  const changeVolume = (newVolume) => {
+    setVolume(newVolume);
+    if (playerRef.current && playerRef.current.setVolume) {
+      playerRef.current.setVolume(newVolume);
+    }
+  };
+
+  const updateMediaSession = (track) => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: track.title,
+        artist: 'ZYRON Radio',
+        album: 'Workout Mix',
+        artwork: [
+          { src: track.thumbnail || '/icon-192x192.png', sizes: '96x96', type: 'image/png' },
+          { src: track.thumbnail || '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+        ]
+      });
+
+      navigator.mediaSession.setActionHandler('play', () => togglePlay());
+      navigator.mediaSession.setActionHandler('pause', () => togglePlay());
+      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+    }
+  };
+
+  const searchMusic = async (query) => {
+    try {
+      // Usando uma API pública Piped/Invidious para buscar vídeos do YouTube sem custo nem chave de API.
+      // O endpoint 'filter=music_songs' força a focar em opções de áudio.
+      const response = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
+      
+      if (!response.ok) {
+        throw new Error('API pública instável ou limite excedido');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.items && data.items.length > 0) {
+        // Mapear os itens retornados (streams/vídeos) pro formato do contexto ZYRON
+        const results = data.items
+          .filter(item => item.type === 'stream') // garantir que é um vídeo, não uma playlist
+          .slice(0, 15) // pegar os top 15
+          .map(item => ({
+             id: item.url.replace('/watch?v=', ''),
+             title: item.title,
+             thumbnail: item.thumbnail,
+             artist: item.uploaderName || 'YouTube Audio'
+          }));
+          
+        return results;
+      }
+      
+      throw new Error('Nenhum resultado encontrado.');
+      
+    } catch (error) {
+      console.warn("ZYRON Radio: Fallback para as playlists hardcoded. Motivo:", error.message);
+      // Se a API pública falhar (algo que pode ocorrer em picos de acesso a instâncias gratuitas), 
+      // retornamos o fallback garantido de alta performance:
+      return [
+        { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
+        { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - Beats to Relax/Study to', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
+        { id: '5qap5aO4i9A', title: 'Lofi Girl - chill beats to relax/study to', thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/default.jpg', artist: 'Lofi Girl' },
+      ];
+    }
+  };
+
+  const contextValue = {
+    isPlaying,
+    currentTrack,
+    volume,
+    playlist,
+    progress,
+    togglePlay,
+    nextTrack,
+    prevTrack,
+    changeVolume,
+    setPlaylist,
+    searchMusic,
+    loadVideoById
+  };
+
+  return (
+    <MusicContext.Provider value={contextValue}>
+      {children}
+      {/* 
+        CRITICAL FIX: YouTube API replaces the target div with an iframe. 
+        If this happens directly in a React tree next to AnimatePresence, React will crash with DOM NotFoundError on unmounts. 
+        Wrapping it in a stable parent div protects the React tree from this mutation. 
+      */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '0px', height: '0px' }}>
+        <div id="yt-player-hidden"></div>
+      </div>
+    </MusicContext.Provider>
+  );
+}

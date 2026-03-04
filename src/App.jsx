@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { supabase } from './lib/supabase';
 import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
+import { MusicProvider } from './contexts/MusicContext';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -83,28 +84,28 @@ function App() {
   };
 
   return (
-    <>
-    <AnimatePresence mode="wait">
-      {showOnboarding ? (
-        <motion.div key="onboarding" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-          <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
-        </motion.div>
-      ) : !isAuthenticated ? (
-        <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-          <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
-        </motion.div>
-      ) : viewManager === 'admin' && user?.role === 'ADMIN' ? (
-        <motion.div key="admin" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-          <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
-        </motion.div>
-      ) : (
-        <motion.div key="app" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
-          <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
-        </motion.div>
-      )}
-    </AnimatePresence>
-    <PWAInstallBanner />
-    </>
+    <MusicProvider>
+      <AnimatePresence mode="wait">
+        {showOnboarding ? (
+          <motion.div key="onboarding" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
+            <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
+          </motion.div>
+        ) : !isAuthenticated ? (
+          <motion.div key="login" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
+            <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
+          </motion.div>
+        ) : viewManager === 'admin' && user?.role === 'ADMIN' ? (
+          <motion.div key="admin" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
+            <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
+          </motion.div>
+        ) : (
+          <motion.div key="app" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="min-h-screen w-full">
+            <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <PWAInstallBanner />
+    </MusicProvider>
   );
 }
 

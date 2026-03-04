@@ -207,7 +207,10 @@ export default function TabPainel({
           </div>
           
           <button 
-            onClick={() => startSession(today)}
+            onClick={() => {
+              if (navigator.vibrate) navigator.vibrate(50);
+              startSession(today);
+            }}
             className="group relative w-full bg-yellow-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(253,224,71,0.2)] hover:shadow-[0_0_40px_rgba(253,224,71,0.4)] transition-all active:scale-95 overflow-hidden"
           >
             <span className="relative z-10 flex items-center gap-2">Iniciar Sessão ⚡</span>
@@ -216,37 +219,6 @@ export default function TabPainel({
           </button>
         </div>
       </div>
-
-      {/* STATUS DE ASSINATURA (Migrado para o Painel) */}
-      <motion.div 
-        whileHover={{ scale: 1.02 }}
-        className="relative overflow-hidden bg-gradient-to-br from-neutral-900 via-neutral-950 to-black border border-neutral-800 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 rounded-full blur-[80px] pointer-events-none"></div>
-        <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-yellow-400/50 to-transparent"></div>
-
-        <div className="flex justify-between items-start mb-6 relative z-10">
-          <div className="flex flex-col">
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-[0.3em]">Status do Plano</span>
-            <h3 className="text-2xl font-black text-white italic tracking-tighter mt-1">BLACK PREMIUM</h3>
-          </div>
-          <span className="text-2xl">👑</span>
-        </div>
-
-        <div className="flex justify-between items-end relative z-10">
-          <div>
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-1">Próxima Renovação</span>
-            <p className="text-lg font-mono font-black text-white tracking-widest">15/05/2026</p>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-full">
-            <span className="text-xs">💳</span>
-            <span className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">Ativo</span>
-          </div>
-        </div>
-        <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-20 hover:opacity-100 transition-opacity">
-           <span className="text-5xl">⚡</span>
-        </div>
-      </motion.div>
 
       {/* WIDGETS DE SAÚDE E METAS */}
       <h3 className="text-lg font-black uppercase italic tracking-tight text-white mb-2 ml-1">Metas Diárias</h3>
@@ -272,7 +244,10 @@ export default function TabPainel({
             {[0.25, 0.5].map(val => (
               <button 
                 key={val}
-                onClick={() => handleWaterDrink(Number(val))}
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  handleWaterDrink(Number(val));
+                }}
                 className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] active:scale-95 text-neutral-400"
               >
                 +{val >= 1 ? val : val.toString().substring(1)}L
@@ -308,7 +283,10 @@ export default function TabPainel({
             {[30, 50].map(val => (
               <button 
                 key={val}
-                onClick={() => setProtein(prev => prev + Number(val))}
+                onClick={() => {
+                  if (navigator.vibrate) navigator.vibrate(50);
+                  setProtein(prev => prev + Number(val));
+                }}
                 className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-red-500 hover:text-white hover:border-red-500 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.4)] active:scale-95 text-neutral-400"
               >
                 +{val}g

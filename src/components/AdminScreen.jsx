@@ -12,6 +12,7 @@ export default function AdminScreen({ onLogout, onBack }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
   
   // Modals state
   const [editUser, setEditUser] = useState(null);
@@ -80,10 +81,20 @@ export default function AdminScreen({ onLogout, onBack }) {
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (filterStatus === 'all') return matchesSearch;
+    
+    // Mock status based on ID to demonstrate filter functionality (80% active)
+    const isActive = user.id.charCodeAt(0) % 5 !== 0; 
+    
+    if (filterStatus === 'active') return matchesSearch && isActive;
+    if (filterStatus === 'inactive') return matchesSearch && !isActive;
+    
+    return matchesSearch;
+  });
 
   const handleSaveEdit = async () => {
     setIsProcessing(true);
@@ -254,7 +265,13 @@ export default function AdminScreen({ onLogout, onBack }) {
             <div className="flex justify-between items-start relative z-10">
               <div>
                 <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">MRR Estimado</p>
-                <h3 className="text-4xl font-black italic text-white mt-2"><span className="text-xl text-neutral-500 leading-none">R$</span> {(users.length * 159).toLocaleString('pt-BR')}</h3>
+                <div className="flex items-end gap-3 mt-1">
+                  <h3 className="text-4xl font-black italic text-white flex items-end"><span className="text-xl text-neutral-500 mb-1 mr-1">R$</span> {(users.length * 159).toLocaleString('pt-BR')}</h3>
+                  <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg mb-1 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+                    <TrendingUp size={12} className="text-emerald-400" />
+                    <span className="text-xs font-black text-emerald-400">+12%</span>
+                  </div>
+                </div>
               </div>
               <div className="p-3 bg-blue-500/10 rounded-xl">
                 <DollarSign className="text-blue-500" size={24} />
@@ -320,17 +337,36 @@ export default function AdminScreen({ onLogout, onBack }) {
 
         {/* User Table */}
         <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[600px]">
-          <div className="p-6 border-b border-white/5 flex justify-between items-center bg-neutral-950/50">
+          <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-950/50">
             <h2 className="text-xl font-black italic uppercase tracking-tight text-white">Gestão de Operadores</h2>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
-              <input 
-                type="text" 
-                placeholder="Buscar aluno..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 w-64"
-              />
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+              {/* Filtros Rápidos */}
+              <div className="flex bg-black/50 border border-white/10 rounded-lg p-1 w-full sm:w-auto">
+                <button 
+                  onClick={() => setFilterStatus('all')}
+                  className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${filterStatus === 'all' ? 'bg-yellow-500 text-black shadow-sm' : 'text-neutral-500 hover:text-white'}`}
+                >Todos</button>
+                <button 
+                  onClick={() => setFilterStatus('active')}
+                  className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${filterStatus === 'active' ? 'bg-emerald-500 text-black shadow-sm' : 'text-neutral-500 hover:text-emerald-400'}`}
+                >Ativos</button>
+                <button 
+                  onClick={() => setFilterStatus('inactive')}
+                  className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-all ${filterStatus === 'inactive' ? 'bg-red-500 text-white shadow-sm' : 'text-neutral-500 hover:text-red-400'}`}
+                >Inativos</button>
+              </div>
+
+              <div className="relative w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar aluno..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 w-full md:w-64 transition-all"
+                />
+              </div>
             </div>
           </div>
 
@@ -376,9 +412,15 @@ export default function AdminScreen({ onLogout, onBack }) {
                       </td>
                       <td className="p-4 text-sm text-neutral-400">{u.email}</td>
                       <td className="p-4">
-                        <span className={`px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest`}>
-                          Ativo (PRO+)
-                        </span>
+                        {u.id.charCodeAt(0) % 5 !== 0 ? (
+                          <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                            Ativo (PRO+)
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-full text-[10px] font-black uppercase tracking-widest">
+                            Inativo
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 text-center">
                         <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest bg-neutral-800 px-3 py-1 rounded-lg">

@@ -47,13 +47,18 @@ export default function WorkoutCard({
 
   const handleToggleSet = (e) => {
     e.stopPropagation();
+    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback on interact
     if (!isRunning) {
       setIsRunning(true);
       setSetTimer(0);
     } else {
       setIsRunning(false);
       playMetalSound();
-      if (activeSet < parseInt(ex.séries)) {
+      
+      // Feature request: "Ao clicar em finalizar, dispare automaticamente o temporizador de descanso no topo e REGISTRE A CARGA"
+      onUpdateLoad(ex.id, load || '0');
+
+      if (activeSet < parseInt(ex.sets)) {
         setActiveSet(prev => prev + 1);
         onComplete(ex.id, false); // Partial complete/timer trigger
       } else {
@@ -171,38 +176,45 @@ export default function WorkoutCard({
         {/* Inline Video Expander */}
         <AnimatePresence>
           {showVideo && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-black rounded-2xl border border-white/10"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative aspect-video">
-                <iframe
-                  src={`https://www.youtube.com/embed/${videoQuery}?autoplay=1&modestbranding=1&rel=0`}
-                  title={ex.name}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
-                <button 
-                  onClick={() => setShowVideo(false)}
-                  className="absolute top-2 right-2 p-2 bg-black/60 rounded-full text-white hover:bg-red-500 transition-colors z-10"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-              <button 
-                onClick={() => setShowVideo(false)}
-                className="w-full py-3 bg-neutral-900 text-neutral-400 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors"
+            <React.Fragment>
+              <div 
+                className="fixed inset-0 z-40 bg-transparent" 
+                onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
+              />
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden bg-black rounded-2xl border border-white/10 relative z-50"
+                onClick={(e) => e.stopPropagation()}
               >
-                X FECHAR VÍDEO
-              </button>
-            </motion.div>
+                <div className="relative aspect-video">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoQuery}?autoplay=1&modestbranding=1&rel=0`}
+                    title={ex.name}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
+                    className="absolute top-2 right-2 p-2 bg-black/60 rounded-full text-white hover:bg-red-500 transition-colors z-10"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
+                  className="w-full py-3 bg-neutral-900 text-neutral-400 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors"
+                >
+                  X FECHAR VÍDEO
+                </button>
+              </motion.div>
+            </React.Fragment>
           )}
         </AnimatePresence>
 
         <div className="flex justify-between items-start gap-4">
+
           <div className="space-y-1 flex-1">
             <span className="bg-yellow-400/10 text-yellow-400 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-[0.2em] border border-yellow-400/30">
               {ex.group}
@@ -213,7 +225,7 @@ export default function WorkoutCard({
             
             {!isExpanded && (
               <div className="flex flex-wrap gap-4 mt-2 opacity-60">
-                <span className="text-[10px] font-black tracking-widest uppercase text-neutral-400">{ex.séries} SÉRIES</span>
+                <span className="text-[10px] font-black tracking-widest uppercase text-neutral-400">{ex.sets} SÉRIES</span>
                 <span className="text-[10px] font-black tracking-widest uppercase text-neutral-400">{ex.reps} REPS</span>
                 <span className="text-[10px] font-black tracking-widest uppercase text-yellow-400">{load || '0'} KG</span>
               </div>
@@ -237,8 +249,11 @@ export default function WorkoutCard({
               {/* Prescrição Block */}
               <div className="bg-neutral-900/50 p-4 rounded-2xl border border-white/5 flex flex-col justify-center gap-4">
                 <div className="flex justify-between items-center text-[10px] text-neutral-500 font-black uppercase tracking-widest">
-                  <span>Séries</span>
-                  <span className="text-xl text-yellow-400 font-black tracking-tighter">{ex.séries}</span>
+                  <span>Séries Restantes</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xl text-yellow-400 font-black tracking-tighter">{Math.max(0, parseInt(ex.sets) - activeSet + (isRunning ? 1 : 1))}</span>
+                    <span className="text-[10px] text-neutral-600 font-bold">/ {ex.sets}</span>
+                  </div>
                 </div>
                 <div className="w-full h-px bg-white/5"></div>
                 <div className="flex justify-between items-center text-[10px] text-neutral-500 font-black uppercase tracking-widest">
@@ -254,39 +269,31 @@ export default function WorkoutCard({
                     ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)] bg-emerald-950/20' 
                     : 'border-white/10 hover:border-yellow-400/30 focus-within:border-yellow-400'
                 }`}>
-                  <p className="text-[8px] text-neutral-500 font-black uppercase tracking-widest mt-1 mb-1">Carga (KG)</p>
-                  
-                  <div className="relative flex flex-col items-center justify-center h-20 w-full cursor-ns-resize group/wheel">
-                    <div className="absolute inset-x-0 h-px bg-yellow-400/20 top-1/4" />
-                    <div className="absolute inset-x-0 h-px bg-yellow-400/20 bottom-1/4" />
+                  <div className="relative flex items-center justify-center w-full gap-3 my-2">
                     
-                    <div className="flex flex-col items-center gap-1">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleLoadChange(1); }}
-                        className="opacity-20 hover:opacity-100 transition-opacity"
-                      >
-                        <ChevronUp size={16} />
-                      </button>
-                      <span className={`font-black text-4xl italic tracking-tighter ${isNewPR ? 'text-emerald-400' : 'text-white'}`}>
-                        {load || '0'}
-                      </span>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleLoadChange(-1); }}
-                        className="opacity-20 hover:opacity-100 transition-opacity"
-                      >
-                        <ChevronDown size={16} />
-                      </button>
-                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleLoadChange(-1); }}
+                      className="w-10 h-10 rounded-full bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-white transition-all"
+                    >
+                      <Minus size={20} />
+                    </button>
 
-                    <motion.div 
-                      drag="y"
-                      dragConstraints={{ top: 0, bottom: 0 }}
-                      onDragEnd={(_, info) => {
-                        const delta = Math.round(info.offset.y / -10);
-                        if (delta !== 0) handleLoadChange(delta);
-                      }}
-                      className="absolute inset-0 z-10"
+                    <input
+                      type="number"
+                      value={load || ''}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => onUpdateLoad(ex.id, e.target.value)}
+                      placeholder="0"
+                      className={`w-20 bg-transparent text-center font-black text-4xl italic tracking-tighter outline-none focus:border-b border-yellow-400/50 ${isNewPR ? 'text-emerald-400' : 'text-white'}`}
                     />
+
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleLoadChange(1); }}
+                      className="w-10 h-10 rounded-full bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-white transition-all"
+                    >
+                      <Plus size={20} />
+                    </button>
+                    
                   </div>
 
                   {prHistoryLoad ? (
@@ -309,13 +316,13 @@ export default function WorkoutCard({
               }}
               className={`mt-4 w-full h-16 rounded-xl flex items-center justify-between px-6 transition-all duration-300 ${
                 isRunning 
-                  ? 'bg-yellow-400 text-neutral-950 shadow-[0_0_30px_rgba(253,224,71,0.4)]' 
-                  : 'bg-neutral-950 text-white border-2 border-yellow-400 shadow-xl'
+                  ? 'bg-yellow-400 text-neutral-950 shadow-[0_0_20px_rgba(253,224,71,0.6)] animate-pulse' 
+                  : 'bg-neutral-950 text-yellow-400 border-2 border-yellow-400 shadow-[0_0_15px_rgba(0,0,0,0.8)]'
               }`}
             >
               <div className="flex flex-col items-start leading-none">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
-                  {isRunning ? 'Executando' : 'Próxima'}
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
+                  {isRunning ? 'Em Execução' : 'Próxima'}
                 </span>
                 <span className="text-xl font-black italic uppercase tracking-tighter">
                   {isRunning ? '■ FINALIZAR SÉRIE' : `> INICIAR SÉRIE ${activeSet}`}

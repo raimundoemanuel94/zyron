@@ -1,37 +1,55 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
+  LayoutDashboard, 
   Dumbbell, 
-  Calendar, 
+  User, 
+  LogOut, 
+  ArrowRight, 
+  PlayCircle, 
+  PauseCircle, 
+  ChevronLeft, 
+  ChevronRight, 
+  Share2, 
+  CheckCircle, 
+  Zap, 
   Droplets, 
   Beef, 
-  ChevronRight, 
-  Play, 
-  CheckCircle2, 
-  History, 
+  MessageSquare, 
+  Camera, 
+  Scale, 
+  TrendingUp, 
+  DollarSign, 
+  Users, 
+  Award, 
+  Trophy, 
   Target, 
-  Timer as TimerIcon, 
-  Plus, 
-  Minus,
-  ArrowBigUp,
-  LayoutDashboard,
-  ShieldAlert,
-  Zap,
-  Moon,
-  Sun,
-  Trophy,
-  Coffee,
-  PlayCircle,
-  X,
-  CreditCard,
-  Crown,
-  Flame,
-  LogOut,
-  FileText,
-  Download,
-  QrCode,
-  User,
-  Camera,
-  Scale
+  History, 
+  Settings, 
+  Bell, 
+  ChevronDown, 
+  Check, 
+  X, 
+  Search, 
+  Filter, 
+  Shield, 
+  Activity,
+  Calendar, // Added from original first import
+  Play, // Added from original first import
+  CheckCircle2, // Added from original first import
+  Timer as TimerIcon, // Added from original first import
+  Plus, // Added from original first import
+  Minus, // Added from original first import
+  ArrowBigUp, // Added from original first import
+  ShieldAlert, // Added from original first import
+  Moon, // Added from original first import
+  Sun, // Added from original first import
+  Coffee, // Added from original first import
+  CreditCard, // Added from original first import
+  Crown, // Added from original first import
+  Flame, // Added from original first import
+  FileText, // Added from original first import
+  Download, // Added from original first import
+  QrCode // Added from original first import
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -46,6 +64,7 @@ import TabPainel from './tabs/TabPainel';
 import TabTreino from './tabs/TabTreino';
 import TabEvolucao from './tabs/TabEvolucao';
 import TabPerfil from './tabs/TabPerfil';
+import MiniPlayer from './MiniPlayer';
 import TabCoach from './tabs/TabCoach';
 
 // Import Swiper styles
@@ -90,12 +109,12 @@ export const EXERCISE_VIDEOS = {
 };
 
 const QUICK_ACTIONS = [
-  { id: 'session', icon: '⚡', label: 'Iniciar Sessão', color: 'from-yellow-400 to-amber-500' },
-  { id: 'water', icon: '💧', label: 'Água +250ml', color: 'from-cyan-400 to-blue-500' },
-  { id: 'protein', icon: '🥩', label: 'Proteína +30g', color: 'from-red-400 to-rose-500' },
-  { id: 'coach', icon: '💬', label: 'Coach IA', color: 'from-purple-400 to-violet-500' },
-  { id: 'photo', icon: '📸', label: 'Foto Evolução', color: 'from-green-400 to-emerald-500' },
-  { id: 'weight', icon: '⚖️', label: 'Registrar Peso', color: 'from-orange-400 to-amber-600' },
+  { id: 'session', icon: Zap, label: 'Iniciar Sessão' },
+  { id: 'water', icon: Droplets, label: 'Água +250ml' },
+  { id: 'protein', icon: Beef, label: 'Proteína +30g' },
+  { id: 'coach', icon: MessageSquare, label: 'Coach IA' },
+  { id: 'photo', icon: Camera, label: 'Foto Evolução' },
+  { id: 'weight', icon: Scale, label: 'Registrar Peso' },
 ];
 
 const QUICK_ICON_MAP = { 
@@ -337,16 +356,21 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setRestTimer(60); 
   };
 
-  const handleFinishSession = () => {
+  const handleFinishSession = async () => {
     if (user?.id && isTraining) {
-       // Log workout in Supabase
-       supabase.from('workout_logs').insert([{
-         user_id: user.id,
-         workout_key: selectedWorkoutKey,
-         duration_seconds: sessionTime
-       }]).then();
+       // Log workout in Supabase immediately to prevent data loss
+       try {
+         await supabase.from('workout_logs').insert([{
+           user_id: user.id,
+           workout_key: selectedWorkoutKey,
+           duration_seconds: sessionTime
+         }]);
+       } catch (err) {
+         console.error("Erro ao salvar log de treino no Supabase:", err);
+       }
     }
     setIsTraining(false);
+    localStorage.removeItem('gym_active_session');
   };
 
   const [voiceTimerActive, setVoiceTimerActive] = useState(false);
@@ -432,6 +456,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
 
     try {
+      const newLoads = { ...loads, [exerciseId]: value };
+      setLoads(newLoads);
+      
       // Sanitização profunda do objeto de cargas
       const cleanLoads = {};
       Object.keys(newLoads).forEach(key => {
@@ -645,116 +672,47 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
         </AnimatePresence>
 
-        {/* Global Video Modal */}
+        {/* Global Video PiP */}
         <AnimatePresence>
           {videoModal && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl"
-              onClick={() => setVideoModal(null)}
+              drag
+              dragConstraints={{ top: 0, left: 0, right: 0, bottom: 0 }}
+              dragElastic={0.4}
+              onDragEnd={(e, info) => {
+                if (info.offset.y < -50 || info.offset.y > 50) setVideoModal(null);
+              }}
+              initial={{ opacity: 0, y: 50, scale: 0.8 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.8 }}
+              className="fixed bottom-32 right-4 z-50 w-72 bg-neutral-900 rounded-2xl border border-white/10 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.8)] cursor-grab active:cursor-grabbing"
             >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="w-full max-w-lg bg-neutral-900 rounded-3xl border border-neutral-700 overflow-hidden shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header */}
-                <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-800">
-                  <div>
-                    <p className="text-[9px] font-black text-yellow-400 uppercase tracking-widest">Técnica de Execução</p>
-                    <h4 className="text-base font-black uppercase tracking-tight text-white">{videoModal.name}</h4>
-                  </div>
-                  <button
-                    onClick={() => setVideoModal(null)}
-                    className="p-2 rounded-full hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
+              <div className="flex justify-between items-center px-4 py-3 bg-neutral-950 border-b border-white/5 pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white truncate max-w-[180px]">{videoModal.name}</h4>
                 </div>
-
-                {/* YouTube Embed */}
-                <div className="relative aspect-video bg-neutral-950">
+                <button
+                  onClick={() => setVideoModal(null)}
+                  className="text-neutral-500 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="relative aspect-video bg-black pointer-events-none">
+                <div className="absolute inset-0 pointer-events-auto">
                   <iframe
-                    src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(videoModal.query)}&autoplay=1&rel=0`}
+                    src={`https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(videoModal.query)}&autoplay=1&rel=0&controls=0`}
                     title={videoModal.name}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
                 </div>
-
-                {/* Modal Footer */}
-                <div className="px-5 py-3 bg-neutral-950/50 flex justify-between items-center">
-                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • ZYRON</p>
-                  <button
-                    onClick={() => setVideoModal(null)}
-                    className="text-[9px] font-black text-neutral-400 hover:text-white uppercase tracking-widest transition-colors"
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Global Video Modal */}
-        <AnimatePresence>
-          {videoModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-xl"
-              onClick={() => setVideoModal(null)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, y: 20 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.9, y: 20 }}
-                className="w-full max-w-lg bg-neutral-900 rounded-3xl border border-neutral-700 overflow-hidden shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Modal Header */}
-                <div className="flex justify-between items-center px-5 py-4 border-b border-neutral-800">
-                  <div>
-                    <p className="text-[9px] font-black text-yellow-400 uppercase tracking-widest">Técnica de Execução</p>
-                    <h4 className="text-base font-black uppercase tracking-tight text-white">{videoModal.name}</h4>
-                  </div>
-                  <button
-                    onClick={() => setVideoModal(null)}
-                    className="p-2 rounded-full hover:bg-neutral-800 text-neutral-500 hover:text-white transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                {/* YouTube Embed */}
-                <div className="relative aspect-video bg-neutral-950">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoModal.query || 'vcBig73oqpE'}?autoplay=1`}
-                    title={videoModal.name}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-
-                {/* Modal Footer */}
-                <div className="px-5 py-3 bg-neutral-950/50 flex justify-between items-center">
-                  <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Fonte: YouTube • ZYRON</p>
-                  <button
-                    onClick={() => setVideoModal(null)}
-                    className="text-[9px] font-black text-neutral-400 hover:text-white uppercase tracking-widest transition-colors"
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </motion.div>
+              </div>
+              <div className="px-4 py-2 bg-neutral-950/80 backdrop-blur-md flex justify-center">
+                <div className="w-8 h-1 bg-white/20 rounded-full" />
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -822,8 +780,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     }}
                     className="group flex flex-col items-center gap-1.5 focus:outline-none"
                   >
-                    <div className={`h-12 w-12 rounded-full bg-linear-to-br ${item.color} flex items-center justify-center shadow-lg shadow-black/40 border-2 border-white/20 group-hover:scale-110 group-active:scale-90 transition-all duration-200`}>
-                      <span className="text-xl font-bold">{item.icon}</span>
+                    <div className="h-12 w-12 rounded-full bg-neutral-900 flex items-center justify-center shadow-[0_0_15px_rgba(253,224,71,0.2)] border border-yellow-400/30 group-hover:scale-110 group-active:scale-90 group-hover:border-yellow-400 group-hover:shadow-[0_0_25px_rgba(253,224,71,0.5)] transition-all duration-300">
+                      <item.icon size={22} className="text-yellow-400 drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" />
                     </div>
                     <span className="text-[9px] font-black uppercase tracking-wider text-white/90 whitespace-nowrap bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
                       {item.label}
@@ -835,6 +793,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           </div>
         )}
       </AnimatePresence>
+
+      <MiniPlayer />
 
       {/* FIXED NAVIGATION */}
       <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[92%] max-w-lg bg-neutral-900/60 backdrop-blur-3xl border border-white/10 rounded-full p-3 flex justify-between items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50">
@@ -858,7 +818,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           </div>
         </button>
 
-        <NavButton id="coach" icon={Zap} label="Coach" />
+        <NavButton id="progress" icon={Trophy} label="Evolução" />
         <NavButton id="perfil" icon={Target} label="Perfil" />
       </nav>
 

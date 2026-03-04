@@ -277,6 +277,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                     type="email"
                     required
                     placeholder="exemplo@email.com"
+                    autoComplete="email"
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -349,6 +350,7 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
                     type="email"
                     required
                     placeholder="exemplo@email.com"
+                    autoComplete="email"
                     className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-yellow-400/50 focus:ring-1 focus:ring-yellow-400/20 transition-all text-sm"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
