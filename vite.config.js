@@ -18,6 +18,7 @@ export default defineConfig({
         'images/zyron-512.png'
       ],
       manifest: {
+        id: "com.zyron.app",
         name: "ZYRON — A Força da Sua Evolução",
         short_name: "ZYRON",
         description: "Seu personal trainer de IA. A Força da Sua Evolução.",
@@ -27,6 +28,23 @@ export default defineConfig({
         orientation: "portrait",
         start_url: "/",
         scope: "/",
+        categories: ["fitness", "lifestyle", "productivity"],
+        screenshots: [
+          {
+            src: "/images/zyron-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            form_factor: "narrow",
+            label: "Home Screen"
+          },
+          {
+            src: "/images/zyron-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            form_factor: "wide",
+            label: "Dashboard View"
+          }
+        ],
         icons: [
           {
             src: "/images/zyron-192.png",
