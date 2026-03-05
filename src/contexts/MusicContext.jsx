@@ -136,98 +136,138 @@ export function MusicProvider({ children }) {
   }, [isPlaying]);
 
   const loadVideoById = async (track) => {
-    if (!playerRef.current || !playerRef.current.loadVideoById) return;
+    if (!track) return;
     
     setCurrentTrack(track);
     localStorage.setItem('zyron_last_track', JSON.stringify(track));
     
-    // FORÇAR ÁUDIO ANTES DO YOUTUBE
-    await startSilentAudio();
-    
-    // Require user interaction for autoplay on mobile
     try {
-      playerRef.current.loadVideoById(track.id);
-      setIsPlaying(true);
-      updateMediaSession(track);
-
-      // FORÇAR VOLUME MÁXIMO NO YOUTUBE
-      setTimeout(() => {
-        if (playerRef.current && playerRef.current.setVolume) {
-          playerRef.current.setVolume(100);
-          console.log('🔊 Volume do YouTube forçado para 100');
-        }
-      }, 1000);
-
-      // FORÇAR PLAY SEGUINTE SE NÃO TOCAR
-      setTimeout(() => {
-        if (playerRef.current && playerRef.current.getPlayerState) {
-          try {
-            const state = playerRef.current.getPlayerState();
-            if (state !== window.YT.PlayerState.PLAYING) {
-              console.log('🔄 YouTube não começou, forçando play...');
-              playerRef.current.playVideo();
-              
-              // Tentar novamente após mais 2 segundos
-              setTimeout(() => {
-                const state2 = playerRef.current.getPlayerState();
-                if (state2 !== window.YT.PlayerState.PLAYING) {
-                  console.log('🔄 Segunda tentativa de forçar play...');
-                  playerRef.current.playVideo();
-                }
-              }, 2000);
-            }
-          } catch (e) {
-            console.log('Erro ao verificar estado:', e);
+      // PRIORIZAR ÁUDIO NATIVO - Extrair stream do Piped
+      console.log('🎵 Buscando stream de áudio nativo para:', track.id);
+      
+      // Tentar obter stream direto do Piped
+      const streamResponse = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
+      
+      if (streamResponse.ok) {
+        const streamData = await streamResponse.json();
+        const audioStream = streamData.audioStreams?.find(s => s.format === 'webm' || s.format === 'mp4') || streamData.audioStreams?.[0];
+        
+        if (audioStream && audioStream.url) {
+          console.log('✅ Stream de áudio encontrado, usando áudio nativo');
+          
+          // Usar áudio nativo em vez do YouTube iframe
+          if (backgroundAudioRef.current) {
+            backgroundAudioRef.current.src = audioStream.url;
+            backgroundAudioRef.current.volume = volume / 100;
+            await backgroundAudioRef.current.play();
+            setIsPlaying(true);
+            updateMediaSession(track);
+            requestWakeLock();
+            return;
           }
         }
-      }, 1500);
+      }
       
-    } catch (e) {
-      console.error(e);
+      // Fallback para YouTube iframe se stream falhar
+      console.log('⚠️ Stream não encontrado, usando YouTube iframe');
+      if (playerRef.current && playerRef.current.loadVideoById) {
+        playerRef.current.loadVideoById(track.id);
+        setIsPlaying(true);
+        updateMediaSession(track);
+        
+        // Forçar áudio de background junto
+        await startSilentAudio();
+        requestWakeLock();
+      }
+      
+    } catch (error) {
+      console.error('Erro ao carregar stream:', error);
+      
+      // Tratamento de mídia protegida - tentar próxima
+      if (playlist.length > 0) {
+        const currentIndex = playlist.findIndex(t => t.id === track.id);
+        if (currentIndex < playlist.length - 1) {
+          console.log('🔄 Mídia protegida, tentando próxima faixa...');
+          setTimeout(() => nextTrack(), 1000);
+        }
+      }
     }
   };
   const togglePlay = async () => {
-    if (!playerRef.current) return;
+    console.log('🎯 Toggle Play acionado - isPlaying:', isPlaying);
     
     if (isPlaying) {
-      playerRef.current.pauseVideo();
+      // Pausar todos os áudios
+      if (playerRef.current && playerRef.current.pauseVideo) {
+        playerRef.current.pauseVideo();
+      }
+      if (backgroundAudioRef.current) {
+        backgroundAudioRef.current.pause();
+      }
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+      }
       setIsPlaying(false);
+      releaseWakeLock();
     } else {
-      // FORÇAR ÁUDIO ANTES DE TUDO
-      await startSilentAudio();
+      // TOCAR OS TRÊS SIMULTANEAMENTE (Trick do iOS)
+      console.log('🚀 Iniciando playback triplo para iOS Wake Lock');
       
-      if (currentTrack) {
-        if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
-           playerRef.current.loadVideoById(currentTrack.id);
-        } else {
-          playerRef.current.playVideo();
+      try {
+        // 1. Áudio silencioso primeiro
+        if (silentAudioRef.current) {
+          silentAudioRef.current.volume = 0.01;
+          await silentAudioRef.current.play();
+          console.log('🔊 Silent audio iniciado');
         }
         
-        // FORÇAR VOLUME E VERIFICAÇÃO
-        setTimeout(() => {
-          if (playerRef.current && playerRef.current.setVolume) {
-            playerRef.current.setVolume(100);
-            console.log('🔊 Volume forçado para 100 no toggle');
+        // 2. Áudio de background
+        if (backgroundAudioRef.current && backgroundAudioRef.current.src) {
+          backgroundAudioRef.current.volume = volume / 100;
+          await backgroundAudioRef.current.play();
+          console.log('🎵 Background audio iniciado');
+        }
+        
+        // 3. YouTube iframe (se existir)
+        if (currentTrack && playerRef.current) {
+          if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
+            playerRef.current.loadVideoById(currentTrack.id);
+          } else {
+            playerRef.current.playVideo();
           }
-          
-          // VERIFICAR SE ESTÁ TOCANDO MESMO
-          setTimeout(() => {
-            if (playerRef.current && playerRef.current.getPlayerState) {
-              const state = playerRef.current.getPlayerState();
-              if (state !== window.YT.PlayerState.PLAYING) {
-                console.log('🔄 Não está tocando, forçando novamente...');
-                playerRef.current.playVideo();
+          console.log('📺 YouTube play iniciado');
+        }
+        
+        setIsPlaying(true);
+        updateMediaSession(currentTrack);
+        requestWakeLock();
+        
+        console.log('✅ Playback triplo concluído com sucesso');
+        
+      } catch (error) {
+        console.error('Erro no playback triplo:', error);
+        
+        // Se falhar, tentar apenas com áudio nativo
+        if (backgroundAudioRef.current && currentTrack) {
+          try {
+            const streamResponse = await fetch(`https://pipedapi.kavin.rocks/streams/${currentTrack.id}`);
+            if (streamResponse.ok) {
+              const streamData = await streamResponse.json();
+              const audioStream = streamData.audioStreams?.[0];
+              if (audioStream?.url) {
+                backgroundAudioRef.current.src = audioStream.url;
+                backgroundAudioRef.current.volume = volume / 100;
+                await backgroundAudioRef.current.play();
+                setIsPlaying(true);
+                updateMediaSession(currentTrack);
+                console.log('🔄 Fallback para áudio nativo funcionou');
               }
             }
-          }, 1000);
-        }, 500);
-        
-        // Ativar Silent Loop para iOS Wake Lock
-        requestWakeLock();
-      } else if (playlist.length > 0) {
-        loadVideoById(playlist[0]);
+          } catch (fallbackError) {
+            console.error('Fallback também falhou:', fallbackError);
+          }
+        }
       }
-      setIsPlaying(true);
     }
   };
 
@@ -493,15 +533,10 @@ export function MusicProvider({ children }) {
     
     console.log(`ZYRON Radio: Iniciando busca estruturada para "${query}"`);
     
-    // Fallback Chain: YouTube Direct -> Piped -> Invidious -> Cache Local
+    // Fallback Chain: Piped Streams -> Piped Search -> Invidious -> Cache Local
     const apiEndpoints = [
       {
-        name: 'YouTube Direct (Vercel Proxy)',
-        url: `/api/search?q=${encodeURIComponent(query)}`,
-        transform: (data) => data
-      },
-      {
-        name: 'Piped API',
+        name: 'Piped Streams API',
         url: `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}`,
         transform: (data) => data.map(item => ({
           id: item.url?.split('v=')[1] || item.url?.split('/').pop() || item.videoId,
@@ -512,6 +547,11 @@ export function MusicProvider({ children }) {
         }))
       },
       {
+        name: 'YouTube Direct (Vercel Proxy)',
+        url: `/api/search?q=${encodeURIComponent(query)}`,
+        transform: (data) => data
+      },
+      {
         name: 'Invidious API',
         url: `https://yewtu.be/api/v1/search?q=${encodeURIComponent(query)}`,
         transform: (data) => data.map(item => ({
@@ -520,17 +560,6 @@ export function MusicProvider({ children }) {
           thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`,
           artist: item.author || item.channelName || 'Unknown Artist',
           duration: item.lengthSeconds
-        }))
-      },
-      {
-        name: 'Backup Piped Instance',
-        url: `https://pipedapi.garudalinux.org/search?q=${encodeURIComponent(query)}`,
-        transform: (data) => data.map(item => ({
-          id: item.url?.split('v=')[1] || item.url?.split('/').pop() || item.videoId,
-          title: item.title || 'ZYRON Audio',
-          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.videoId || item.url?.split('v=')[1]}/mqdefault.jpg`,
-          artist: item.uploaderName || item.channelName || 'Unknown Artist',
-          duration: item.duration
         }))
       }
     ];
