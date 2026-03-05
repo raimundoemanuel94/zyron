@@ -8,6 +8,7 @@ import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
 import GlobalPlayer from './components/GlobalPlayer';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -111,6 +112,9 @@ function App() {
 
         <PWAInstallBanner />
       </div>
+      
+      {/* Vercel Speed Insights - Performance Monitoring */}
+      <SpeedInsights />
     </MusicProvider>
   );
 }
