@@ -135,11 +135,14 @@ export function MusicProvider({ children }) {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
-  const loadVideoById = (track) => {
+  const loadVideoById = async (track) => {
     if (!playerRef.current || !playerRef.current.loadVideoById) return;
     
     setCurrentTrack(track);
     localStorage.setItem('zyron_last_track', JSON.stringify(track));
+    
+    // FORÇAR ÁUDIO ANTES DO YOUTUBE
+    await startSilentAudio();
     
     // Require user interaction for autoplay on mobile
     try {
@@ -147,20 +150,52 @@ export function MusicProvider({ children }) {
       setIsPlaying(true);
       updateMediaSession(track);
 
-      // Start silent loop to keep iOS wake lock active
-      startSilentAudio();
-      requestWakeLock();
+      // FORÇAR VOLUME MÁXIMO NO YOUTUBE
+      setTimeout(() => {
+        if (playerRef.current && playerRef.current.setVolume) {
+          playerRef.current.setVolume(100);
+          console.log('🔊 Volume do YouTube forçado para 100');
+        }
+      }, 1000);
+
+      // FORÇAR PLAY SEGUINTE SE NÃO TOCAR
+      setTimeout(() => {
+        if (playerRef.current && playerRef.current.getPlayerState) {
+          try {
+            const state = playerRef.current.getPlayerState();
+            if (state !== window.YT.PlayerState.PLAYING) {
+              console.log('🔄 YouTube não começou, forçando play...');
+              playerRef.current.playVideo();
+              
+              // Tentar novamente após mais 2 segundos
+              setTimeout(() => {
+                const state2 = playerRef.current.getPlayerState();
+                if (state2 !== window.YT.PlayerState.PLAYING) {
+                  console.log('🔄 Segunda tentativa de forçar play...');
+                  playerRef.current.playVideo();
+                }
+              }, 2000);
+            }
+          } catch (e) {
+            console.log('Erro ao verificar estado:', e);
+          }
+        }
+      }, 1500);
+      
     } catch (e) {
       console.error(e);
     }
   };
-  const togglePlay = () => {
+  const togglePlay = async () => {
     if (!playerRef.current) return;
     
     if (isPlaying) {
       playerRef.current.pauseVideo();
       setIsPlaying(false);
     } else {
+      // FORÇAR ÁUDIO ANTES DE TUDO
+      await startSilentAudio();
+      
       if (currentTrack) {
         if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
            playerRef.current.loadVideoById(currentTrack.id);
@@ -168,8 +203,26 @@ export function MusicProvider({ children }) {
           playerRef.current.playVideo();
         }
         
+        // FORÇAR VOLUME E VERIFICAÇÃO
+        setTimeout(() => {
+          if (playerRef.current && playerRef.current.setVolume) {
+            playerRef.current.setVolume(100);
+            console.log('🔊 Volume forçado para 100 no toggle');
+          }
+          
+          // VERIFICAR SE ESTÁ TOCANDO MESMO
+          setTimeout(() => {
+            if (playerRef.current && playerRef.current.getPlayerState) {
+              const state = playerRef.current.getPlayerState();
+              if (state !== window.YT.PlayerState.PLAYING) {
+                console.log('🔄 Não está tocando, forçando novamente...');
+                playerRef.current.playVideo();
+              }
+            }
+          }, 1000);
+        }, 500);
+        
         // Ativar Silent Loop para iOS Wake Lock
-        startSilentAudio();
         requestWakeLock();
       } else if (playlist.length > 0) {
         loadVideoById(playlist[0]);
@@ -246,6 +299,23 @@ export function MusicProvider({ children }) {
 
     // Initialize Web Audio Context
     initAudioContext();
+
+    // FORÇAR ÁUDIO REAL - Criar áudio de teste
+    try {
+      const testAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+      testAudio.volume = 0.1;
+      testAudio.loop = true;
+      await testAudio.play();
+      console.log('🔊 Áudio de teste iniciado');
+      
+      // Parar após 2 segundos
+      setTimeout(() => {
+        testAudio.pause();
+        console.log('🔇 Áudio de teste parado');
+      }, 2000);
+    } catch (error) {
+      console.log('Áudio de teste falhou:', error.message);
+    }
   };
 
   // Wake Lock API para Android/Chrome
