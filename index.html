@@ -21,5 +21,30 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('✅ Service Worker registrado com sucesso:', registration);
+              
+              // Verificar por updates imediatamente
+              registration.update();
+              
+              // Escutar por updates
+              registration.addEventListener('updatefound', () => {
+                console.log('🔄 Nova versão do Service Worker encontrada!');
+              });
+            })
+            .catch((error) => {
+              console.error('❌ Falha ao registrar Service Worker:', error);
+            });
+        });
+      } else {
+        console.log('⚠️ Service Workers não são suportados neste navegador');
+      }
+    </script>
   </body>
 </html>
