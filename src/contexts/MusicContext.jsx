@@ -318,6 +318,14 @@ export function MusicProvider({ children }) {
           setTimeout(() => {
             if (isPlaying) {
               startSilentAudio();
+              // Tentar retomar YouTube também
+              if (playerRef.current && playerRef.current.playVideo) {
+                try {
+                  playerRef.current.playVideo();
+                } catch (e) {
+                  console.log('Falha ao retomar YouTube:', e);
+                }
+              }
             }
           }, 1000);
         };
@@ -352,6 +360,53 @@ export function MusicProvider({ children }) {
         } else {
           console.log('📱 App voltou para foreground');
           setIsBackgroundMode(false);
+          // Se estava tocando, garantir que continue
+          if (isPlaying) {
+            setTimeout(() => {
+              startSilentAudio();
+              // Tentar retomar YouTube se necessário
+              if (playerRef.current && playerRef.current.playVideo) {
+                try {
+                  if (playerRef.current.getPlayerState() !== window.YT.PlayerState.PLAYING) {
+                    playerRef.current.playVideo();
+                  }
+                } catch (e) {
+                  console.log('Falha ao retomar YouTube no foreground:', e);
+                }
+              }
+            }, 1000);
+          }
+        }
+      });
+
+      // iOS Focus/Blur Events - Detectar quando usuário interage com controles
+      window.addEventListener('blur', () => {
+        console.log('📱 Janela perdeu foco (usuário interagiu com controles)');
+        if (isPlaying) {
+          setTimeout(() => {
+            startSilentAudio();
+          }, 500);
+        }
+      });
+
+      window.addEventListener('focus', () => {
+        console.log('📱 Janela ganhou foco');
+        if (isPlaying) {
+          setTimeout(() => {
+            startSilentAudio();
+            // Verificar se YouTube ainda está tocando
+            if (playerRef.current && playerRef.current.getPlayerState) {
+              try {
+                const state = playerRef.current.getPlayerState();
+                if (state !== window.YT.PlayerState.PLAYING) {
+                  console.log('🔄 YouTube não está tocando, retomando...');
+                  playerRef.current.playVideo();
+                }
+              } catch (e) {
+                console.log('Erro ao verificar estado do YouTube:', e);
+              }
+            }
+          }, 1000);
         }
       });
     }
