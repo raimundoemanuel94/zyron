@@ -165,75 +165,50 @@ export function MusicProvider({ children }) {
       console.log('🎵 Tentando proxy de áudio Vercel para:', track.id);
       logger.info('Tentando proxy de áudio Vercel', { trackId: track.id });
       
-      // Usar proxy CORS da Vercel para stream
-      const proxyResponse = await fetch(`/api/audio-stream/${track.id}`);
-      
-      if (proxyResponse.ok) {
-        const streamData = await proxyResponse.json();
-        if (streamData.audioUrl) {
-          console.log('✅ Proxy Vercel funcionou, usando áudio nativo');
-          logger.info('Proxy Vercel funcionou', { 
-            trackId: track.id,
-            audioUrl: streamData.audioUrl,
-            format: streamData.format
-          });
-          
-          if (backgroundAudioRef.current) {
-            backgroundAudioRef.current.src = streamData.audioUrl;
-            backgroundAudioRef.current.volume = volume / 100;
-            await backgroundAudioRef.current.play();
-            console.log('🎵 Áudio via proxy tocando com sucesso');
-            logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
-            return;
-          }
-        }
-      }
-      
-      // Fallback para Piped Streams com timeout
-      console.log('⚠️ Proxy falhou, tentando Piped streams...');
-      logger.warn('Proxy falhou, tentando Piped streams', { trackId: track.id });
-      
-      const pipedPromise = fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout Piped')), 3000)
-      );
-      
-      const streamResponse = await Promise.race([pipedPromise, timeoutPromise]);
-      
-      if (streamResponse.ok && !(streamResponse instanceof Error)) {
-        const streamData = await streamResponse.json();
-        const audioStream = streamData.audioStreams?.find(s => s.format === 'webm' || s.format === 'mp4') || streamData.audioStreams?.[0];
+      try {
+        // Usar proxy CORS da Vercel para stream
+        const proxyResponse = await fetch(`/api/audio-stream/${track.id}`);
         
-        if (audioStream && audioStream.url) {
-          console.log('✅ Piped stream encontrado, usando áudio nativo');
-          logger.info('Piped stream encontrado', { 
-            trackId: track.id,
-            format: audioStream.format,
-            quality: audioStream.quality
-          });
-          
-          if (backgroundAudioRef.current) {
-            backgroundAudioRef.current.src = audioStream.url;
-            backgroundAudioRef.current.volume = volume / 100;
-            await backgroundAudioRef.current.play();
-            console.log('🎵 Áudio Piped tocando com sucesso');
-            logger.userAction('Áudio iniciado via Piped', { trackId: track.id });
-            return;
+        if (proxyResponse.ok) {
+          const streamData = await proxyResponse.json();
+          if (streamData.audioUrl) {
+            console.log('✅ Proxy Vercel funcionou, usando áudio nativo');
+            logger.info('Proxy Vercel funcionou', { 
+              trackId: track.id,
+              audioUrl: streamData.audioUrl,
+              format: streamData.format
+            });
+            
+            if (backgroundAudioRef.current) {
+              backgroundAudioRef.current.src = streamData.audioUrl;
+              backgroundAudioRef.current.volume = volume / 100;
+              await backgroundAudioRef.current.play();
+              console.log('🎵 Áudio via proxy tocando com sucesso');
+              logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
+              return;
+            }
           }
         }
+      } catch (proxyError) {
+        console.warn('Proxy Vercel falhou:', proxyError.message);
+        logger.warn('Proxy Vercel falhou', { 
+          trackId: track.id, 
+          error: proxyError.message 
+        });
       }
       
-      // FALLBACK IMEDIATO - YouTube Iframe visível
-      console.log('⚠️ Streams falharam, usando YouTube iframe visível');
-      logger.warn('Streams falharam, usando YouTube iframe', { trackId: track.id });
-      alert(`Fallback: Usando YouTube para ${track.title}`);
+      // FALLBACK DIRETO PARA YOUTUBE IFRAME (ignorando CORS do Piped)
+      console.log('⚠️ Proxy falhou, usando YouTube iframe direto');
+      logger.warn('Fallback direto para YouTube iframe', { trackId: track.id });
       
       if (playerRef.current && playerRef.current.loadVideoById) {
         playerRef.current.loadVideoById(track.id);
+        setIsPlaying(true);
         updateMediaSession(track);
         await startSilentAudio();
         requestWakeLock();
-        logger.userAction('Fallback YouTube iniciado', { trackId: track.id });
+        logger.userAction('YouTube iframe iniciado (fallback)', { trackId: track.id });
+        return;
       }
       
     } catch (error) {
