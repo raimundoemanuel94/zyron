@@ -138,59 +138,78 @@ export function MusicProvider({ children }) {
   const loadVideoById = async (track) => {
     if (!track) return;
     
+    // FORÇAR UI INSTANTÂNEA - Player abre antes de validar
+    console.log('🚀 Player abrindo instantaneamente para:', track.title);
     setCurrentTrack(track);
+    setIsPlaying(true); // Mostra UI imediatamente
     localStorage.setItem('zyron_last_track', JSON.stringify(track));
     
     try {
-      // PRIORIZAR ÁUDIO NATIVO - Extrair stream do Piped
-      console.log('🎵 Buscando stream de áudio nativo para:', track.id);
+      // PRIORIZAR PROXY DE ÁUDIO VIA VERCEL
+      console.log('🎵 Tentando proxy de áudio Vercel para:', track.id);
       
-      // Tentar obter stream direto do Piped
-      const streamResponse = await fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
+      // Usar proxy CORS da Vercel para stream
+      const proxyResponse = await fetch(`/api/audio-stream/${track.id}`);
       
-      if (streamResponse.ok) {
-        const streamData = await streamResponse.json();
-        const audioStream = streamData.audioStreams?.find(s => s.format === 'webm' || s.format === 'mp4') || streamData.audioStreams?.[0];
-        
-        if (audioStream && audioStream.url) {
-          console.log('✅ Stream de áudio encontrado, usando áudio nativo');
+      if (proxyResponse.ok) {
+        const streamData = await proxyResponse.json();
+        if (streamData.audioUrl) {
+          console.log('✅ Proxy Vercel funcionou, usando áudio nativo');
           
-          // Usar áudio nativo em vez do YouTube iframe
           if (backgroundAudioRef.current) {
-            backgroundAudioRef.current.src = audioStream.url;
+            backgroundAudioRef.current.src = streamData.audioUrl;
             backgroundAudioRef.current.volume = volume / 100;
             await backgroundAudioRef.current.play();
-            setIsPlaying(true);
-            updateMediaSession(track);
-            requestWakeLock();
+            console.log('🎵 Áudio via proxy tocando com sucesso');
             return;
           }
         }
       }
       
-      // Fallback para YouTube iframe se stream falhar
-      console.log('⚠️ Stream não encontrado, usando YouTube iframe');
+      // Fallback para Piped Streams com timeout
+      console.log('⚠️ Proxy falhou, tentando Piped streams...');
+      const pipedPromise = fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout Piped')), 3000)
+      );
+      
+      const streamResponse = await Promise.race([pipedPromise, timeoutPromise]);
+      
+      if (streamResponse.ok && !(streamResponse instanceof Error)) {
+        const streamData = await streamResponse.json();
+        const audioStream = streamData.audioStreams?.find(s => s.format === 'webm' || s.format === 'mp4') || streamData.audioStreams?.[0];
+        
+        if (audioStream && audioStream.url) {
+          console.log('✅ Piped stream encontrado, usando áudio nativo');
+          
+          if (backgroundAudioRef.current) {
+            backgroundAudioRef.current.src = audioStream.url;
+            backgroundAudioRef.current.volume = volume / 100;
+            await backgroundAudioRef.current.play();
+            console.log('🎵 Áudio Piped tocando com sucesso');
+            return;
+          }
+        }
+      }
+      
+      // FALLBACK IMEDIATO - YouTube Iframe visível
+      console.log('⚠️ Streams falharam, usando YouTube iframe visível');
+      alert(`Fallback: Usando YouTube para ${track.title}`);
+      
       if (playerRef.current && playerRef.current.loadVideoById) {
         playerRef.current.loadVideoById(track.id);
-        setIsPlaying(true);
         updateMediaSession(track);
-        
-        // Forçar áudio de background junto
         await startSilentAudio();
         requestWakeLock();
       }
       
     } catch (error) {
-      console.error('Erro ao carregar stream:', error);
+      console.error('ERRO CRÍTICO AO CARREGAR ÁUDIO:', error);
+      alert(`Erro no áudio: ${error.message}\nURL: ${track.id}\nVerifique o console para detalhes`);
       
-      // Tratamento de mídia protegida - tentar próxima
-      if (playlist.length > 0) {
-        const currentIndex = playlist.findIndex(t => t.id === track.id);
-        if (currentIndex < playlist.length - 1) {
-          console.log('🔄 Mídia protegida, tentando próxima faixa...');
-          setTimeout(() => nextTrack(), 1000);
-        }
-      }
+      // Resetar estado se falhar tudo
+      setIsPlaying(false);
+      setCurrentTrack(null);
     }
   };
   const togglePlay = async () => {
@@ -210,8 +229,11 @@ export function MusicProvider({ children }) {
       setIsPlaying(false);
       releaseWakeLock();
     } else {
-      // TOCAR OS TRÊS SIMULTANEAMENTE (Trick do iOS)
-      console.log('🚀 Iniciando playback triplo para iOS Wake Lock');
+      // FORÇAR UI INSTANTÂNEA
+      if (currentTrack) {
+        setIsPlaying(true); // UI imediata
+        console.log('🚀 Forçando UI de playback imediato');
+      }
       
       try {
         // 1. Áudio silencioso primeiro
@@ -221,11 +243,11 @@ export function MusicProvider({ children }) {
           console.log('🔊 Silent audio iniciado');
         }
         
-        // 2. Áudio de background
+        // 2. Áudio de background (se tiver src)
         if (backgroundAudioRef.current && backgroundAudioRef.current.src) {
           backgroundAudioRef.current.volume = volume / 100;
           await backgroundAudioRef.current.play();
-          console.log('🎵 Background audio iniciado');
+          console.log('🎵 Background audio retomado');
         }
         
         // 3. YouTube iframe (se existir)
@@ -238,35 +260,17 @@ export function MusicProvider({ children }) {
           console.log('📺 YouTube play iniciado');
         }
         
-        setIsPlaying(true);
         updateMediaSession(currentTrack);
         requestWakeLock();
         
         console.log('✅ Playback triplo concluído com sucesso');
         
       } catch (error) {
-        console.error('Erro no playback triplo:', error);
+        console.error('ERRO NO PLAYBACK:', error);
+        alert(`Erro ao tocar: ${error.message}`);
         
-        // Se falhar, tentar apenas com áudio nativo
-        if (backgroundAudioRef.current && currentTrack) {
-          try {
-            const streamResponse = await fetch(`https://pipedapi.kavin.rocks/streams/${currentTrack.id}`);
-            if (streamResponse.ok) {
-              const streamData = await streamResponse.json();
-              const audioStream = streamData.audioStreams?.[0];
-              if (audioStream?.url) {
-                backgroundAudioRef.current.src = audioStream.url;
-                backgroundAudioRef.current.volume = volume / 100;
-                await backgroundAudioRef.current.play();
-                setIsPlaying(true);
-                updateMediaSession(currentTrack);
-                console.log('🔄 Fallback para áudio nativo funcionou');
-              }
-            }
-          } catch (fallbackError) {
-            console.error('Fallback também falhou:', fallbackError);
-          }
-        }
+        // Resetar estado em caso de erro
+        setIsPlaying(false);
       }
     }
   };
