@@ -239,32 +239,98 @@ export function MusicProvider({ children }) {
   };
 
   const searchMusic = async (query) => {
-    try {
-      console.log(`ZYRON Radio: Buscando no YouTube via Vercel Backend Function...`);
-       
-      // Using internal Vercel API to bypass CORS
-      const proxyUrl = `/api/search?q=${encodeURIComponent(query)}`;
-
-      const response = await fetch(proxyUrl);
-      
-      if (response.ok) {
-        const results = await response.json();
-        if (results && results.length > 0) {
-          return results;
-        }
-      } else {
-        console.warn(`Vercel Search API failed with status ${response.status}`);
-      }
-    } catch (e) {
-      console.warn(`Falha na busca principal:`, e);
+    if (!query || query.trim().length === 0) {
+      console.warn('Busca vazia, retornando array vazio');
+      return [];
     }
 
-    // Final fallback
-    console.warn("Todas as APIs de busca falharam. Retornando curadoria local.");
-    return [
+    // Limpar estado anterior para evitar stale UI
+    const searchResults = [];
+    
+    console.log(`ZYRON Radio: Iniciando busca estruturada para "${query}"`);
+    
+    // Fallback Chain: Piped -> Invidious -> Cache Local
+    const apiEndpoints = [
+      {
+        name: 'Piped API',
+        url: `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music`,
+        transform: (data) => data.map(item => ({
+          id: item.url?.split('v=')[1] || item.url?.split('/').pop(),
+          title: item.title || 'ZYRON Audio',
+          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.url?.split('v=')[1]}/mqdefault.jpg`,
+          artist: item.uploaderName || 'Unknown Artist',
+          duration: item.duration
+        }))
+      },
+      {
+        name: 'Invidious API',
+        url: `https://yewtu.be/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
+        transform: (data) => data.map(item => ({
+          id: item.videoId,
+          title: item.title || 'ZYRON Audio',
+          thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`,
+          artist: item.author || 'Unknown Artist',
+          duration: item.lengthSeconds
+        }))
+      },
+      {
+        name: 'Backup Piped Instance',
+        url: `https://pipedapi.garudalinux.org/search?q=${encodeURIComponent(query)}&filter=music`,
+        transform: (data) => data.map(item => ({
+          id: item.url?.split('v=')[1] || item.url?.split('/').pop(),
+          title: item.title || 'ZYRON Audio',
+          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.url?.split('v=')[1]}/mqdefault.jpg`,
+          artist: item.uploaderName || 'Unknown Artist',
+          duration: item.duration
+        }))
+      }
+    ];
+
+    for (const endpoint of apiEndpoints) {
+      try {
+        console.log(`Tentando ${endpoint.name}...`);
+        
+        const response = await fetch(endpoint.url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'ZYRON-Music/1.0'
+          },
+          signal: AbortSignal.timeout(8000) // Timeout 8s
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          
+          if (data && Array.isArray(data) && data.length > 0) {
+            const results = endpoint.transform(data).filter(item => 
+              item.id && item.title && item.id.length > 0
+            );
+            
+            if (results.length > 0) {
+              console.log(`✅ Sucesso com ${endpoint.name}: ${results.length} resultados`);
+              return results.slice(0, 12); // Limitar para performance
+            }
+          }
+        } else {
+          console.warn(`${endpoint.name} respondeu com status ${response.status}`);
+        }
+      } catch (error) {
+        console.warn(`Falha em ${endpoint.name}:`, error.message);
+        continue;
+      }
+    }
+
+    // Fallback final - curadoria local baseada no gênero
+    console.warn('⚠️ Todas as APIs falharam, usando curadoria local');
+    const fallbackTracks = [
       { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
       { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
+      { id: 'L_jWHftIyJQ', title: 'Epic Workout Motivation', thumbnail: 'https://img.youtube.com/vi/L_jWHftIyJQ/default.jpg', artist: 'ZYRON Fitness' },
+      { id: 'M7lc1UVf-VE', title: 'Never Gonna Give You Up', thumbnail: 'https://img.youtube.com/vi/M7lc1UVf-VE/default.jpg', artist: 'Rick Astley' }
     ];
+    
+    return fallbackTracks;
   };
   const contextValue = {
     isPlaying,
@@ -289,12 +355,12 @@ export function MusicProvider({ children }) {
     <MusicContext.Provider value={contextValue}>
       {children}
       
-      {/* iOS Wake Lock - Silent Loop Audio */}
+      {/* iOS Wake Lock - Silent Loop Audio (1 segundo real) */}
       <audio 
         ref={silentAudioRef}
         loop 
         style={{ display: 'none' }}
-        src="data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAASAAADbWFqb3JfYnJhbmQAZm1wNCAAdGV4dAAAABIAAANtaW5vcl92ZXJzaW9uADAgAFRYWFgAAAAfAAADY29tcGF0aWJsZV9icmFuZHMAaXNvbTVtcDQyAGZyZWUAAAALbWRhdAAAAAAAAAA="
+        src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" 
       />
 
       {/* 
