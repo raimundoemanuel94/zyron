@@ -14,6 +14,7 @@ export function MusicProvider({ children }) {
   const [progress, setProgress] = useState(0);
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const [isMinimized, setIsMinimized] = useState(false);
+  const [wakeLock, setWakeLock] = useState(null);
   const playerRef = useRef(null);
   const silentAudioRef = useRef(null);
 
@@ -97,7 +98,10 @@ export function MusicProvider({ children }) {
       }
     } else if (event.data === window.YT.PlayerState.PAUSED || event.data === window.YT.PlayerState.ENDED) {
       setIsPlaying(false);
-      if (silentAudioRef.current) silentAudioRef.current.pause();
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+      }
+      releaseWakeLock();
     }
   };
 
@@ -141,9 +145,8 @@ export function MusicProvider({ children }) {
       updateMediaSession(track);
 
       // Start silent loop to keep iOS wake lock active
-      if (silentAudioRef.current) {
-        silentAudioRef.current.play().catch(e => console.log("Wake Lock logic:", e));
-      }
+      startSilentAudio();
+      requestWakeLock();
     } catch (e) {
       console.error(e);
     }
@@ -163,9 +166,8 @@ export function MusicProvider({ children }) {
         }
         
         // Ativar Silent Loop para iOS Wake Lock
-        if (silentAudioRef.current) {
-          silentAudioRef.current.play().catch(e => console.log("Wake Lock logic:", e));
-        }
+        startSilentAudio();
+        requestWakeLock();
       } else if (playlist.length > 0) {
         loadVideoById(playlist[0]);
       }
@@ -205,6 +207,44 @@ export function MusicProvider({ children }) {
     localStorage.setItem('zyron_player_minimized', String(newState));
   };
 
+  // iOS Wake Lock - Silent Audio Loop
+  const startSilentAudio = async () => {
+    if (silentAudioRef.current) {
+      try {
+        silentAudioRef.current.volume = 0.01; // Quase inaudível
+        await silentAudioRef.current.play();
+        console.log('🔊 Silent audio iniciado para iOS wake lock');
+      } catch (error) {
+        console.log('Silent audio falhou:', error.message);
+      }
+    }
+  };
+
+  // Wake Lock API para Android/Chrome
+  const requestWakeLock = async () => {
+    if ('wakeLock' in navigator) {
+      try {
+        const lock = await navigator.wakeLock.request('screen');
+        setWakeLock(lock);
+        console.log('🔒 Wake Lock ativo');
+        
+        lock.addEventListener('release', () => {
+          console.log('🔓 Wake Lock liberado');
+          setWakeLock(null);
+        });
+      } catch (error) {
+        console.log('Wake Lock falhou:', error.message);
+      }
+    }
+  };
+
+  const releaseWakeLock = () => {
+    if (wakeLock) {
+      wakeLock.release();
+      setWakeLock(null);
+    }
+  };
+
   const updateMediaSession = (track) => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new window.MediaMetadata({
@@ -219,20 +259,27 @@ export function MusicProvider({ children }) {
 
       navigator.mediaSession.setActionHandler('play', () => {
         togglePlay();
-        if (silentAudioRef.current) silentAudioRef.current.play();
+        startSilentAudio();
+        requestWakeLock();
       });
       navigator.mediaSession.setActionHandler('pause', () => {
         togglePlay();
-        if (silentAudioRef.current) silentAudioRef.current.pause();
+        if (silentAudioRef.current) {
+          silentAudioRef.current.pause();
+        }
+        releaseWakeLock();
       });
       navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
 
-      // Audio Interruption Listeners for iOS
+      // iOS Interruption Handling
       if (silentAudioRef.current) {
         silentAudioRef.current.onpause = () => {
-          // If iOS pauses our silent audio (interruption), we sync our state
-          // but we try to resume if it was playing after interruption ends
+          console.log('📱 iOS interrompeu áudio silencioso');
+        };
+        
+        silentAudioRef.current.onplay = () => {
+          console.log('📱 iOS retomou áudio silencioso');
         };
       }
     }
