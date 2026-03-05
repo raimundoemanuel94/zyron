@@ -249,38 +249,43 @@ export function MusicProvider({ children }) {
     
     console.log(`ZYRON Radio: Iniciando busca estruturada para "${query}"`);
     
-    // Fallback Chain: Piped -> Invidious -> Cache Local
+    // Fallback Chain: YouTube Direct -> Piped -> Invidious -> Cache Local
     const apiEndpoints = [
       {
+        name: 'YouTube Direct (Vercel Proxy)',
+        url: `/api/search?q=${encodeURIComponent(query)}`,
+        transform: (data) => data
+      },
+      {
         name: 'Piped API',
-        url: `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music`,
+        url: `https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}`,
         transform: (data) => data.map(item => ({
-          id: item.url?.split('v=')[1] || item.url?.split('/').pop(),
+          id: item.url?.split('v=')[1] || item.url?.split('/').pop() || item.videoId,
           title: item.title || 'ZYRON Audio',
-          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.url?.split('v=')[1]}/mqdefault.jpg`,
-          artist: item.uploaderName || 'Unknown Artist',
+          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.videoId || item.url?.split('v=')[1]}/mqdefault.jpg`,
+          artist: item.uploaderName || item.channelName || 'Unknown Artist',
           duration: item.duration
         }))
       },
       {
         name: 'Invidious API',
-        url: `https://yewtu.be/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
+        url: `https://yewtu.be/api/v1/search?q=${encodeURIComponent(query)}`,
         transform: (data) => data.map(item => ({
           id: item.videoId,
           title: item.title || 'ZYRON Audio',
           thumbnail: `https://img.youtube.com/vi/${item.videoId}/mqdefault.jpg`,
-          artist: item.author || 'Unknown Artist',
+          artist: item.author || item.channelName || 'Unknown Artist',
           duration: item.lengthSeconds
         }))
       },
       {
         name: 'Backup Piped Instance',
-        url: `https://pipedapi.garudalinux.org/search?q=${encodeURIComponent(query)}&filter=music`,
+        url: `https://pipedapi.garudalinux.org/search?q=${encodeURIComponent(query)}`,
         transform: (data) => data.map(item => ({
-          id: item.url?.split('v=')[1] || item.url?.split('/').pop(),
+          id: item.url?.split('v=')[1] || item.url?.split('/').pop() || item.videoId,
           title: item.title || 'ZYRON Audio',
-          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.url?.split('v=')[1]}/mqdefault.jpg`,
-          artist: item.uploaderName || 'Unknown Artist',
+          thumbnail: item.thumbnail || `https://img.youtube.com/vi/${item.videoId || item.url?.split('v=')[1]}/mqdefault.jpg`,
+          artist: item.uploaderName || item.channelName || 'Unknown Artist',
           duration: item.duration
         }))
       }
@@ -296,7 +301,7 @@ export function MusicProvider({ children }) {
             'Accept': 'application/json',
             'User-Agent': 'ZYRON-Music/1.0'
           },
-          signal: AbortSignal.timeout(8000) // Timeout 8s
+          signal: AbortSignal.timeout(10000) // Timeout 10s
         });
 
         if (response.ok) {
@@ -309,7 +314,8 @@ export function MusicProvider({ children }) {
             
             if (results.length > 0) {
               console.log(`✅ Sucesso com ${endpoint.name}: ${results.length} resultados`);
-              return results.slice(0, 12); // Limitar para performance
+              console.log('Primeiros 2 resultados:', results.slice(0, 2));
+              return results.slice(0, 15); // Limitar para performance
             }
           }
         } else {
