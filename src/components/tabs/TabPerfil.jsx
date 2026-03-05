@@ -39,6 +39,7 @@ export default function TabPerfil({
     e.preventDefault();
     if (!searchQuery.trim()) return;
     setIsSearching(true);
+    setSearchResults([]); // Limpar cache anterior para evitar crashes e stale UI
     try {
       const results = await searchMusic(searchQuery);
       setSearchResults(results);

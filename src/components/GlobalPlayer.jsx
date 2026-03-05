@@ -26,20 +26,36 @@ export default function GlobalPlayer({ constraintsRef }) {
   }, [playerPosition, controls]);
 
   const handleDragEnd = (event, info) => {
-    const newPos = { x: info.offset.x, y: info.offset.y };
+    // Current offset within constraints
+    let newPos = { x: info.offset.x, y: info.offset.y };
     
-    // Auto-Snap logic to avoid blocking central nav
+    // Window boundaries for snap logic (approximate assuming player is small)
+    const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-    const fromBottom = windowHeight - info.point.y;
+    const currentAbsoluteX = info.point.x;
+    const currentAbsoluteY = info.point.y;
     
-    // Se estiver muito embaixo, empurra um pouco pra cima
-    if (fromBottom < 100) {
-      newPos.y -= 50;
-      controls.start({ y: newPos.y, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+    // Auto-Snap to Edges (Left or Right) to free visual space
+    if (currentAbsoluteX < windowWidth / 2) {
+      newPos.x -= currentAbsoluteX - 20; // Snap to left margin
+    } else {
+      newPos.x += (windowWidth - currentAbsoluteX) - 20; // Snap to right margin
     }
 
+    // Auto-Snap to avoid Bottom Bar and Top Safe Area
+    if (currentAbsoluteY > windowHeight - 100) {
+      newPos.y -= (currentAbsoluteY - (windowHeight - 120)); // Push up from bottom nav
+    } else if (currentAbsoluteY < 80) {
+      newPos.y += (80 - currentAbsoluteY); // Push down from top edge/notches
+    }
+
+    // Animate to snapped position
+    controls.start({ x: newPos.x, y: newPos.y, transition: { type: 'spring', stiffness: 300, damping: 30 } });
+    
+    // Save to LocalStorage persistently
     updatePlayerPosition(newPos);
   };
+
 
   const handleTap = (e) => {
     // Evitar que cliques nos botões de controle propaguem para o container
@@ -53,21 +69,22 @@ export default function GlobalPlayer({ constraintsRef }) {
   return (
     <motion.div
       drag
-      dragConstraints={constraintsRef}
+      dragConstraints={constraintsRef} // App.jsx ref holding the screen
       dragElastic={0.1}
-      dragMomentum={false}
+      dragMomentum={false} // Prevent sliding off-screen indefinitely
       animate={controls}
       onDragEnd={handleDragEnd}
-      whileDrag={{ scale: 1.05, opacity: 0.9, cursor: 'grabbing' }}
-      className={`fixed z-9999 cursor-grab touch-none select-none
+      whileDrag={{ scale: 1.05, opacity: 0.95, cursor: 'grabbing' }}
+      whileTap={{ scale: 0.98 }}
+      className={`fixed z-50 cursor-grab touch-none select-none
         ${isMinimized 
-          ? 'w-14 h-14 rounded-full' 
-          : 'w-60 rounded-full p-1'
+          ? 'w-16 h-16 rounded-[2rem]' 
+          : 'w-64 rounded-[2.5rem] p-1.5'
         }
-        bg-black/80 backdrop-blur-2xl border-2 border-yellow-400 shadow-[0_0_25px_rgba(253,224,71,0.2)]
-        flex items-center gap-2 overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.23,1,0.32,1)]
+        bg-black/70 backdrop-blur-xl border border-yellow-400/80 shadow-[0_10px_40px_rgba(253,224,71,0.25)]
+        flex items-center gap-2 overflow-hidden transition-[width,height,border-radius] duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
       `}
-      style={{ bottom: '140px', left: '20px' }}
+      style={{ bottom: '100px', left: '20px' }}
       onClick={handleTap}
     >
       <AnimatePresence mode="wait">

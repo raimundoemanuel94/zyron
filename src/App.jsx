@@ -61,6 +61,14 @@ function App() {
         ref={globalConstraintsRef} 
         className="relative min-h-screen w-full bg-black overflow-x-hidden selection:bg-yellow-400 selection:text-black"
       >
+        {/* 
+           GLOBAL MEDIA LAYER: Outside conditional logic but inside MusicProvider.
+           Persistent across ALL application states.
+        */}
+        {isAuthenticated && (
+          <GlobalPlayer constraintsRef={globalConstraintsRef} />
+        )}
+
         <AnimatePresence mode="wait">
           {!isAuthenticated ? (
             showOnboarding ? (
@@ -100,14 +108,6 @@ function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* 
-           GLOBAL MEDIA LAYER: Outside conditional logic but inside MusicProvider.
-           Persistent across ALL application states.
-        */}
-        {isAuthenticated && (
-          <GlobalPlayer constraintsRef={globalConstraintsRef} />
-        )}
 
         <PWAInstallBanner />
       </div>

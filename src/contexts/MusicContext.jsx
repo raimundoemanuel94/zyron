@@ -139,11 +139,15 @@ export function MusicProvider({ children }) {
       playerRef.current.loadVideoById(track.id);
       setIsPlaying(true);
       updateMediaSession(track);
+
+      // Start silent loop to keep iOS wake lock active
+      if (silentAudioRef.current) {
+        silentAudioRef.current.play().catch(e => console.log("Wake Lock logic:", e));
+      }
     } catch (e) {
       console.error(e);
     }
   };
-
   const togglePlay = () => {
     if (!playerRef.current) return;
     
@@ -235,70 +239,53 @@ export function MusicProvider({ children }) {
   };
 
   const searchMusic = async (query) => {
-    const instances = [
-      'https://pipedapi.kavin.rocks',
-      'https://piped-api.lunar.icu',
-      'https://pipedapi.rivo.pw',
-      'https://api.piped.privacydev.net',
-      'https://pipedapi.drgns.space',
-      'https://pipedapi.project-insanity.org'
-    ];
+    try {
+      console.log(`ZYRON Radio: Buscando no YouTube via CodeTabs Proxy...`);
+       
+      // Using CodeTabs as it doesn't have the strict 1MB limit of corsproxy.io
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
 
-    for (const instance of instances) {
-      // Estratégia 1: Busca Filtrada por Música (Alta Qualidade)
-      try {
-        console.log(`ZYRON Radio: Buscando música em ${instance}...`);
-        const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`, {
-          signal: AbortSignal.timeout(4000)
-        });
+      const response = await fetch(proxyUrl);
+      
+      if (response.ok) {
+        const html = await response.text();
+        const match = html.match(/var ytInitialData = (\{.*?\});<\/script>/);
         
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.items && data.items.length > 0) {
-            return data.items
-              .filter(item => item.type === 'stream')
-              .slice(0, 15)
-              .map(item => ({
-                 id: item.url.replace('/watch?v=', ''),
-                 title: item.title,
-                 thumbnail: item.thumbnail,
-                 artist: item.uploaderName || 'YouTube Audio'
-              }));
+        if (match && match[1]) {
+          const data = JSON.parse(match[1]);
+          const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents;
+          
+          if (contents && contents.length > 0) {
+            const results = contents
+              .filter(c => c.videoRenderer)
+              .map(c => {
+                 const id = c.videoRenderer.videoId;
+                 return {
+                   id: id,
+                   title: c.videoRenderer.title?.runs?.[0]?.text || 'ZYRON Audio',
+                   thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                   artist: c.videoRenderer.ownerText?.runs?.[0]?.text || 'YouTube'
+                 };
+              });
+
+            if (results.length > 0) {
+               return results.slice(0, 15);
+            }
           }
         }
-      } catch (e) { console.warn(`Falha na busca filtrada em ${instance}`); }
-
-      // Estratégia 2: Busca Geral (Caso a filtrada falhe ou seja limitada)
-      try {
-        console.log(`ZYRON Radio: Busca geral (fallback) em ${instance}...`);
-        const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}`, {
-          signal: AbortSignal.timeout(4000)
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.items && data.items.length > 0) {
-            return data.items
-              .filter(item => item.type === 'stream' || item.type === 'video')
-              .slice(0, 15)
-              .map(item => ({
-                 id: item.url.split('v=')[1] || item.url.split('/').pop(),
-                 title: item.title,
-                 thumbnail: item.thumbnail,
-                 artist: item.uploaderName || 'YouTube Content'
-              }));
-          }
-        }
-      } catch (e) { console.warn(`Falha na busca geral em ${instance}`); }
+      }
+    } catch (e) {
+      console.warn(`Falha na busca principal:`, e);
     }
 
-    // Fallback Final
+    // Final fallback
+    console.warn("Todas as APIs de busca falharam. Retornando curadoria local.");
     return [
       { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
       { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
     ];
   };
-
   const contextValue = {
     isPlaying,
     currentTrack,
