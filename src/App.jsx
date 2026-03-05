@@ -30,6 +30,13 @@ function App() {
       timestamp: new Date().toISOString()
     });
     
+    // Log de teste forçado
+    logger.info('LOGGER TESTE - App carregado com sucesso', {
+      test: true,
+      environment: process.env.NODE_ENV,
+      loggerVersion: '1.0.0'
+    });
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         logger.userAction('Login automático via sessão', {
