@@ -1,13 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePWAUpdate } from '../hooks/usePWAUpdate';
 
 export default function PWAUpdateBanner() {
   const { needsUpdate, isInstalling, updateInfo, installUpdate, forceRefresh } = usePWAUpdate();
+  const [isVisible, setIsVisible] = useState(false);
 
-  if (!needsUpdate) return null;
+  // Adicionar delay para o banner não aparecer e desaparecer rápido demais
+  useEffect(() => {
+    if (needsUpdate) {
+      // Esperar 2 segundos antes de mostrar o banner
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setIsVisible(false);
+    }
+  }, [needsUpdate]);
+
+  if (!needsUpdate || !isVisible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 shadow-lg">
+    <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 shadow-lg animate-in slide-in-from-top duration-300">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="animate-pulse">
@@ -23,7 +38,10 @@ export default function PWAUpdateBanner() {
         
         <div className="flex items-center space-x-2">
           <button
-            onClick={forceRefresh}
+            onClick={() => {
+              setIsVisible(false);
+              setTimeout(() => forceRefresh(), 300);
+            }}
             className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-md transition-colors"
             disabled={isInstalling}
           >
@@ -31,7 +49,10 @@ export default function PWAUpdateBanner() {
           </button>
           
           <button
-            onClick={installUpdate}
+            onClick={() => {
+              setIsVisible(false);
+              setTimeout(() => installUpdate(), 300);
+            }}
             disabled={isInstalling}
             className="px-4 py-2 bg-white text-purple-600 rounded-md font-bold text-sm hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >

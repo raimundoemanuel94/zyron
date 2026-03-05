@@ -16,12 +16,27 @@ export function usePWAUpdate() {
           registration = await navigator.serviceWorker.getRegistration();
           
           if (registration) {
+            console.log('🔍 Verificando atualizações do PWA...');
+            
+            // Verificar se já tem update esperando
+            if (registration.waiting) {
+              console.log('🔄 Update já está esperando, mostrando banner');
+              setNeedsUpdate(true);
+              setUpdateInfo({
+                version: 'Pendente',
+                message: 'Atualização pronta para instalar!'
+              });
+              return;
+            }
+            
             // Verificar se há atualização
             await registration.update();
             
             // Escutar por novas versões
             registration.addEventListener('updatefound', () => {
               const newWorker = registration.installing;
+              
+              console.log('🔍 Nova versão encontrada, aguardando instalação...');
               
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
@@ -35,16 +50,6 @@ export function usePWAUpdate() {
                 }
               });
             });
-
-            // Verificar se já tem update esperando
-            if (registration.waiting) {
-              console.log('🔄 Update já está esperando');
-              setNeedsUpdate(true);
-              setUpdateInfo({
-                version: 'Pendente',
-                message: 'Atualização pronta para instalar!'
-              });
-            }
           }
         } catch (error) {
           console.error('Erro ao verificar atualizações:', error);
@@ -54,8 +59,8 @@ export function usePWAUpdate() {
       // Verificar atualizações ao carregar
       checkForUpdates();
 
-      // Verificar periodicamente (a cada 5 minutos)
-      const interval = setInterval(checkForUpdates, 5 * 60 * 1000);
+      // Verificar periodicamente (a cada 10 minutos)
+      const interval = setInterval(checkForUpdates, 10 * 60 * 1000);
 
       // Escutar por refresh automático
       navigator.serviceWorker.addEventListener('controllerchange', () => {

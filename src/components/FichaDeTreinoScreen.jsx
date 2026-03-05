@@ -363,7 +363,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
          await supabase.from('workout_logs').insert([{
            user_id: user.id,
            workout_key: selectedWorkoutKey,
-           duration_seconds: sessionTime
+           duration_seconds: sessionTime,
+           created_at: new Date().toISOString(),
+           completed: true
          }]);
        } catch (err) {
          console.error("Erro ao salvar log de treino no Supabase:", err);
