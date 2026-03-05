@@ -8,6 +8,7 @@ import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
 import GlobalPlayer from './components/GlobalPlayer';
+import PWAUpdateBanner from './components/PWAUpdateBanner';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function App() {
@@ -69,46 +70,53 @@ function App() {
         {isAuthenticated && (
           <GlobalPlayer constraintsRef={globalConstraintsRef} />
         )}
-
-        <AnimatePresence mode="wait">
-          {!isAuthenticated ? (
-            showOnboarding ? (
-              <motion.div 
-                key="onboarding" 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }} 
-                className="w-full"
-              >
-                <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
-              </motion.div>
+        
+        {/* Banner de Atualização PWA */}
+        <PWAUpdateBanner />
+        
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white overflow-hidden">
+          {/* PWA Install Banner */}
+          <PWAInstallBanner />
+          
+          <AnimatePresence mode="wait">
+            {!isAuthenticated ? (
+              showOnboarding ? (
+                <motion.div 
+                  key="onboarding" 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }} 
+                  className="w-full"
+                >
+                  <OnboardingScreen onComplete={handleLogin} onCancel={() => setShowOnboarding(false)} />
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="login" 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }} 
+                  exit={{ opacity: 0 }} 
+                  className="w-full"
+                >
+                  <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
+                </motion.div>
+              )
             ) : (
               <motion.div 
-                key="login" 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }} 
+                key="main-content"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
                 className="w-full"
               >
-                <LoginScreen onLogin={handleLogin} onRegisterClick={() => setShowOnboarding(true)} />
+                {viewManager === 'admin' && user?.role === 'ADMIN' ? (
+                  <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
+                ) : (
+                  <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
+                )}
               </motion.div>
-            )
-          ) : (
-            <motion.div 
-              key="main-content"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-full"
-            >
-              {viewManager === 'admin' && user?.role === 'ADMIN' ? (
-                <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
-              ) : (
-                <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            )}
+          </AnimatePresence>
 
         <PWAInstallBanner />
       </div>
