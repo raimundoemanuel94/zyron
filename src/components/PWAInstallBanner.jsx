@@ -1,136 +1,104 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, X, Zap, Crown } from 'lucide-react';
 
 export default function PWAInstallBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [showBanner, setShowBanner] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
 
   useEffect(() => {
-    // Check if already in standalone mode
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    if (isStandalone) return;
-
-    // Detect iOS
-    const ios = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-    setIsIOS(ios);
-
-    // Cooldown logic (don't show if dismissed in the last 12 hours for higher urgency)
-    const dismissed = localStorage.getItem('pwa-install-dismissed');
-    if (dismissed && Date.now() - parseInt(dismissed) < 43200000) return;
-
-    // For iOS, show after a delay
-    if (ios) {
-      const timer = setTimeout(() => setShowBanner(true), 4000);
-      return () => clearTimeout(timer);
-    }
-
-    // Capture Chrome/Android install prompt
-    const handler = (e) => {
+    const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
-      setDeferredPrompt(e);
-      // Show banner after interaction or small delay
-      setTimeout(() => setShowBanner(true), 3000);
+      console.log('📱 PWA install prompt ready');
+      setIsVisible(true);
+      window.deferredPrompt = e;
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowBanner(false);
+    if (isInstalling) return;
+    
+    setIsInstalling(true);
+    
+    try {
+      const promptEvent = window.deferredPrompt;
+      if (promptEvent) {
+        promptEvent.prompt();
+        const { outcome } = await promptEvent.userChoice;
+        console.log('📱 PWA install outcome:', outcome);
+        
+        if (outcome === 'accepted') {
+          setIsVisible(false);
+          window.deferredPrompt = null;
+        }
       }
-      setDeferredPrompt(null);
+    } catch (error) {
+      console.error('❌ PWA install error:', error);
+    } finally {
+      setIsInstalling(false);
     }
   };
 
-  const handleDismiss = () => {
-    setShowBanner(false);
-    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+  const handleClose = () => {
+    setIsVisible(false);
   };
 
+  if (!isVisible) return null;
+
   return (
-    <AnimatePresence>
-      {showBanner && (
-        <motion.div
-          initial={{ y: 200, opacity: 0, scale: 0.9 }}
-          animate={{ y: 0, opacity: 1, scale: 1 }}
-          exit={{ y: 200, opacity: 0, scale: 0.9 }}
-          transition={{ type: 'spring', damping: 20, stiffness: 150 }}
-          className="fixed bottom-6 left-4 right-4 z-100 max-w-lg mx-auto"
-        >
-          <div className="relative overflow-hidden bg-neutral-950 border-2 border-yellow-400 rounded-3xl p-5 shadow-[0_0_50px_rgba(253,224,71,0.3)] group">
-            {/* Animated Glow Background */}
-            <div className="absolute inset-0 bg-yellow-400/5 animate-pulse pointer-events-none" />
-            
-            <div className="flex items-center gap-5 relative z-10">
-              {/* App Icon / Logo with Pulsing Ring */}
-              <div className="relative shrink-0">
-                <div className="w-14 h-14 bg-yellow-400 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(253,224,71,0.5)]">
-                  <Download size={24} className="text-black" />
-                </div>
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full animate-bounce">
-                  NOVO
-                </div>
-              </div>
-
-              {/* Text Content */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <Zap size={12} className="text-yellow-400 fill-yellow-400" />
-                  <h4 className="text-sm font-black text-white uppercase italic tracking-tighter">Performance Extrema</h4>
-                </div>
-                <h3 className="text-lg font-black text-slate-100 leading-tight uppercase tracking-tight">
-                  Instalar <span className="text-yellow-400">ZYRON App</span>
-                </h3>
-                {isIOS ? (
-                  <p className="text-[11px] text-neutral-400 font-bold mt-1">
-                    Toque em <span className="text-yellow-400">Compartilhar ↑</span> e selecione <br/>
-                    <span className="text-slate-200">"Adicionar à Tela de Início"</span>
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-neutral-400 font-bold mt-1">
-                    Tenha acesso instantâneo e offline. <br/>
-                    Treine como um profissional.
-                  </p>
-                )}
-              </div>
+    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right duration-300">
+      <div className="bg-black/80 backdrop-blur-md border border-yellow-500/30 rounded-lg p-4 shadow-2xl max-w-sm">
+        <div className="flex items-center space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-
-            {/* Action Buttons */}
-            <div className="mt-5 flex items-center gap-3 relative z-10">
-              {!isIOS ? (
-                <button
-                  onClick={handleInstall}
-                  className="flex-1 py-3.5 bg-yellow-400 text-black text-xs font-black uppercase tracking-widest rounded-2xl active:scale-95 transition-all shadow-lg shadow-yellow-400/20 flex items-center justify-center gap-2"
-                >
-                  <Crown size={14} className="fill-black" />
-                  Baixar Agora
-                </button>
-              ) : (
-                <div className="flex-1 py-3 text-center border border-white/10 rounded-2xl bg-white/5">
-                   <span className="text-[10px] uppercase font-black text-white/50 tracking-widest italic">Aguardando Instalação...</span>
-                </div>
-              )}
-              
-              <button
-                onClick={handleDismiss}
-                className="w-12 h-12 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all"
-              >
-                <X size={20} className="text-white/60" />
-              </button>
-            </div>
-
-            {/* Bottom Progress/Decorative Line */}
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-yellow-400 to-transparent opacity-50" />
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-semibold text-sm mb-1">Instalar ZYRON</p>
+            <p className="text-yellow-200 text-xs">Adicione à tela inicial para acesso rápido</p>
+          </div>
+          
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <button
+              onClick={handleClose}
+              className="text-yellow-200/70 hover:text-yellow-200 transition-colors p-1"
+              title="Agora não"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            
+            <button
+              onClick={handleInstall}
+              disabled={isInstalling}
+              className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-2 rounded-md font-bold text-xs hover:from-yellow-300 hover:to-orange-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+            >
+              {isInstalling ? (
+                <>
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Instalando...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                  </svg>
+                  <span>Instalar</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

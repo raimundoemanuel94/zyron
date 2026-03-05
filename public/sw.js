@@ -47,6 +47,32 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
+// Enviar mensagem para todos os clientes quando houver update
+self.addEventListener('message', (event) => {
+  console.log('📨 Service Worker recebeu mensagem:', event.data);
+  
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  
+  // Enviar update para todos os clientes
+  if (event.data && event.data.type === 'UPDATE_CLIENTS') {
+    event.waitUntil(
+      self.clients.matchAll().then((clients) => {
+        return Promise.all(
+          clients.map((client) => {
+            console.log('📨 Enviando update para cliente:', client.url);
+            return client.postMessage({
+              type: 'UPDATE_AVAILABLE',
+              version: CACHE_NAME
+            });
+          })
+        );
+      })
+    );
+  }
+});
+
 // Interceptar requisições
 self.addEventListener('fetch', (event) => {
   // Não interceptar requisições de API
