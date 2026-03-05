@@ -220,7 +220,13 @@ export function MusicProvider({ children }) {
         errorStack: error.stack
       }, error);
       
-      alert(`Erro no áudio: ${error.message}\nURL: ${track.id}\nVerifique o console para detalhes`);
+      // ALERTA DIRETO PARA DEBUG
+      alert(`🚨 ERRO CRÍTICO DETECTADO!\n\n` +
+            `Música: ${track.title}\n` +
+            `ID: ${track.id}\n` +
+            `Erro: ${error.message}\n\n` +
+            `Tire um print e envie ao desenvolvedor!\n\n` +
+            `Console: Aperte F12 para ver detalhes completos`);
       
       // Resetar estado se falhar tudo
       setIsPlaying(false);
