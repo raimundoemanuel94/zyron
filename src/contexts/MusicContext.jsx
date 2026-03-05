@@ -15,8 +15,11 @@ export function MusicProvider({ children }) {
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const [isMinimized, setIsMinimized] = useState(false);
   const [wakeLock, setWakeLock] = useState(null);
+  const [audioContext, setAudioContext] = useState(null);
+  const [isBackgroundMode, setIsBackgroundMode] = useState(false);
   const playerRef = useRef(null);
   const silentAudioRef = useRef(null);
+  const backgroundAudioRef = useRef(null);
 
   // Initialize YT Player API
   useEffect(() => {
@@ -207,17 +210,42 @@ export function MusicProvider({ children }) {
     localStorage.setItem('zyron_player_minimized', String(newState));
   };
 
-  // iOS Wake Lock - Silent Audio Loop
+  // Initialize Audio Context for iOS Background Mode
+  const initAudioContext = () => {
+    if (!audioContext && typeof AudioContext !== 'undefined') {
+      const ctx = new AudioContext();
+      setAudioContext(ctx);
+      return ctx;
+    }
+    return audioContext;
+  };
+
+  // Enhanced iOS Wake Lock - Multiple Audio Streams
   const startSilentAudio = async () => {
     if (silentAudioRef.current) {
       try {
-        silentAudioRef.current.volume = 0.01; // Quase inaudível
+        silentAudioRef.current.volume = 0.01;
         await silentAudioRef.current.play();
         console.log('🔊 Silent audio iniciado para iOS wake lock');
       } catch (error) {
         console.log('Silent audio falhou:', error.message);
       }
     }
+
+    // Background Audio Stream (mais robusto)
+    if (backgroundAudioRef.current) {
+      try {
+        backgroundAudioRef.current.volume = 0.001;
+        backgroundAudioRef.current.loop = true;
+        await backgroundAudioRef.current.play();
+        console.log('🎵 Background audio stream iniciado');
+      } catch (error) {
+        console.log('Background audio falhou:', error.message);
+      }
+    }
+
+    // Initialize Web Audio Context
+    initAudioContext();
   };
 
   // Wake Lock API para Android/Chrome
@@ -243,6 +271,16 @@ export function MusicProvider({ children }) {
       wakeLock.release();
       setWakeLock(null);
     }
+    
+    // Parar todos os áudios de background
+    if (silentAudioRef.current) {
+      silentAudioRef.current.pause();
+    }
+    if (backgroundAudioRef.current) {
+      backgroundAudioRef.current.pause();
+    }
+    
+    console.log('🔓 Wake lock e áudios de background liberados');
   };
 
   const updateMediaSession = (track) => {
@@ -272,16 +310,50 @@ export function MusicProvider({ children }) {
       navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
       navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
 
-      // iOS Interruption Handling
+      // iOS Interruption Handling Avançado
       if (silentAudioRef.current) {
         silentAudioRef.current.onpause = () => {
           console.log('📱 iOS interrompeu áudio silencioso');
+          // Tentar recuperar após 1 segundo
+          setTimeout(() => {
+            if (isPlaying) {
+              startSilentAudio();
+            }
+          }, 1000);
         };
         
         silentAudioRef.current.onplay = () => {
           console.log('📱 iOS retomou áudio silencioso');
         };
       }
+
+      // Background Audio Stream Handler
+      if (backgroundAudioRef.current) {
+        backgroundAudioRef.current.onpause = () => {
+          console.log('📱 Background audio pausado pelo iOS');
+          // Recuperar automaticamente
+          setTimeout(() => {
+            if (isPlaying) {
+              backgroundAudioRef.current.play().catch(e => {
+                console.log('Falha ao recuperar background audio:', e);
+              });
+            }
+          }, 500);
+        };
+      }
+
+      // Page Visibility API - Detectar quando app vai para background
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          console.log('📱 App foi para background');
+          setIsBackgroundMode(true);
+          // Forçar áudio de background
+          startSilentAudio();
+        } else {
+          console.log('📱 App voltou para foreground');
+          setIsBackgroundMode(false);
+        }
+      });
     }
   };
 
@@ -414,6 +486,14 @@ export function MusicProvider({ children }) {
         loop 
         style={{ display: 'none' }}
         src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT" 
+      />
+
+      {/* Background Audio Stream - iOS Wake Lock Backup */}
+      <audio 
+        ref={backgroundAudioRef}
+        loop 
+        style={{ display: 'none' }}
+        src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" 
       />
 
       {/* 
