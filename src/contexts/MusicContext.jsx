@@ -240,40 +240,20 @@ export function MusicProvider({ children }) {
 
   const searchMusic = async (query) => {
     try {
-      console.log(`ZYRON Radio: Buscando no YouTube via CodeTabs Proxy...`);
+      console.log(`ZYRON Radio: Buscando no YouTube via Vercel Backend Function...`);
        
-      // Using CodeTabs as it doesn't have the strict 1MB limit of corsproxy.io
-      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-      const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(searchUrl)}`;
+      // Using internal Vercel API to bypass CORS
+      const proxyUrl = `/api/search?q=${encodeURIComponent(query)}`;
 
       const response = await fetch(proxyUrl);
       
       if (response.ok) {
-        const html = await response.text();
-        const match = html.match(/var ytInitialData = (\{.*?\});<\/script>/);
-        
-        if (match && match[1]) {
-          const data = JSON.parse(match[1]);
-          const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents;
-          
-          if (contents && contents.length > 0) {
-            const results = contents
-              .filter(c => c.videoRenderer)
-              .map(c => {
-                 const id = c.videoRenderer.videoId;
-                 return {
-                   id: id,
-                   title: c.videoRenderer.title?.runs?.[0]?.text || 'ZYRON Audio',
-                   thumbnail: `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
-                   artist: c.videoRenderer.ownerText?.runs?.[0]?.text || 'YouTube'
-                 };
-              });
-
-            if (results.length > 0) {
-               return results.slice(0, 15);
-            }
-          }
+        const results = await response.json();
+        if (results && results.length > 0) {
+          return results;
         }
+      } else {
+        console.warn(`Vercel Search API failed with status ${response.status}`);
       }
     } catch (e) {
       console.warn(`Falha na busca principal:`, e);
