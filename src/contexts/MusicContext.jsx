@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import logger from '../utils/logger';
 
 const MusicContext = createContext();
 
@@ -20,6 +21,15 @@ export function MusicProvider({ children }) {
   const playerRef = useRef(null);
   const silentAudioRef = useRef(null);
   const backgroundAudioRef = useRef(null);
+
+  // Log inicialização
+  useEffect(() => {
+    logger.systemEvent('MusicContext inicializado', {
+      hasPlayerRef: !!playerRef.current,
+      hasSilentAudioRef: !!silentAudioRef.current,
+      hasBackgroundAudioRef: !!backgroundAudioRef.current
+    });
+  }, []);
 
   // Initialize YT Player API
   useEffect(() => {
@@ -138,6 +148,12 @@ export function MusicProvider({ children }) {
   const loadVideoById = async (track) => {
     if (!track) return;
     
+    logger.userAction('loadVideoById', {
+      trackId: track.id,
+      trackTitle: track.title,
+      trackArtist: track.artist
+    });
+    
     // FORÇAR UI INSTANTÂNEA - Player abre antes de validar
     console.log('🚀 Player abrindo instantaneamente para:', track.title);
     setCurrentTrack(track);
@@ -147,6 +163,7 @@ export function MusicProvider({ children }) {
     try {
       // PRIORIZAR PROXY DE ÁUDIO VIA VERCEL
       console.log('🎵 Tentando proxy de áudio Vercel para:', track.id);
+      logger.info('Tentando proxy de áudio Vercel', { trackId: track.id });
       
       // Usar proxy CORS da Vercel para stream
       const proxyResponse = await fetch(`/api/audio-stream/${track.id}`);
@@ -155,12 +172,18 @@ export function MusicProvider({ children }) {
         const streamData = await proxyResponse.json();
         if (streamData.audioUrl) {
           console.log('✅ Proxy Vercel funcionou, usando áudio nativo');
+          logger.info('Proxy Vercel funcionou', { 
+            trackId: track.id,
+            audioUrl: streamData.audioUrl,
+            format: streamData.format
+          });
           
           if (backgroundAudioRef.current) {
             backgroundAudioRef.current.src = streamData.audioUrl;
             backgroundAudioRef.current.volume = volume / 100;
             await backgroundAudioRef.current.play();
             console.log('🎵 Áudio via proxy tocando com sucesso');
+            logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
             return;
           }
         }
@@ -168,6 +191,8 @@ export function MusicProvider({ children }) {
       
       // Fallback para Piped Streams com timeout
       console.log('⚠️ Proxy falhou, tentando Piped streams...');
+      logger.warn('Proxy falhou, tentando Piped streams', { trackId: track.id });
+      
       const pipedPromise = fetch(`https://pipedapi.kavin.rocks/streams/${track.id}`);
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Timeout Piped')), 3000)
@@ -181,12 +206,18 @@ export function MusicProvider({ children }) {
         
         if (audioStream && audioStream.url) {
           console.log('✅ Piped stream encontrado, usando áudio nativo');
+          logger.info('Piped stream encontrado', { 
+            trackId: track.id,
+            format: audioStream.format,
+            quality: audioStream.quality
+          });
           
           if (backgroundAudioRef.current) {
             backgroundAudioRef.current.src = audioStream.url;
             backgroundAudioRef.current.volume = volume / 100;
             await backgroundAudioRef.current.play();
             console.log('🎵 Áudio Piped tocando com sucesso');
+            logger.userAction('Áudio iniciado via Piped', { trackId: track.id });
             return;
           }
         }
@@ -194,6 +225,7 @@ export function MusicProvider({ children }) {
       
       // FALLBACK IMEDIATO - YouTube Iframe visível
       console.log('⚠️ Streams falharam, usando YouTube iframe visível');
+      logger.warn('Streams falharam, usando YouTube iframe', { trackId: track.id });
       alert(`Fallback: Usando YouTube para ${track.title}`);
       
       if (playerRef.current && playerRef.current.loadVideoById) {
@@ -201,10 +233,18 @@ export function MusicProvider({ children }) {
         updateMediaSession(track);
         await startSilentAudio();
         requestWakeLock();
+        logger.userAction('Fallback YouTube iniciado', { trackId: track.id });
       }
       
     } catch (error) {
       console.error('ERRO CRÍTICO AO CARREGAR ÁUDIO:', error);
+      logger.error('Erro crítico ao carregar áudio', {
+        trackId: track.id,
+        trackTitle: track.title,
+        errorMessage: error.message,
+        errorStack: error.stack
+      }, error);
+      
       alert(`Erro no áudio: ${error.message}\nURL: ${track.id}\nVerifique o console para detalhes`);
       
       // Resetar estado se falhar tudo
@@ -213,6 +253,12 @@ export function MusicProvider({ children }) {
     }
   };
   const togglePlay = async () => {
+    logger.userAction('togglePlay', { 
+      isPlaying: isPlaying,
+      hasCurrentTrack: !!currentTrack,
+      trackId: currentTrack?.id
+    });
+    
     console.log('🎯 Toggle Play acionado - isPlaying:', isPlaying);
     
     if (isPlaying) {
@@ -228,6 +274,7 @@ export function MusicProvider({ children }) {
       }
       setIsPlaying(false);
       releaseWakeLock();
+      logger.userAction('Música pausada', { trackId: currentTrack?.id });
     } else {
       // FORÇAR UI INSTANTÂNEA
       if (currentTrack) {
@@ -241,6 +288,7 @@ export function MusicProvider({ children }) {
           silentAudioRef.current.volume = 0.01;
           await silentAudioRef.current.play();
           console.log('🔊 Silent audio iniciado');
+          logger.debug('Silent audio iniciado');
         }
         
         // 2. Áudio de background (se tiver src)
@@ -248,6 +296,7 @@ export function MusicProvider({ children }) {
           backgroundAudioRef.current.volume = volume / 100;
           await backgroundAudioRef.current.play();
           console.log('🎵 Background audio retomado');
+          logger.debug('Background audio retomado');
         }
         
         // 3. YouTube iframe (se existir)
@@ -258,15 +307,27 @@ export function MusicProvider({ children }) {
             playerRef.current.playVideo();
           }
           console.log('📺 YouTube play iniciado');
+          logger.debug('YouTube play iniciado');
         }
         
         updateMediaSession(currentTrack);
         requestWakeLock();
         
         console.log('✅ Playback triplo concluído com sucesso');
+        logger.userAction('Música iniciada', { 
+          trackId: currentTrack?.id,
+          trackTitle: currentTrack?.title,
+          volume: volume
+        });
         
       } catch (error) {
         console.error('ERRO NO PLAYBACK:', error);
+        logger.error('Erro no playback', {
+          trackId: currentTrack?.id,
+          errorMessage: error.message,
+          errorStack: error.stack
+        }, error);
+        
         alert(`Erro ao tocar: ${error.message}`);
         
         // Resetar estado em caso de erro
@@ -527,8 +588,11 @@ export function MusicProvider({ children }) {
   };
 
   const searchMusic = async (query) => {
+    logger.userAction('searchMusic', { query: query.trim() });
+    
     if (!query || query.trim().length === 0) {
       console.warn('Busca vazia, retornando array vazio');
+      logger.warn('Busca vazia', { query });
       return [];
     }
 
@@ -536,6 +600,7 @@ export function MusicProvider({ children }) {
     const searchResults = [];
     
     console.log(`ZYRON Radio: Iniciando busca estruturada para "${query}"`);
+    logger.info('Iniciando busca estruturada', { query });
     
     // Fallback Chain: Piped Streams -> Piped Search -> Invidious -> Cache Local
     const apiEndpoints = [

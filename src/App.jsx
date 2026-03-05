@@ -9,6 +9,7 @@ import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
 import GlobalPlayer from './components/GlobalPlayer';
 import PWAUpdateBanner from './components/PWAUpdateBanner';
+import DebugLogs from './components/DebugLogs';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
 function App() {
@@ -124,6 +125,9 @@ function App() {
       
       {/* Vercel Speed Insights - Performance Monitoring */}
       <SpeedInsights />
+      
+      {/* Debug Logs - Apenas em desenvolvimento */}
+      {process.env.NODE_ENV === 'development' && <DebugLogs />}
     </MusicProvider>
   );
 }
