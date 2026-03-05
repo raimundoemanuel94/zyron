@@ -12,6 +12,7 @@ import PWAUpdateBanner from './components/PWAUpdateBanner';
 import ForceUpdateBanner from './components/ForceUpdateBanner';
 import DebugLogs from './components/DebugLogs';
 import { SpeedInsights } from '@vercel/speed-insights/react';
+import logger from './utils/logger';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -22,8 +23,19 @@ function App() {
 
   // Initial Auth Sync
   useEffect(() => {
+    // Inicializar logger
+    logger.systemEvent('App inicializado', {
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    });
+    
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
+        logger.userAction('Login automático via sessão', {
+          userId: session.user.id,
+          email: session.user.email
+        });
         setIsAuthenticated(true);
         setUser(session.user);
       }
@@ -31,9 +43,17 @@ function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
+        logger.userAction('Usuário autenticado', {
+          userId: session.user.id,
+          email: session.user.email,
+          event: _event
+        });
         setIsAuthenticated(true);
         setUser(session.user);
       } else {
+        logger.userAction('Usuário deslogado', {
+          event: _event
+        });
         setIsAuthenticated(false);
         setUser(null);
       }
