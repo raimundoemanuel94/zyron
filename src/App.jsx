@@ -119,6 +119,7 @@ function App() {
           </AnimatePresence>
 
         <PWAInstallBanner />
+        </div>
       </div>
       
       {/* Vercel Speed Insights - Performance Monitoring */}
