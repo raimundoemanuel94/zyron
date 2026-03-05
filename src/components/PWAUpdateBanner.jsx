@@ -8,10 +8,11 @@ export default function PWAUpdateBanner() {
   // Adicionar delay para o banner não aparecer e desaparecer rápido demais
   useEffect(() => {
     if (needsUpdate) {
-      // Esperar 2 segundos antes de mostrar o banner
+      // Esperar 8 segundos antes de mostrar o banner
       const timer = setTimeout(() => {
+        console.log('🎯 Mostrando banner de atualização após 8 segundos');
         setIsVisible(true);
-      }, 2000);
+      }, 8000); // Aumentado para 8 segundos
       
       return () => clearTimeout(timer);
     } else {
@@ -19,12 +20,43 @@ export default function PWAUpdateBanner() {
     }
   }, [needsUpdate]);
 
+  // Adicionar delay para esconder o banner (para dar tempo de ler)
+  const handleHideBanner = (action) => {
+    console.log('🎯 Escondendo banner após 1 segundo para ação:', action);
+    setIsVisible(false);
+    
+    // Executar a ação após o banner esconder
+    setTimeout(() => {
+      if (action === 'force') {
+        forceRefresh();
+      } else if (action === 'install') {
+        installUpdate();
+      }
+    }, 1000);
+  };
+
+  // Fechar banner manualmente
+  const handleCloseBanner = () => {
+    console.log('🎯 Fechando banner manualmente');
+    setIsVisible(false);
+  };
+
   if (!needsUpdate || !isVisible) return null;
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-600 to-pink-600 text-white p-4 shadow-lg animate-in slide-in-from-top duration-300">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-3">
+          <button
+            onClick={handleCloseBanner}
+            className="p-1 text-white/80 hover:text-white transition-colors"
+            title="Fechar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          
           <div className="animate-pulse">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -38,10 +70,7 @@ export default function PWAUpdateBanner() {
         
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(() => forceRefresh(), 300);
-            }}
+            onClick={() => handleHideBanner('force')}
             className="px-3 py-1 text-xs bg-white/20 hover:bg-white/30 rounded-md transition-colors"
             disabled={isInstalling}
           >
@@ -49,10 +78,7 @@ export default function PWAUpdateBanner() {
           </button>
           
           <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(() => installUpdate(), 300);
-            }}
+            onClick={() => handleHideBanner('install')}
             disabled={isInstalling}
             className="px-4 py-2 bg-white text-purple-600 rounded-md font-bold text-sm hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
           >
