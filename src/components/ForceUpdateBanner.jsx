@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import logger from '../utils/logger';
 
 export default function ForceUpdateBanner() {
   const [isVisible, setIsVisible] = useState(false);
@@ -8,6 +9,10 @@ export default function ForceUpdateBanner() {
     // Mostrar banner após 3 segundos SEMPRE
     const timer = setTimeout(() => {
       console.log('🚀 BANNER FORÇADO - Mostrando atualização');
+      logger.systemEvent('Banner forçado aparecendo', {
+        delay: '3 segundos',
+        reason: 'Banner forçado sempre aparece'
+      });
       setIsVisible(true);
     }, 3000);
 
@@ -18,12 +23,22 @@ export default function ForceUpdateBanner() {
     if (isUpdating) return;
     
     console.log('🚀 Iniciando atualização completa...');
+    logger.userAction('Usuário clicou em ATUALIZAR AGORA (banner forçado)', {
+      action: 'force_update',
+      bannerType: 'forced'
+    });
+    
     setIsUpdating(true);
     
     // Animação de loading
     await new Promise(resolve => setTimeout(resolve, 500));
     
     console.log('🧹 Limpando cache e recarregando...');
+    logger.systemEvent('Iniciando limpeza de cache e reload', {
+      localStorage: 'cleared',
+      sessionStorage: 'cleared',
+      reload: 'forced'
+    });
     
     // Limpar tudo com animação
     localStorage.clear();
@@ -34,6 +49,10 @@ export default function ForceUpdateBanner() {
     document.body.style.opacity = '0';
     
     setTimeout(() => {
+      logger.systemEvent('Reload forçado executado', {
+        newUrl: window.location.origin + '?force_update=' + Date.now()
+      });
+      
       // Forçar reload com timestamp
       window.location.href = window.location.origin + '?force_update=' + Date.now();
     }, 500);
@@ -41,6 +60,10 @@ export default function ForceUpdateBanner() {
 
   const handleClose = () => {
     console.log('🚀 Fechando banner forçado');
+    logger.userAction('Usuário clicou em IGNORAR (banner forçado)', {
+      action: 'ignore',
+      bannerType: 'forced'
+    });
     setIsVisible(false);
   };
 
