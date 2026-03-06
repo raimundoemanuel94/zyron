@@ -8,8 +8,6 @@ import AdminScreen from './components/AdminScreen';
 import PWAInstallBanner from './components/PWAInstallBanner';
 import { MusicProvider } from './contexts/MusicContext';
 import GlobalPlayer from './components/GlobalPlayer';
-import PWAUpdateBanner from './components/PWAUpdateBanner';
-import ForceUpdateBanner from './components/ForceUpdateBanner';
 import DebugLogs from './components/DebugLogs';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import logger from './utils/logger';
@@ -100,11 +98,8 @@ function App() {
           <GlobalPlayer constraintsRef={globalConstraintsRef} />
         )}
         
-        {/* Banner de Atualização PWA */}
-        <PWAUpdateBanner />
-        
-        {/* Banner Forçado (Fallback) */}
-        <ForceUpdateBanner />
+        {/* Redundant banners removed by user request */}
+
         
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white overflow-hidden">
           {/* PWA Install Banner */}
@@ -150,7 +145,6 @@ function App() {
             )}
           </AnimatePresence>
 
-        <PWAInstallBanner />
         </div>
       </div>
       
