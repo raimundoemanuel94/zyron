@@ -1,4 +1,4 @@
-// Force Deployment Trigger: 2026-03-04T10:32:00Z
+// Force Deployment Trigger: 2026-03-09T20:05:00Z
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import tailwindcss from "@tailwindcss/vite";

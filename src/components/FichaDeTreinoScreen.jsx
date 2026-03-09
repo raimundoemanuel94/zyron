@@ -58,13 +58,16 @@ import { workoutData } from '../data/workoutData';
 import { Anatomy3D } from './Anatomy3D';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import WorkoutCard from './WorkoutCard';
+import WorkoutCompleted from './WorkoutCompleted';
 import { supabase } from '../lib/supabase';
+import { sanitizeWorkoutState } from '../utils/sanitizer';
 
 import TabPainel from './tabs/TabPainel';
 import TabTreino from './tabs/TabTreino';
 import TabEvolucao from './tabs/TabEvolucao';
 import TabPerfil from './tabs/TabPerfil';
 import TabCoach from './tabs/TabCoach';
+import { useSyncWorkout } from '../hooks/useSyncWorkout';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -215,6 +218,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [loads, setLoads] = useState({});
   const [prHistory, setPrHistory] = useState({});
   const [completedExercises, setCompletedExercises] = useState([]);
+  const [sessionSets, setSessionSets] = useState([]); // Advanced Sync: Track all sets
   const [restTimer, setRestTimer] = useState(0);
   const [weight, setWeight] = useState(80);
   const [lastWaterTime, setLastWaterTime] = useState(Date.now()); // Para alerta de 2 horas
@@ -224,10 +228,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [availableWorkouts, setAvailableWorkouts] = useState(workoutData);
   const [isLoaded, setIsLoaded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [showCompletedScreen, setShowCompletedScreen] = useState(false);
+  const [lastWorkoutSummary, setLastWorkoutSummary] = useState(null);
   
   const timerRef = useRef(null);
   const restTimerRef = useRef(null);
   const appConstraintsRef = useRef(null);
+
+  // ZYRON SYNC ENGINE: Offline-first persistence
+  const { logWorkout, isOnline, syncPending } = useSyncWorkout(user);
 
   // Auto-day detection (Default)
   const today = new Date().getDay();
@@ -365,15 +374,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     if (isTraining) {
       try {
         const todayStr = new Date().toDateString();
-        // NUCLEAR CLEANING: Somente primitivos, impede circularidade
-        const cleanSession = {
-          date: String(todayStr),
-          isTraining: Boolean(isTraining),
-          selectedWorkoutKey: (typeof selectedWorkoutKey === 'number' || typeof selectedWorkoutKey === 'string') ? selectedWorkoutKey : null,
-          completedExercises: Array.isArray(completedExercises) ? completedExercises.filter(i => typeof i === 'string') : [],
-          sessionTime: Number(sessionTime) || 0
+        // NUCLEAR CLEANING: Use the new sanitizer utility to prevent circularity
+        const rawSession = {
+          date: new Date().toDateString(),
+          isTraining,
+          selectedWorkoutKey,
+          completedExercises,
+          sessionTime
         };
         
+        const cleanSession = sanitizeWorkoutState(rawSession);
         localStorage.setItem('gym_active_session', JSON.stringify(cleanSession));
       } catch (e) {
         console.error("Falha ao salvar sessão (Estrutura Circular Detectada):", e);
@@ -422,32 +432,44 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setCompletedExercises([]);
   };
 
-  const handleExerciseComplete = (id, isFinal = true) => {
+  const handleExerciseComplete = (id, isFinal = true, setData = null) => {
+    if (setData) {
+      setSessionSets(prev => [...prev, {
+        exercise_id: id,
+        ...setData,
+        timestamp: new Date().toISOString()
+      }]);
+    }
+
     if (isFinal) {
       if (!completedExercises.includes(id)) {
-        setCompletedExercises([...completedExercises, id]);
+        setCompletedExercises(prev => [...prev, id]);
       }
     }
     setRestTimer(60); 
   };
 
   const handleFinishSession = async () => {
-    if (user?.id && isTraining) {
-       // Log workout in Supabase immediately to prevent data loss
-       try {
-         await supabase.from('workout_logs').insert([{
-           user_id: user.id,
-           workout_key: selectedWorkoutKey,
-           duration_seconds: sessionTime,
-           created_at: new Date().toISOString(),
-           completed: true
-         }]);
-       } catch (err) {
-         console.error("Erro ao salvar log de treino no Supabase:", err);
-       }
+    if (isTraining) {
+      setLastWorkoutSummary({
+        workout: {
+          workout_key: String(selectedWorkoutKey || today),
+          duration_seconds: sessionTime,
+          created_at: new Date().toISOString()
+        },
+        sets: [...sessionSets]
+      });
+      setShowCompletedScreen(true);
+      setIsTraining(false);
+      localStorage.removeItem('gym_active_session');
     }
-    setIsTraining(false);
-    localStorage.removeItem('gym_active_session');
+  };
+
+  const handleFinalSync = async (workoutData, setsData) => {
+    await logWorkout(workoutData, setsData);
+    setShowCompletedScreen(false);
+    setSessionSets([]);
+    setLastWorkoutSummary(null);
   };
 
   const [voiceTimerActive, setVoiceTimerActive] = useState(false);
@@ -724,8 +746,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           {/* PROGRESS SCREEN */}
           {activeTab === 'progress' && (
             <TabEvolucao 
-              currentWorkout={currentWorkout} prHistory={prHistory} 
-              weight={weight} setWeight={setWeight} workoutData={availableWorkouts}
+              user={user}
+              currentWorkout={currentWorkout} 
+              prHistory={prHistory} 
+              weight={weight} 
+              setWeight={setWeight} 
+              workoutData={availableWorkouts}
             />
           )}
 
@@ -911,6 +937,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           animation: gradient-x 3s ease infinite;
         }
       `}</style>
+      {/* Workout Completed Screen Overlay */}
+      <AnimatePresence>
+        {showCompletedScreen && lastWorkoutSummary && (
+          <WorkoutCompleted 
+            workout={lastWorkoutSummary.workout}
+            sets={lastWorkoutSummary.sets}
+            onFinish={handleFinalSync}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

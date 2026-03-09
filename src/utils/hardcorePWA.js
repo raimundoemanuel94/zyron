@@ -10,28 +10,33 @@ export class HardcorePWA {
   }
 
   async init() {
-    console.log('🔥 Iniciando sistema PWA HARDCORE');
+    console.log('🔥 PWA SYSTEM: Inicializando ciclo de vida industrial');
     
-    // 1. Registrar Service Worker
     if ('serviceWorker' in navigator) {
+      // Monitorar mudança de controle (novo SW assumindo)
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (this.isUpdating) return;
+        console.log('🔄 Novo Service Worker assumiu o controle. Recarregando...');
+        window.location.reload();
+      });
+
       try {
-        this.swRegistration = await navigator.serviceWorker.register('/sw.js', {
-          scope: '/'
-        });
+        // Tenta obter o registro existente
+        this.swRegistration = await navigator.serviceWorker.getRegistration();
         
-        console.log('✅ Service Worker registrado:', this.swRegistration);
-        
-        // 2. Iniciar comunicação
+        if (!this.swRegistration) {
+           this.swRegistration = await navigator.serviceWorker.register('/sw.js');
+        }
+
+        console.log('✅ PWA: Registro ativo');
         this.setupCommunication();
-        
-        // 3. Iniciar heartbeat
         this.startHeartbeat();
         
-        // 4. Forçar primeira atualização
-        setTimeout(() => this.forceUpdate(), 5000);
-        
+        // Verificar atualizações a cada 1 hora
+        setInterval(() => this.swRegistration?.update(), 60 * 60 * 1000);
+
       } catch (error) {
-        console.error('❌ Erro ao registrar Service Worker:', error);
+        console.error('❌ PWA: Erro no registro:', error);
       }
     }
   }
@@ -80,32 +85,35 @@ export class HardcorePWA {
   }
 
   async forceUpdate() {
-    if (this.isUpdating) {
-      console.log('⚠️ Atualização já em andamento');
-      return;
-    }
+    console.log('🚀 PWA: Verificando novas versões...');
     
-    this.isUpdating = true;
-    console.log('🔄 FORÇANDO ATUALIZAÇÃO HARDCORE');
-    
+    if (!this.swRegistration) return;
+
     try {
-      // 1. Notificar Service Worker
-      if (this.swRegistration && this.swRegistration.active) {
-        this.swRegistration.active.postMessage({
-          type: 'FORCE_UPDATE_NOW',
-          timestamp: Date.now()
-        });
+      // 1. Forçar verificação no servidor
+      await this.swRegistration.update();
+
+      // 2. Se houver um worker esperando, forçar skipWaiting
+      if (this.swRegistration.waiting) {
+        console.log('📦 PWA: Nova versão detectada! Forçando ativação...');
+        this.swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
-      
-      // 2. Aguardar um pouco
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // 3. Forçar reload
-      window.location.reload();
-      
-    } catch (error) {
-      console.error('❌ Erro na atualização forçada:', error);
-      this.isUpdating = false;
+
+      // 3. Listener para quando o novo worker estiver pronto
+      this.swRegistration.addEventListener('updatefound', () => {
+        const newWorker = this.swRegistration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('✨ PWA: Nova versão instalada. Pronto para atualizar.');
+              newWorker.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        }
+      });
+
+    } catch (e) {
+      console.error('❌ PWA: Erro ao buscar atualização:', e);
     }
   }
 

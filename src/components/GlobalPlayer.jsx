@@ -2,7 +2,12 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward, Music, Maximize2, Zap } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
+import audioUnlocker from '../utils/audioUnlock';
 
+/**
+ * ZYRON Global Player Component
+ * Handles music playback and UI, with built-in iOS audio unlock protection.
+ */
 export default function GlobalPlayer({ constraintsRef }) {
   const { 
     currentTrack, 
@@ -20,10 +25,74 @@ export default function GlobalPlayer({ constraintsRef }) {
   const controls = useAnimation();
   const [lastTap, setLastTap] = useState(0);
 
+  // ZYRON iOS RESCUE: Secure Audio Context Unlock
+  useEffect(() => {
+    // 1. Initialize the internal context (stateless)
+    audioUnlocker.init();
+
+    // 2. Define the interaction handler
+    const handleInteraction = async () => {
+      console.log('🎵 Interação detectada: Desbloqueando motor de áudio...');
+      const success = await audioUnlocker.unlock();
+      
+      if (success) {
+        // Remove listeners immediately after success
+        window.removeEventListener('click', handleInteraction);
+        window.removeEventListener('touchstart', handleInteraction);
+      }
+    };
+
+    // 3. Attach listeners globally but managed by this component
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
+
   // Sync animation position on mount or changes
   useEffect(() => {
     controls.set(playerPosition);
   }, [playerPosition, controls]);
+
+  // MEDIA SESSION API: Industrial background support
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentTrack) {
+      // 1. Atualizar Metadados (iOS/Android Lockscreen)
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title || 'Treino ZYRON',
+        artist: currentTrack.artist || 'ZYRON Coach',
+        album: 'A Força da Sua Evolução',
+        artwork: [
+          { src: currentTrack.thumbnail || '/images/zyron-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/images/zyron-192.png', sizes: '192x192', type: 'image/png' }
+        ]
+      });
+
+      // 2. Handlers de Controle Remoto
+      const actions = [
+        ['play', togglePlay],
+        ['pause', togglePlay],
+        ['previoustrack', prevTrack],
+        ['nexttrack', nextTrack],
+        ['seekbackward', () => {}],
+        ['seekforward', () => {}]
+      ];
+
+      for (const [action, handler] of actions) {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+          console.warn(`MediaSession action "${action}" não suportada.`);
+        }
+      }
+
+      // 3. Sincronizar estado de reprodução
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [currentTrack, isPlaying, togglePlay, nextTrack, prevTrack]);
 
   const handleDragEnd = (event, info) => {
     // Current offset within constraints

@@ -58,11 +58,18 @@ export default function WorkoutCard({
       // Feature request: "Ao clicar em finalizar, dispare automaticamente o temporizador de descanso no topo e REGISTRE A CARGA"
       onUpdateLoad(ex.id, load || '0');
 
+      const setData = {
+        set_number: activeSet,
+        weight_kg: load || '0',
+        reps: ex.reps ? parseInt(ex.reps.split('-')[0]) : 0,
+        rpe: null // Could be added to UI in the future
+      };
+
       if (activeSet < parseInt(ex.sets)) {
         setActiveSet(prev => prev + 1);
-        onComplete(ex.id, false); // Partial complete/timer trigger
+        onComplete(ex.id, false, setData); // Partial complete/timer trigger + data
       } else {
-        onComplete(ex.id, true); // Final complete
+        onComplete(ex.id, true, setData); // Final complete + data
         setIsExpanded(false);
       }
     }

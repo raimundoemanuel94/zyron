@@ -1,35 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
-import { logger } from './utils/logger';
+import logger from './utils/logger';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MusicProvider } from './contexts/MusicContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { PWAUpdateBanner } from './components/PWAUpdateBanner';
-import { ForceUpdateBanner } from './components/ForceUpdateBanner';
-import { PWAInstallBanner } from './components/PWAInstallBanner';
-import { FichaDeTreinoScreen } from './components/FichaDeTreinoScreen';
-import { OnboardingScreen } from './components/OnboardingScreen';
-import { LoginScreen } from './components/LoginScreen';
-import { AdminScreen } from './components/AdminScreen';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { DebugLogs } from './components/DebugLogs';
-import { ErrorDiagnostics } from './components/ErrorDiagnostics';
-import { ErrorLogger } from './components/ErrorLogger';
-import { PWASplashScreen } from './components/PWASplashScreen';
-import { SystemIcon } from './components/SystemIcon';
-import { ReloadPrompt } from './components/pwa/ReloadPrompt';
-import { UpdateNotification } from './components/UpdateNotification';
-import { usePWAStore } from './store/usePWAStore';
-import { usePlayerStore } from './store/usePlayerStore';
-import { useWorkoutStore } from './store/useWorkoutStore';
-import { useCamera } from './hooks/useCamera';
-import { useAppUpdate } from './hooks/useAppUpdate';
-import './utils/haptics.js';
+import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
+import GlobalPlayer from './components/GlobalPlayer';
+import OnboardingScreen from './components/OnboardingScreen';
+import LoginScreen from './components/LoginScreen';
+import AdminScreen from './components/AdminScreen';
+import ErrorBoundary from './components/ErrorBoundary';
+import ErrorDiagnostics from './components/ErrorDiagnostics';
+import ErrorLogger from './components/ErrorLogger';
+import PWASplashScreen from './components/PWASplashScreen';
+import ForceUpdateBanner from './components/ForceUpdateBanner';
 import hardcorePWA from './utils/hardcorePWA.js';
+import audioUnlocker from './utils/audioUnlock.js';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -156,8 +146,9 @@ function App() {
 
         
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white overflow-hidden">
+          <SpeedInsights />
           {/* PWA Install Banner */}
-          <PWAInstallBanner />
+          <ForceUpdateBanner />
           
           <AnimatePresence mode="wait">
             {!isAuthenticated ? (
@@ -205,8 +196,7 @@ function App() {
       {/* Vercel Speed Insights - Performance Monitoring */}
       <SpeedInsights />
       
-      {/* Debug Logs - Apenas em desenvolvimento */}
-      {process.env.NODE_ENV === 'development' && <DebugLogs />}
+      {/* Debug Logs removed - component missing */}
     </MusicProvider>
   );
 }

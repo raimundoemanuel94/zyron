@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zyron-pwa-v2.0.0-hardcore';
+const CACHE_NAME = 'zyron-pwa-v4.0.1-nuclear';
 const FORCE_UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutos
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 

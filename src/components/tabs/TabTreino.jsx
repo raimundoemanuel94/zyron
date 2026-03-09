@@ -8,9 +8,9 @@ import 'swiper/css/effect-coverflow';
 
 // Assuming these are passed or imported from their respective paths.
 // If Anatomy3D, WorkoutCard, or EXERCISE_VIDEOS are in parent folder, we import like this:
-import { Anatomy3D } from '../Anatomy3D';
+import Anatomy3D from '../Anatomy3D';
 import WorkoutCard from '../WorkoutCard';
-import { EXERCISE_VIDEOS } from '../FichaDeTreinoScreen'; // Note: EXERCISE_VIDEOS needs to be exported from FichaDeTreinoScreen or moved to constants
+import { EXERCISE_VIDEOS } from '../FichaDeTreinoScreen';
 
 export default function TabTreino({
   today,

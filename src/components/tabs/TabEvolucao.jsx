@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { TrendingUp, Award, Target, ChevronRight, History, ArrowBigUp, Camera, Plus, Zap, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
+import EvolutionTimeline from '../EvolutionTimeline';
 
 // Componente para animar a contagem percentual
 const AnimatedCounter = ({ to }) => {
@@ -24,6 +25,7 @@ const AnimatedCounter = ({ to }) => {
 };
 
 export default function TabEvolucao({
+  user,
   prHistory,
   weight,
   setWeight,
@@ -215,30 +217,8 @@ export default function TabEvolucao({
         )}
       </div>
 
-      {/* Galeria de Fotos de Evolução */}
-      <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between px-2 pt-2">
-          <h3 className="text-lg font-black uppercase italic tracking-tight text-white flex items-center gap-2">
-            Galeria <span className="text-yellow-500"><Camera size={18} /></span>
-          </h3>
-          <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Com Marca ZYRON</span>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <div className="aspect-[3/4] bg-neutral-900 border border-white/5 rounded-3xl overflow-hidden relative group shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <div className="absolute inset-0 bg-neutral-800 flex flex-col items-center justify-center">
-              <img src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=1000&auto=format&fit=crop" className="opacity-60 object-cover absolute inset-0 w-full h-full mix-blend-luminosity transition-opacity group-hover:opacity-80" alt="Antes" />
-              <div className="absolute bottom-3 right-3 text-[10px] font-black italic text-yellow-400 uppercase tracking-widest opacity-90 backdrop-blur-md px-3 py-1.5 bg-black/60 rounded-xl border border-yellow-400/20">ZYRON</div>
-            </div>
-          </div>
-          <div className="aspect-[3/4] bg-neutral-900/50 backdrop-blur-md border border-dashed border-neutral-700 hover:border-yellow-500/50 transition-colors rounded-3xl flex flex-col items-center justify-center cursor-pointer group shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-            <div className="w-12 h-12 rounded-full bg-neutral-800/80 group-hover:bg-yellow-500/20 flex items-center justify-center mb-3 transition-colors border border-white/5 group-hover:border-yellow-500/30">
-              <Plus className="text-neutral-500 group-hover:text-yellow-500 transition-colors" size={20} />
-            </div>
-            <span className="text-[10px] font-bold text-neutral-500 group-hover:text-yellow-500 uppercase tracking-widest text-center px-4 leading-relaxed transition-colors">Nova Foto<br/>Progresso</span>
-          </div>
-        </div>
-      </div>
+      {/* Linha do Tempo de Evolução (Histórico Real do Supabase) */}
+      <EvolutionTimeline user={user} />
 
       {/* Peso Corporal Control - Integrado para consistência */}
       <div className="bg-neutral-900/50 backdrop-blur-md border border-white/5 p-6 rounded-3xl shadow-xl">

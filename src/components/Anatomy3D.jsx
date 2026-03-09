@@ -138,7 +138,7 @@ function HumanFigure({ activeGroup, heatMap = {} }) {
   )
 }
 
-export function Anatomy3D({ activeGroup, heatMap = {} }) {
+export default function Anatomy3D({ activeGroup, heatMap = {} }) {
   const activeColor = NEON_YELLOW;
   
   // Calculate if there's any active recovering muscle in heatmap
