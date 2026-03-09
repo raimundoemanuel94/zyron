@@ -25,8 +25,8 @@ export default async function handler(req) {
         'Origin': 'https://axiron.vercel.app',
         'Referer': 'https://axiron.vercel.app/'
       },
-      // Timeout de 10 segundos
-      signal: AbortSignal.timeout(10000)
+      // Timeout manual para Vercel Edge Runtime
+      signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined
     });
 
     if (!response.ok) {

@@ -81,7 +81,10 @@ export const MusicProvider = ({ children }) => {
   // Listener para detectar primeira interação
   useEffect(() => {
     const handleFirstInteraction = () => {
-      initializeAudioWithUserInteraction();
+      console.log('🎵 Primeira interação do usuário detectada');
+      logger.userAction('Primeira interação do usuário', {
+        timestamp: new Date().toISOString()
+      });
       // Remover listeners após primeira interação
       document.removeEventListener('click', handleFirstInteraction);
       document.removeEventListener('touchstart', handleFirstInteraction);
