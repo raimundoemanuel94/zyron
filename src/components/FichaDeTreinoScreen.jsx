@@ -129,6 +129,41 @@ const QUICK_ICON_MAP = {
 };
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
+  // Debug: Log do objeto user
+  console.log('🔍 DEBUG - User object:', user);
+  console.log('🔍 DEBUG - User name:', user?.name);
+  console.log('🔍 DEBUG - User role:', user?.role);
+  console.log('🔍 DEBUG - User email:', user?.email);
+  console.log('🔍 DEBUG - User id:', user?.id);
+  
+  const [userProfile, setUserProfile] = useState(null);
+  
+  // Buscar perfil completo do usuário
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('❌ Erro ao buscar perfil:', error);
+          return;
+        }
+        
+        console.log('✅ Peril encontrado:', data);
+        setUserProfile(data);
+      } catch (error) {
+        console.error('❌ Erro ao buscar perfil:', error);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [user?.id]);
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
   const [isTraining, setIsTraining] = useState(false);
@@ -572,7 +607,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             </div>
             <div>
               <h1 className="text-base font-black italic tracking-tighter uppercase leading-none text-slate-100">
-                {user?.name || 'ALUNO'}
+                {userProfile?.name || user?.name || user?.email?.split('@')[0] || 'ALUNO'}
               </h1>
               <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mt-0.5">ZYRON</p>
             </div>
@@ -587,7 +622,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               {nightMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {user?.role === 'ADMIN' && (
+            {(userProfile?.role === 'ADMIN' || user?.role === 'ADMIN') && (
               <button 
                 onClick={onOpenAdmin}
                 className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 group flex items-center gap-2"
