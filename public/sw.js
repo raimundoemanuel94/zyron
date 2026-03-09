@@ -1,4 +1,19 @@
-const CACHE_NAME = 'zyron-pwa-v1.3.0';
+const CACHE_NAME = 'zyron-pwa-v2.0.0-hardcore';
+const FORCE_UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
+
+// URLs críticas que sempre devem estar atualizadas
+const CRITICAL_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/main.js',
+  '/main.css',
+  '/api/audio-stream/[id]',
+  '/api/search'
+];
+
+// URLs para cache
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,17 +22,78 @@ const urlsToCache = [
   '/images/zyron-512.png'
 ];
 
+// Sistema de atualização automática hardcore
+let updateTimer = null;
+let isUpdating = false;
+
+const forceUpdate = async () => {
+  if (isUpdating) return;
+  isUpdating = true;
+  
+  console.log('🔄 FORÇANDO ATUALIZAÇÃO AUTOMÁTICA');
+  
+  try {
+    // 1. Notificar todos os clientes
+    const clients = await self.clients.matchAll();
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'FORCE_UPDATE',
+        timestamp: Date.now(),
+        version: CACHE_NAME
+      });
+    });
+    
+    // 2. Limpar cache antigo agressivamente
+    const cacheNames = await caches.keys();
+    await Promise.all(
+      cacheNames.map(cacheName => caches.delete(cacheName))
+    );
+    
+    // 3. Forçar reload em todos os clientes
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'FORCE_RELOAD',
+        timestamp: Date.now()
+      });
+    });
+    
+    console.log('✅ Atualização forçada concluída');
+    
+  } catch (error) {
+    console.error('❌ Erro na atualização forçada:', error);
+  } finally {
+    isUpdating = false;
+  }
+};
+
 // Instalar o service worker
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker instalado - v1.3.0');
+  console.log('🔧 Service Worker INSTALADO - v2.0.0-HARDCORE');
   
   // Forçar update imediatamente
   self.skipWaiting();
   
+  // Iniciar timer de atualização automática
+  updateTimer = setInterval(forceUpdate, FORCE_UPDATE_INTERVAL);
+  
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('📦 Cache aberto');
+        console.log('📦 Cache crítico aberto');
+        // Cache crítico primeiro
+        return Promise.all(
+          CRITICAL_URLS.map(url => 
+            fetch(url).then(response => {
+              if (response.ok) {
+                return cache.put(url, response);
+              }
+              return fetch(url);
+            })
+          )
+        );
+      })
+      .then(() => {
+        console.log('📦 Cache secundário aberto');
         return cache.addAll(urlsToCache);
       })
       .catch((error) => {
@@ -28,7 +104,7 @@ self.addEventListener('install', (event) => {
 
 // Ativar o service worker
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker ativado - v1.3.0');
+  console.log('🚀 Service Worker ATIVADO - v2.0.0-HARDCORE');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -40,138 +116,128 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      // Forçar controle imediato de todos os clientes
+      return self.clients.claim();
+    }).then(() => {
+      console.log('🎯 Controle forçado de todos os clientes');
     })
   );
   
-  // Forçar controle imediato de todos os clientes
-  return self.clients.claim();
+  // Notificar ativação hardcore
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'SW_ACTIVATED',
+        version: CACHE_NAME,
+        timestamp: Date.now()
+      });
+    });
+  });
 });
 
-// Enviar mensagem para todos os clientes quando houver update
-self.addEventListener('message', (event) => {
-  console.log('📨 Service Worker recebeu mensagem:', event.data);
-  
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-  
-  // Enviar update para todos os clientes
-  if (event.data && event.data.type === 'UPDATE_CLIENTS') {
-    event.waitUntil(
-      self.clients.matchAll().then((clients) => {
-        return Promise.all(
-          clients.map((client) => {
-            console.log('📨 Enviando update para cliente:', client.url);
-            return client.postMessage({
-              type: 'UPDATE_AVAILABLE',
-              version: CACHE_NAME
-            });
-          })
-        );
-      })
-    );
-  }
-});
-
-// Interceptar requisições
+// Fetch hardcore com cache inteligente
 self.addEventListener('fetch', (event) => {
-  // Não interceptar requisições de API
-  if (event.request.url.includes('/api/')) {
-    return;
+  const request = event.request;
+  const url = new URL(request.url);
+  
+  // Não interceptar APIs críticas - deixar passar direto
+  if (url.pathname.includes('/api/') || 
+      url.pathname.includes('/manifest.json') ||
+      url.pathname.includes('.js') ||
+      url.pathname.includes('.css')) {
+    return fetch(request);
   }
   
+  // Estratégia de cache agressivo
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          console.log('📦 Cache hit para:', event.request.url);
-          return response;
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Verificar se tem em cache
+      const cachedResponse = await cache.match(request);
+      
+      if (cachedResponse) {
+        // Cache hit - verificar se está atualizado
+        const cachedDate = cachedResponse.headers.get('date');
+        const now = new Date();
+        const cacheAge = now - new Date(cachedDate);
+        
+        // Se cache for muito novo (< 1 minuto), usar cache
+        if (cacheAge < CACHE_DURATION) {
+          console.log('🎯 Cache HIT (fresco):', request.url);
+          return cachedResponse;
         }
         
-        // Network request
-        return fetch(event.request)
-          .then((response) => {
-            // Verificar se resposta é válida
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // Clonar resposta
-            const responseToCache = response.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              });
-            
-            return response;
-          })
-          .catch((error) => {
-            console.error('❌ Erro na requisição:', error);
-            
-            // Tentar offline fallback
-            if (event.request.destination === 'document') {
-              return caches.match('/index.html');
-            }
-          });
-      })
+        // Cache velho - buscar nova versão em background
+        console.log('🔄 Cache HIT (velho) - atualizando:', request.url);
+        
+        try {
+          const freshResponse = await fetch(request);
+          if (freshResponse.ok) {
+            // Atualizar cache
+            await cache.put(request, freshResponse.clone());
+            return freshResponse;
+          }
+        } catch (error) {
+          console.warn('⚠️ Falha ao atualizar cache, usando versão antiga:', error);
+          return cachedResponse;
+        }
+      }
+      
+      // Cache miss - buscar e armazenar
+      console.log('🌐 Cache MISS - buscando:', request.url);
+      
+      try {
+        const networkResponse = await fetch(request);
+        
+        if (networkResponse.ok) {
+          // Armazenar em cache
+          const responseClone = networkResponse.clone();
+          await cache.put(request, responseClone);
+          console.log('✅ Recurso armazenado em cache:', request.url);
+        }
+        
+        return networkResponse;
+        
+      } catch (error) {
+        console.error('❌ Falha na rede:', error);
+        return new Response('Erro de rede', { status: 500 });
+      }
+    })
   );
 });
 
-// Skip waiting para atualização imediata
+// Sistema de mensagens hardcore
 self.addEventListener('message', (event) => {
+  console.log('📨 Mensagem recebida:', event.data);
+  
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('⏭️ Skip waiting recebido, ativando novo service worker');
+    console.log('⏩ SkipWaiting solicitado');
     self.skipWaiting();
   }
-});
-
-// Background sync para música
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'music-sync') {
-    console.log('🎵 Background sync para música');
-    event.waitUntil(
-      // Lógica de sincronização aqui
-      Promise.resolve()
-    );
+  
+  if (event.data && event.data.type === 'FORCE_UPDATE_NOW') {
+    console.log('🔄 Forçando atualização imediata');
+    forceUpdate();
+  }
+  
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    console.log('🗑️ Limpando cache solicitado');
+    caches.keys().then(cacheNames => {
+      return Promise.all(cacheNames.map(name => caches.delete(name)));
+    });
   }
 });
 
-// Push notifications
-self.addEventListener('push', (event) => {
-  console.log('📱 Push notification recebida');
-  
-  const options = {
-    body: event.data ? event.data.text() : 'Nova atualização do ZYRON',
-    icon: '/images/zyron-192.png',
-    badge: '/images/zyron-192.png',
-    vibrate: [200, 100, 200],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
-      {
-        action: 'explore',
-        title: 'Abrir ZYRON',
-        icon: '/images/zyron-192.png'
-      }
-    ]
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification('ZYRON', options)
-  );
-});
-
-// Notification click
-self.addEventListener('notificationclick', (event) => {
-  console.log('🔔 Notificação clicada');
-  
-  event.notification.close();
-  
-  event.waitUntil(
-    clients.openWindow('/')
-  );
-});
+// Forçar atualização a cada 30 segundos (hardcore)
+setInterval(() => {
+  console.log('💓 Verificação periódica de atualização');
+  self.clients.matchAll().then(clients => {
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'HEARTBEAT',
+        timestamp: Date.now(),
+        version: CACHE_NAME
+      });
+    });
+  });
+}, 30 * 1000);

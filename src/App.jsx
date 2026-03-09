@@ -1,16 +1,35 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
-import LoginScreen from './components/LoginScreen';
-import OnboardingScreen from './components/OnboardingScreen';
-import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
-import AdminScreen from './components/AdminScreen';
-import PWAInstallBanner from './components/PWAInstallBanner';
-import { MusicProvider } from './contexts/MusicContext';
-import GlobalPlayer from './components/GlobalPlayer';
-import DebugLogs from './components/DebugLogs';
+import { logger } from './utils/logger';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import logger from './utils/logger';
+import { MusicProvider } from './contexts/MusicContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { PWAUpdateBanner } from './components/PWAUpdateBanner';
+import { ForceUpdateBanner } from './components/ForceUpdateBanner';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { FichaDeTreinoScreen } from './components/FichaDeTreinoScreen';
+import { OnboardingScreen } from './components/OnboardingScreen';
+import { LoginScreen } from './components/LoginScreen';
+import { AdminScreen } from './components/AdminScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { DebugLogs } from './components/DebugLogs';
+import { ErrorDiagnostics } from './components/ErrorDiagnostics';
+import { ErrorLogger } from './components/ErrorLogger';
+import { PWASplashScreen } from './components/PWASplashScreen';
+import { SystemIcon } from './components/SystemIcon';
+import { ReloadPrompt } from './components/pwa/ReloadPrompt';
+import { UpdateNotification } from './components/UpdateNotification';
+import { usePWAStore } from './store/usePWAStore';
+import { usePlayerStore } from './store/usePlayerStore';
+import { useWorkoutStore } from './store/useWorkoutStore';
+import { useCamera } from './hooks/useCamera';
+import { useAppUpdate } from './hooks/useAppUpdate';
+import './utils/haptics.js';
+import hardcorePWA from './utils/hardcorePWA.js';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -34,6 +53,41 @@ function App() {
       environment: process.env.NODE_ENV,
       loggerVersion: '1.0.0'
     });
+    
+    // Inicializar sistema PWA HARDCORE
+    if (hardcorePWA) {
+      console.log('🔥 Sistema PWA HARDCORE já inicializado');
+      
+      // Request permissão de notificação
+      hardcorePWA.requestNotificationPermission();
+      
+      // Listeners para eventos do PWA
+      const handleSWActivated = (event) => {
+        console.log('🚀 Service Worker ativado via listener:', event.detail);
+        logger.systemEvent('Service Worker ativado', event.detail);
+      };
+      
+      const handleForceUpdate = (event) => {
+        console.log('🔄 Atualização forçada via listener:', event.detail);
+        logger.userAction('Atualização forçada iniciada', event.detail);
+      };
+      
+      const handleForceReload = (event) => {
+        console.log('🔄 Reload forçado via listener:', event.detail);
+        logger.userAction('Reload forçado iniciado', event.detail);
+      };
+      
+      window.addEventListener('sw-activated', handleSWActivated);
+      window.addEventListener('force-update', handleForceUpdate);
+      window.addEventListener('force-reload', handleForceReload);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('sw-activated', handleSWActivated);
+        window.removeEventListener('force-update', handleForceUpdate);
+        window.removeEventListener('force-reload', handleForceReload);
+      };
+    }
     
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -65,7 +119,7 @@ function App() {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [hardcorePWA]);
 
   const handleLogin = (sessionUser) => {
     setUser(sessionUser);
