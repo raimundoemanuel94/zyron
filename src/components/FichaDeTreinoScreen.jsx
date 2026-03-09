@@ -143,27 +143,67 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const fetchUserProfile = async () => {
       if (!user?.id) return;
       
+      console.log('🔍 Buscando perfil para user ID:', user.id);
+      console.log('🔍 User email:', user.email);
+      
       try {
-        const { data, error } = await supabase
+        // Tentar buscar por ID primeiro
+        let { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
           .single();
           
         if (error) {
-          console.error('❌ Erro ao buscar perfil:', error);
-          return;
+          console.warn('⚠️ Erro ao buscar perfil por ID:', error);
+          
+          // Fallback: buscar por email
+          console.log('🔄 Tentando buscar por email...');
+          const { data: emailData, error: emailError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', user.email)
+            .maybeSingle();
+            
+          if (emailError) {
+            console.error('❌ Erro ao buscar perfil por email:', emailError);
+            console.log('🔍 Criando perfil padrão...');
+            
+            // Criar perfil padrão se não existir
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: user.id,
+                email: user.email,
+                name: user.email?.split('@')[0] || 'Usuário',
+                role: user.email === 'raiiimundoemanuel2018@gmail.com' ? 'ADMIN' : 'USER',
+                created_at: new Date().toISOString()
+              })
+              .select('*')
+              .single();
+              
+            if (createError) {
+              console.error('❌ Erro ao criar perfil:', createError);
+              return;
+            }
+            
+            console.log('✅ Perfil criado:', newProfile);
+            setUserProfile(newProfile);
+          } else {
+            console.log('✅ Perfil encontrado por email:', emailData);
+            setUserProfile(emailData);
+          }
+        } else {
+          console.log('✅ Perfil encontrado por ID:', data);
+          setUserProfile(data);
         }
-        
-        console.log('✅ Peril encontrado:', data);
-        setUserProfile(data);
       } catch (error) {
-        console.error('❌ Erro ao buscar perfil:', error);
+        console.error('❌ Erro geral ao buscar perfil:', error);
       }
     };
     
     fetchUserProfile();
-  }, [user?.id]);
+  }, [user?.id, user?.email]);
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
   const [isTraining, setIsTraining] = useState(false);
