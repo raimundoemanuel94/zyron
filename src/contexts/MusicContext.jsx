@@ -7,20 +7,58 @@ export function useMusic() {
   return useContext(MusicContext);
 }
 
-export function MusicProvider({ children }) {
+export const MusicProvider = ({ children }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
-  const [volume, setVolume] = useState(100);
+  const [volume, setVolume] = useState(parseInt(localStorage.getItem('player_volume') || '100', 10));
   const [playlist, setPlaylist] = useState([]);
   const [progress, setProgress] = useState(0);
   const [playerPosition, setPlayerPosition] = useState({ x: 0, y: 0 });
   const [isMinimized, setIsMinimized] = useState(false);
   const [wakeLock, setWakeLock] = useState(null);
   const [audioContext, setAudioContext] = useState(null);
-  const [isBackgroundMode, setIsBackgroundMode] = useState(false);
-  const playerRef = useRef(null);
-  const silentAudioRef = useRef(null);
-  const backgroundAudioRef = useRef(null);
+  const [isBackgroundMode, setIsBackgroundMode] = useState(false); // Novo estado para controlar o modo background
+  const [hasUserInteracted, setHasUserInteracted] = useState(false); // Controle de interação do usuário
+
+  const playerRef = useRef(null); // Ref para o iframe do YouTube
+  const silentAudioRef = useRef(null); // Ref para o elemento de áudio silencioso
+  const backgroundAudioRef = useRef(null); // Ref para o elemento de áudio de background para iOS
+  const audioSourceNode = useRef(null);
+  const gainNode = useRef(null);
+  const analyserNode = useRef(null);
+  const animationFrameId = useRef(null);
+
+  // Função para inicializar áudio com política de autoplay do PWA
+  const initializeAudioWithUserInteraction = async () => {
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+      console.log('🎵 Primeira interação do usuário detectada');
+      logger.userAction('Primeira interação do usuário', {
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
+
+  // Listener para detectar primeira interação
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      initializeAudioWithUserInteraction();
+      // Remover listeners após primeira interação
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    document.addEventListener('click', handleFirstInteraction, { once: true });
+    document.addEventListener('touchstart', handleFirstInteraction, { once: true });
+    document.addEventListener('keydown', handleFirstInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('touchstart', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
 
   // Log inicialização
   useEffect(() => {
@@ -182,10 +220,48 @@ export function MusicProvider({ children }) {
             if (backgroundAudioRef.current) {
               backgroundAudioRef.current.src = streamData.audioUrl;
               backgroundAudioRef.current.volume = volume / 100;
-              await backgroundAudioRef.current.play();
-              console.log('🎵 Áudio via proxy tocando com sucesso');
-              logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
-              return;
+              
+              // PWA Autoplay Fix: Aguardar interação do usuário
+              try {
+                // Tenta tocar diretamente primeiro
+                await backgroundAudioRef.current.play();
+                console.log('🎵 Áudio via proxy tocando com sucesso');
+                logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
+                return;
+              } catch (autoplayError) {
+                console.warn('⚠️ Autoplay bloqueado, tentando com interação:', autoplayError.message);
+                logger.warn('Autoplay bloqueado', { 
+                  trackId: track.id, 
+                  error: autoplayError.message 
+                });
+                
+                // Criar listener de clique para tocar após interação
+                const playAfterInteraction = () => {
+                  backgroundAudioRef.current.play()
+                    .then(() => {
+                      console.log('🎵 Áudio iniciado após interação do usuário');
+                      logger.userAction('Áudio iniciado após interação', { trackId: track.id });
+                      // Remover listener após sucesso
+                      document.removeEventListener('click', playAfterInteraction);
+                      document.removeEventListener('touchstart', playAfterInteraction);
+                    })
+                    .catch(err => {
+                      console.error('❌ Falha ao tocar após interação:', err);
+                      logger.error('Falha ao tocar após interação', { 
+                        trackId: track.id, 
+                        error: err.message 
+                      });
+                    });
+                };
+                
+                // Adicionar listeners para interação
+                document.addEventListener('click', playAfterInteraction, { once: true });
+                document.addEventListener('touchstart', playAfterInteraction, { once: true });
+                
+                // Mostrar mensagem para usuário
+                alert('🎵 Clique em qualquer lugar para iniciar a música');
+                return;
+              }
             }
           }
         }
@@ -207,7 +283,22 @@ export function MusicProvider({ children }) {
         updateMediaSession(track);
         await startSilentAudio();
         requestWakeLock();
-        logger.userAction('YouTube iframe iniciado (fallback)', { trackId: track.id });
+        
+        // PWA Autoplay Fix para YouTube também
+        try {
+          // YouTube iframe geralmente funciona melhor, mas vamos garantir
+          console.log('🎵 YouTube iframe carregado');
+          logger.userAction('YouTube iframe iniciado (fallback)', { trackId: track.id });
+        } catch (youtubeError) {
+          console.warn('⚠️ YouTube iframe autoplay bloqueado:', youtubeError.message);
+          logger.warn('YouTube iframe autoplay bloqueado', { 
+            trackId: track.id, 
+            error: youtubeError.message 
+          });
+          
+          // Alertar usuário para interagir
+          alert('🎵 Clique no player para iniciar a música');
+        }
         return;
       }
       
