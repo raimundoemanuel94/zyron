@@ -28,15 +28,54 @@ export const MusicProvider = ({ children }) => {
   const analyserNode = useRef(null);
   const animationFrameId = useRef(null);
 
-  // Função para inicializar áudio com política de autoplay do PWA
-  const initializeAudioWithUserInteraction = async () => {
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-      console.log('🎵 Primeira interação do usuário detectada');
-      logger.userAction('Primeira interação do usuário', {
-        timestamp: new Date().toISOString()
-      });
+  // Função agressiva para forçar áudio no PWA
+  const forcePlayAudio = async (audioElement, trackId) => {
+    const strategies = [
+      // Estratégia 1: Play direto
+      () => audioElement.play(),
+      
+      // Estratégia 2: Com contexto de áudio
+      () => {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaElementSource(audioElement);
+        source.connect(audioContext.destination);
+        return audioElement.play();
+      },
+      
+      // Estratégia 3: Muted depois unmuted
+      () => {
+        audioElement.muted = true;
+        return audioElement.play().then(() => {
+          audioElement.muted = false;
+          return audioElement;
+        });
+      },
+      
+      // Estratégia 4: Baixo volume depois normal
+      () => {
+        const originalVolume = audioElement.volume;
+        audioElement.volume = 0.001;
+        return audioElement.play().then(() => {
+          audioElement.volume = originalVolume;
+          return audioElement;
+        });
+      }
+    ];
+
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        console.log(`🎵 Tentando estratégia ${i + 1} para tocar áudio`);
+        await strategies[i]();
+        console.log(`✅ Estratégia ${i + 1} funcionou!`);
+        logger.userAction(`Áudio iniciado com estratégia ${i + 1}`, { trackId });
+        return true;
+      } catch (error) {
+        console.warn(`❌ Estratégia ${i + 1} falhou:`, error.message);
+        continue;
+      }
     }
+    
+    return false;
   };
 
   // Listener para detectar primeira interação
@@ -217,52 +256,62 @@ export const MusicProvider = ({ children }) => {
               format: streamData.format
             });
             
-            if (backgroundAudioRef.current) {
-              backgroundAudioRef.current.src = streamData.audioUrl;
-              backgroundAudioRef.current.volume = volume / 100;
-              
-              // PWA Autoplay Fix: Aguardar interação do usuário
-              try {
-                // Tenta tocar diretamente primeiro
-                await backgroundAudioRef.current.play();
-                console.log('🎵 Áudio via proxy tocando com sucesso');
-                logger.userAction('Áudio iniciado via proxy', { trackId: track.id });
-                return;
-              } catch (autoplayError) {
-                console.warn('⚠️ Autoplay bloqueado, tentando com interação:', autoplayError.message);
-                logger.warn('Autoplay bloqueado', { 
-                  trackId: track.id, 
-                  error: autoplayError.message 
-                });
-                
-                // Criar listener de clique para tocar após interação
-                const playAfterInteraction = () => {
-                  backgroundAudioRef.current.play()
-                    .then(() => {
-                      console.log('🎵 Áudio iniciado após interação do usuário');
-                      logger.userAction('Áudio iniciado após interação', { trackId: track.id });
-                      // Remover listener após sucesso
-                      document.removeEventListener('click', playAfterInteraction);
-                      document.removeEventListener('touchstart', playAfterInteraction);
-                    })
-                    .catch(err => {
-                      console.error('❌ Falha ao tocar após interação:', err);
-                      logger.error('Falha ao tocar após interação', { 
-                        trackId: track.id, 
-                        error: err.message 
-                      });
-                    });
-                };
-                
-                // Adicionar listeners para interação
-                document.addEventListener('click', playAfterInteraction, { once: true });
-                document.addEventListener('touchstart', playAfterInteraction, { once: true });
-                
-                // Mostrar mensagem para usuário
-                alert('🎵 Clique em qualquer lugar para iniciar a música');
-                return;
+            // Criar elemento de áudio dinamicamente para PWA
+            const audioElement = new Audio();
+            audioElement.src = streamData.audioUrl;
+            audioElement.volume = volume / 100;
+            audioElement.crossOrigin = "anonymous";
+            
+            // Usar estratégia agressiva para PWA
+            const success = await forcePlayAudio(audioElement, track.id);
+            
+            if (success) {
+              // Salvar referência para controle
+              if (backgroundAudioRef.current) {
+                backgroundAudioRef.current = audioElement;
               }
+              return;
             }
+            
+            // Se todas as estratégias falharem, tentar com interação do usuário
+            console.warn('⚠️ Todas as estratégias falharam, exigindo interação do usuário');
+            logger.warn('Todas as estratégias de autoplay falharam', { 
+              trackId: track.id
+            });
+            
+            // Criar listener de clique para tocar após interação
+            const playAfterInteraction = () => {
+              forcePlayAudio(audioElement, track.id)
+                .then(success => {
+                  if (success) {
+                    console.log('🎵 Áudio iniciado após interação do usuário');
+                    logger.userAction('Áudio iniciado após interação', { trackId: track.id });
+                    // Salvar referência para controle
+                    if (backgroundAudioRef.current) {
+                      backgroundAudioRef.current = audioElement;
+                    }
+                  }
+                })
+                .catch(err => {
+                  console.error('❌ Falha ao tocar após interação:', err);
+                  logger.error('Falha ao tocar após interação', { 
+                    trackId: track.id, 
+                    error: err.message 
+                  });
+                });
+              
+              // Remover listener após sucesso
+              document.removeEventListener('click', playAfterInteraction);
+              document.removeEventListener('touchstart', playAfterInteraction);
+            };
+            
+            // Adicionar listeners para interação
+            document.addEventListener('click', playAfterInteraction, { once: true });
+            document.addEventListener('touchstart', playAfterInteraction, { once: true });
+            
+            // Mostrar mensagem para usuário
+            alert('🎵 Clique em qualquer lugar para iniciar a música');
+            return;
           }
         }
       } catch (proxyError) {
