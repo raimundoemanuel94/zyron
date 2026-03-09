@@ -1,4 +1,4 @@
-const CACHE_NAME = 'zyron-pwa-v1.2.0';
+const CACHE_NAME = 'zyron-pwa-v1.3.0';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -9,7 +9,7 @@ const urlsToCache = [
 
 // Instalar o service worker
 self.addEventListener('install', (event) => {
-  console.log('🔧 Service Worker instalado - v1.2.0');
+  console.log('🔧 Service Worker instalado - v1.3.0');
   
   // Forçar update imediatamente
   self.skipWaiting();
@@ -28,7 +28,7 @@ self.addEventListener('install', (event) => {
 
 // Ativar o service worker
 self.addEventListener('activate', (event) => {
-  console.log('🚀 Service Worker ativado - v1.2.0');
+  console.log('🚀 Service Worker ativado - v1.3.0');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
