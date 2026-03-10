@@ -117,9 +117,11 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6 text-white overflow-y-auto">
-      {/* Background Glow */}
-      <div className="absolute inset-0 bg-linear-to-b from-yellow-500/10 via-black to-black pointer-events-none" />
-      
+      {/* Glow de fundo */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-96 h-96 bg-yellow-400/8 rounded-full blur-[120px]" />
+      </div>
+
       <AnimatePresence>
         {showCelebration && (
           <motion.div
@@ -136,24 +138,42 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="w-full max-w-md space-y-8 z-10"
+        className="w-full max-w-md space-y-6 z-10"
       >
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
-            Treino <span className="text-yellow-400">Finalizado</span>
-          </h1>
-          <p className="text-neutral-400 font-bold uppercase text-xs tracking-widest">Você está mais perto do seu objetivo.</p>
+        {/* ── Logo ZYRON Gold + Slogan ── */}
+        <div className="flex flex-col items-center gap-2 pb-2">
+          <img
+            src="/images/zyron-logo.png"
+            alt="ZYRON"
+            className="w-44 h-auto object-contain"
+            style={{ filter: 'drop-shadow(0 0 20px rgba(253,200,0,0.45)) brightness(1.1) saturate(1.2)' }}
+          />
+          <p className="text-white/60 text-xs font-light tracking-[0.25em] uppercase">
+            A força da sua evolução.
+          </p>
+        </div>
+
+        {/* ── Status badges ── */}
+        <div className="flex gap-3 justify-center">
+          <div className="flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-1.5">
+            <span className="text-yellow-400 text-base">✓</span>
+            <span className="text-yellow-400 font-black text-[10px] uppercase tracking-widest">Treino Feito</span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-1.5">
+            <span className="text-yellow-400 text-base">✓</span>
+            <span className="text-yellow-400 font-black text-[10px] uppercase tracking-widest">Dados Blindados</span>
+          </div>
         </div>
 
         {/* Stats Summary Card */}
-        <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-6 grid grid-cols-2 gap-4">
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl p-5 grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Duração</span>
-            <div className="text-xl font-black italic">{Math.floor(workout.duration_seconds / 60)}m {workout.duration_seconds % 60}s</div>
+            <div className="text-xl font-black italic">{Math.floor(workout?.duration_seconds / 60)}m {workout?.duration_seconds % 60}s</div>
           </div>
           <div className="space-y-1 text-right">
             <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Séries Totais</span>
-            <div className="text-xl font-black italic text-yellow-400">{sets.length}</div>
+            <div className="text-xl font-black italic text-yellow-400">{sets?.length ?? 0}</div>
           </div>
         </div>
 
