@@ -34,29 +34,30 @@ self.addEventListener('activate', (event) => {
   console.log('[SW] Ativado', CACHE_NAME);
 
   event.waitUntil(
-    // Limpar caches de versões anteriores
-    caches.keys().then((names) =>
-      Promise.all(
-        names
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => {
-            console.log('[SW] Removendo cache antigo:', name);
-            return caches.delete(name);
-          })
-      )
-    ).then(() => self.clients.claim())
-     .then(() => {
-       // Notifica TODOS os clientes que há uma nova versão ativa
-       self.clients.matchAll().then((clients) => {
-         clients.forEach((client) => {
-           client.postMessage({
-             type: 'UPDATE_AVAILABLE',
-             version: CACHE_NAME,
-             timestamp: Date.now()
-           });
-         });
-       });
-     })
+    caches.keys().then((names) => {
+      const oldCaches = names.filter((name) => name !== CACHE_NAME);
+      const isRealUpdate = oldCaches.length > 0; // true = substituiu versão anterior
+
+      return Promise.all(oldCaches.map((name) => {
+        console.log('[SW] Removendo cache antigo:', name);
+        return caches.delete(name);
+      }))
+      .then(() => self.clients.claim())
+      .then(() => {
+        // Só notifica UPDATE_AVAILABLE se for uma atualização real
+        if (isRealUpdate) {
+          return self.clients.matchAll().then((clients) => {
+            clients.forEach((client) => {
+              client.postMessage({
+                type: 'UPDATE_AVAILABLE',
+                version: CACHE_NAME,
+                timestamp: Date.now()
+              });
+            });
+          });
+        }
+      });
+    })
   );
 });
 

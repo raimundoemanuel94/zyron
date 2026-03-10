@@ -2,26 +2,36 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import hardcorePWA from '../utils/hardcorePWA';
 
-/**
- * Banner moderno de atualização do PWA.
- * 
- * Usa glassmorphism + cores do app (amarelo ZYRON + fundo escuro).
- * Aparece suavemente quando o Service Worker detecta nova versão.
- * O usuário decide quando atualizar — SEM reloads automáticos.
- */
+const STORAGE_KEY = 'zyron-dismissed-version';
+
 export default function ForceUpdateBanner() {
   const [isVisible, setIsVisible] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState('');
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(null);
+  const shownRef = useRef(false); // garante que só mostra 1 vez por sessão
+
+  const showBanner = (version = '') => {
+    // Não mostrar se já foi dispensado para esta versão
+    const dismissed = localStorage.getItem(STORAGE_KEY);
+    if (dismissed === version) return;
+    // Não mostrar mais de uma vez por sessão
+    if (shownRef.current) return;
+    shownRef.current = true;
+    setUpdateVersion(version);
+    setIsVisible(true);
+  };
+
+  const handleDismiss = () => {
+    localStorage.setItem(STORAGE_KEY, updateVersion);
+    setIsVisible(false);
+  };
 
   useEffect(() => {
-    // Escutar update do PWA manager
     if (hardcorePWA) {
-      hardcorePWA.onUpdate(() => setIsVisible(true));
+      hardcorePWA.onUpdate(() => showBanner());
     }
-
-    // Fallback: escutar evento DOM
-    const handler = () => setIsVisible(true);
+    const handler = (e) => showBanner(e?.detail?.version || '');
     window.addEventListener('zyron-update-available', handler);
     return () => window.removeEventListener('zyron-update-available', handler);
   }, []);
