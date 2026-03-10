@@ -38,28 +38,11 @@ function App() {
       timestamp: new Date().toISOString()
     });
 
-    // Inicializar sistema PWA HARDCORE (sem retornar cedo — auth deve sempre rodar)
+    // PWA Manager (já auto-inicializou via import)
     if (hardcorePWA) {
-      console.log('🔥 Sistema PWA HARDCORE já inicializado');
-      hardcorePWA.requestNotificationPermission();
-
-      const handleSWActivated = (event) => {
-        console.log('🚀 Service Worker ativado via listener:', event.detail);
-        logger.systemEvent('Service Worker ativado', event.detail);
-      };
-      const handleForceUpdate = (event) => {
-        console.log('🔄 Atualização forçada via listener:', event.detail);
-        logger.userAction('Atualização forçada iniciada', event.detail);
-      };
-      const handleForceReload = (event) => {
-        console.log('🔄 Reload forçado via listener:', event.detail);
-        logger.userAction('Reload forçado iniciado', event.detail);
-      };
-
-      window.addEventListener('sw-activated', handleSWActivated);
-      window.addEventListener('force-update', handleForceUpdate);
-      window.addEventListener('force-reload', handleForceReload);
+      console.log('[App] PWA Manager ativo');
     }
+
 
     // ── Auth sempre verificado, independente do PWA ──────────────────────
     supabase.auth.getSession().then(({ data: { session } }) => {
