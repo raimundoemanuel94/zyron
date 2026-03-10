@@ -18,15 +18,35 @@ import ErrorDiagnostics from './components/ErrorDiagnostics';
 import ErrorLogger from './components/ErrorLogger';
 import PWASplashScreen from './components/PWASplashScreen';
 import ForceUpdateBanner from './components/ForceUpdateBanner';
+import RBACGuard from './components/RBACGuard';
+import PersonalDashboard from './components/admin/PersonalDashboard';
 import hardcorePWA from './utils/hardcorePWA.js';
 import audioUnlocker from './utils/audioUnlock.js';
+
+const DebugOverlay = ({ user, userRole, viewManager }) => (
+  <div className="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-yellow-500/20 p-2 z-50 text-[8px] font-mono flex justify-around items-center backdrop-blur-md">
+    <div className="flex gap-4">
+      <span className="text-neutral-500 uppercase">UID:</span>
+      <span className="text-white">{user?.id?.slice(0, 8)}...</span>
+    </div>
+    <div className="flex gap-4">
+      <span className="text-neutral-500 uppercase">ROLE:</span>
+      <span className="text-yellow-400 font-bold">{userRole || 'FETCHING...'}</span>
+    </div>
+    <div className="flex gap-4">
+      <span className="text-neutral-500 uppercase">VIEW:</span>
+      <span className="text-white uppercase">{viewManager}</span>
+    </div>
+  </div>
+);
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authLoading, setAuthLoading] = useState(true); // ← NOVO: evita flash de login
   const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null); // 'USER' | 'PERSONAL' | 'ADMIN'
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [viewManager, setViewManager] = useState('app'); // 'app' | 'admin'
+  const [viewManager, setViewManager] = useState('app'); // 'app' | 'admin' | 'personal'
   const globalConstraintsRef = useRef(null);
 
   // Initial Auth Sync
@@ -145,20 +165,40 @@ function App() {
                 </motion.div>
               )
             ) : (
-              <motion.div 
-                key="main-content"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="w-full"
-              >
-                {viewManager === 'admin' ? (
-                  <AdminScreen user={user} onLogout={handleLogout} onBack={() => setViewManager('app')} />
-                ) : (
-                  <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
-                )}
-
-              </motion.div>
+              <RBACGuard user={user} onRoleVerified={(role) => {
+                console.log('[App] Role verified:', role);
+                setUserRole(role);
+              }}>
+                <motion.div 
+                  key="main-content"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="w-full"
+                >
+                  {/* Prioridade: ADMIN e visão Admin selecionada */}
+                  {userRole === 'ADMIN' && viewManager === 'admin' ? (
+                    <AdminScreen user={user} onLogout={handleLogout} onBack={() => setViewManager('app')} />
+                  ) : 
+                  /* Se for PERSONAL (independente do viewManager na inicialização) ou se forçado pelo viewManager */
+                  userRole === 'PERSONAL' || viewManager === 'personal' ? (
+                    <PersonalDashboard user={user} onLogout={handleLogout} onBack={() => {
+                      // Se for ADMIN, pode voltar pro app, se for só PERSONAL, o logout é o caminho
+                      if (userRole === 'ADMIN') setViewManager('app');
+                    }} />
+                  ) : (
+                    /* Aluno padrão ou ADMIN no modo app */
+                    <FichaDeTreinoScreen 
+                      user={user} 
+                      onLogout={handleLogout} 
+                      onOpenAdmin={() => {
+                        if (userRole === 'ADMIN') setViewManager('admin');
+                        else if (userRole === 'PERSONAL') setViewManager('personal');
+                      }} 
+                    />
+                  )}
+                </motion.div>
+              </RBACGuard>
             )}
           </AnimatePresence>
           )} {/* fecha o authLoading ternário */}
@@ -170,6 +210,7 @@ function App() {
       <SpeedInsights />
       
       {/* Debug Logs removed - component missing */}
+      {isAuthenticated && <DebugOverlay user={user} userRole={userRole} viewManager={viewManager} />}
     </MusicProvider>
   );
 }

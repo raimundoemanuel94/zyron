@@ -16,19 +16,38 @@ export default function AdminPersonais({ users = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showTrainerDetail, setShowTrainerDetail] = useState(null);
 
-  // Load from localStorage
+  // Load personais from profiles table
   useEffect(() => {
+    fetchTrainers();
+  }, []);
+
+  const fetchTrainers = async () => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setTrainers(JSON.parse(saved));
+      // 1. Fetch profiles with role 'PERSONAL'
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'PERSONAL');
+
+      if (profileError) throw profileError;
+
+      // 2. Fetch all student links for these trainers
+      const { data: links, error: linksError } = await supabase
+        .from('trainer_students')
+        .select('*');
+
+      if (linksError) throw linksError;
+
+      // 3. Combine data
+      const consolidated = profileData.map(p => ({
+        ...p,
+        students: links.filter(l => l.trainer_id === p.id).map(l => l.student_id)
+      }));
+
+      setTrainers(consolidated);
     } catch (e) {
       console.error('Erro ao carregar personais:', e);
     }
-  }, []);
-
-  const saveTrainers = (newData) => {
-    setTrainers(newData);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
   };
 
   // Add trainer
@@ -98,32 +117,53 @@ export default function AdminPersonais({ users = [] }) {
   };
 
   // Remove trainer
-  const removeTrainer = (trainerId) => {
-    if (!confirm('Remover este personal?')) return;
-    saveTrainers(trainers.filter(t => t.id !== trainerId));
+  const removeTrainer = async (trainerId) => {
+    if (!confirm('Remover este personal? A conta dele será mantida, mas perderá o acesso de personal.')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: 'USER' })
+        .eq('id', trainerId);
+
+      if (error) throw error;
+      fetchTrainers();
+    } catch (err) {
+      alert('Erro ao remover: ' + err.message);
+    }
   };
 
   // Assign student to trainer
-  const assignStudent = (trainerId, studentId) => {
-    const updated = trainers.map(t => {
-      if (t.id === trainerId) {
-        if (t.students.includes(studentId)) return t;
-        return { ...t, students: [...t.students, studentId] };
+  const assignStudent = async (trainerId, studentId) => {
+    try {
+      const { error } = await supabase
+        .from('trainer_students')
+        .insert({ trainer_id: trainerId, student_id: studentId });
+
+      if (error) {
+        if (error.code === '23505') return; // Já vinculado
+        throw error;
       }
-      return t;
-    });
-    saveTrainers(updated);
+      fetchTrainers();
+    } catch (err) {
+      alert('Erro ao vincular: ' + err.message);
+    }
   };
 
   // Remove student from trainer
-  const removeStudent = (trainerId, studentId) => {
-    const updated = trainers.map(t => {
-      if (t.id === trainerId) {
-        return { ...t, students: t.students.filter(s => s !== studentId) };
-      }
-      return t;
-    });
-    saveTrainers(updated);
+  const removeStudent = async (trainerId, studentId) => {
+    try {
+      const { error } = await supabase
+        .from('trainer_students')
+        .delete()
+        .eq('trainer_id', trainerId)
+        .eq('student_id', studentId);
+
+      if (error) throw error;
+      fetchTrainers();
+    } catch (err) {
+      alert('Erro ao desvincular: ' + err.message);
+    }
   };
 
   // Helper: find user by id

@@ -53,20 +53,26 @@ export default function PersonalDashboard({ user, onLogout, onBack }) {
   const fetchMyStudents = async () => {
     try {
       setLoading(true);
-      // 1. Get linked student IDs from localStorage (Temporary until migrated to DB relation table)
-      const savedPersonais = JSON.parse(localStorage.getItem('zyron-personais') || '[]');
-      const myTrainerData = savedPersonais.find(p => p.id === user.id);
+      // 1. Get linked student IDs from trainer_students table
+      const { data: links, error: linksError } = await supabase
+        .from('trainer_students')
+        .select('student_id')
+        .eq('trainer_id', user.id);
+
+      if (linksError) throw linksError;
       
-      if (!myTrainerData || !myTrainerData.students.length) {
+      if (!links || links.length === 0) {
         setStudents([]);
         return;
       }
+
+      const studentIds = links.map(l => l.student_id);
 
       // 2. Fetch profiles for these IDs
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .in('id', myTrainerData.students);
+        .in('id', studentIds);
 
       if (error) throw error;
       setStudents(data || []);
@@ -126,15 +132,15 @@ export default function PersonalDashboard({ user, onLogout, onBack }) {
 
       if (profileError) throw profileError;
 
-      // 3. Link to this Personal (localStorage for now as per project pattern)
-      const savedPersonais = JSON.parse(localStorage.getItem('zyron-personais') || '[]');
-      const updatedPersonais = savedPersonais.map(p => {
-        if (p.id === user.id) {
-          return { ...p, students: [...(p.students || []), studentId] };
-        }
-        return p;
-      });
-      localStorage.setItem('zyron-personais', JSON.stringify(updatedPersonais));
+      // 3. Link to this Personal in Database
+      const { error: linkError } = await supabase
+        .from('trainer_students')
+        .insert({
+          trainer_id: user.id,
+          student_id: studentId
+        });
+
+      if (linkError) throw linkError;
 
       alert('Atleta cadastrado e forjado com sucesso!');
       setShowAddStudent(false);
@@ -153,20 +159,22 @@ export default function PersonalDashboard({ user, onLogout, onBack }) {
           if (existingProfile) {
             const confirmLink = window.confirm(`O aluno "${existingProfile.name}" já tem conta. Deseja vinculá-lo à sua squad?`);
             if (confirmLink) {
-              const savedPersonais = JSON.parse(localStorage.getItem('zyron-personais') || '[]');
-              const updatedPersonais = savedPersonais.map(p => {
-                if (p.id === user.id) {
-                  const currentStudents = p.students || [];
-                  if (currentStudents.includes(existingProfile.id)) {
-                    alert('Este aluno já está na sua squad!');
-                    return p;
-                  }
-                  return { ...p, students: [...currentStudents, existingProfile.id] };
+              const { error: linkError } = await supabase
+                .from('trainer_students')
+                .insert({
+                  trainer_id: user.id,
+                  student_id: existingProfile.id
+                });
+
+              if (linkError) {
+                if (linkError.code === '23505') {
+                   alert('Este aluno já está na sua squad!');
+                } else {
+                   throw linkError;
                 }
-                return p;
-              });
-              localStorage.setItem('zyron-personais', JSON.stringify(updatedPersonais));
-              alert('Aluno vinculado com sucesso!');
+              } else {
+                alert('Aluno vinculado com sucesso!');
+              }
               setShowAddStudent(false);
               fetchMyStudents();
               return;
@@ -537,7 +545,7 @@ export default function PersonalDashboard({ user, onLogout, onBack }) {
 
       {/* Modal: Forjar Novo Atleta */}
       {showAddStudent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
