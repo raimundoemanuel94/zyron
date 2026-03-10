@@ -68,26 +68,26 @@ export async function generateShareableImage(photoBase64, stats) {
       ctx.fillStyle = '#FDE047';
       ctx.fillText('ZYRON', W / 2, H - 110);
 
-      // ── [2]   Y = H - 205 →  Linha divisória ─────────────────────────────
-      ctx.strokeStyle = 'rgba(253,224,71,0.35)';
-      ctx.lineWidth   = 2;
-      ctx.beginPath();
-      ctx.moveTo(80, H - 205);
-      ctx.lineTo(W - 80, H - 205);
-      ctx.stroke();
-
-      // ── [3]   Y = H - 280 →  Stats: tempo · séries ───────────────────────
-      const durText  = stats.duration || '--';
-      const setsText = `${stats.sets || '--'}`;
+      // ── [2]  Frase motivacional clean (substitui stats) ───────────────────
+      //  Y = H - 220 → "MAIS UM" (pequeno, branco, letra espaçada)
       ctx.textAlign = 'center';
-      ctx.font      = 'bold 68px sans-serif';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(`${durText}   ·   ${setsText}`, W / 2, H - 280);
+      ctx.font      = '300 52px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.letterSpacing = '12px'; // não funciona em canvas — separado a seguir
+      ctx.fillText('M A I S   U M', W / 2, H - 340);
 
-      // ── [4]   Y = H - 360 → labels abaixo dos números ────────────────────
-      ctx.font      = '500 30px sans-serif';
-      ctx.fillStyle = 'rgba(253,224,71,0.85)';
-      ctx.fillText('TEMPO DE TREINO                SÉRIES', W / 2, H - 350);
+      //  Y = H - 270 → "TREINO FEITO" (enorme, amarelo, bold italic)
+      ctx.font      = 'bold italic 118px sans-serif';
+      ctx.fillStyle = '#FDE047';
+      ctx.fillText('TREINO FEITO', W / 2, H - 220);
+
+      // Linha divisória sutil abaixo da frase
+      ctx.strokeStyle = 'rgba(253,224,71,0.25)';
+      ctx.lineWidth   = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(120, H - 175);
+      ctx.lineTo(W - 120, H - 175);
+      ctx.stroke();
 
       // ── [5]   Y = H - 430 →  "GYM · ZYRON" badge ─────────────────────────
       // Fundo pill amarelo
