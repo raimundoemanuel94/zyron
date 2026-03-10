@@ -23,6 +23,7 @@ import audioUnlocker from './utils/audioUnlock.js';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true); // ← NOVO: evita flash de login
   const [user, setUser] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [viewManager, setViewManager] = useState('app'); // 'app' | 'admin'
@@ -36,49 +37,31 @@ function App() {
       url: window.location.href,
       timestamp: new Date().toISOString()
     });
-    
-    // Log de teste forçado
-    logger.info('LOGGER TESTE - App carregado com sucesso', {
-      test: true,
-      environment: process.env.NODE_ENV,
-      loggerVersion: '1.0.0'
-    });
-    
-    // Inicializar sistema PWA HARDCORE
+
+    // Inicializar sistema PWA HARDCORE (sem retornar cedo — auth deve sempre rodar)
     if (hardcorePWA) {
       console.log('🔥 Sistema PWA HARDCORE já inicializado');
-      
-      // Request permissão de notificação
       hardcorePWA.requestNotificationPermission();
-      
-      // Listeners para eventos do PWA
+
       const handleSWActivated = (event) => {
         console.log('🚀 Service Worker ativado via listener:', event.detail);
         logger.systemEvent('Service Worker ativado', event.detail);
       };
-      
       const handleForceUpdate = (event) => {
         console.log('🔄 Atualização forçada via listener:', event.detail);
         logger.userAction('Atualização forçada iniciada', event.detail);
       };
-      
       const handleForceReload = (event) => {
         console.log('🔄 Reload forçado via listener:', event.detail);
         logger.userAction('Reload forçado iniciado', event.detail);
       };
-      
+
       window.addEventListener('sw-activated', handleSWActivated);
       window.addEventListener('force-update', handleForceUpdate);
       window.addEventListener('force-reload', handleForceReload);
-      
-      // Cleanup
-      return () => {
-        window.removeEventListener('sw-activated', handleSWActivated);
-        window.removeEventListener('force-update', handleForceUpdate);
-        window.removeEventListener('force-reload', handleForceReload);
-      };
     }
-    
+
+    // ── Auth sempre verificado, independente do PWA ──────────────────────
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         logger.userAction('Login automático via sessão', {
@@ -88,6 +71,7 @@ function App() {
         setIsAuthenticated(true);
         setUser(session.user);
       }
+      setAuthLoading(false); // ← Libera a tela só após confirmar o estado de auth
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -100,16 +84,16 @@ function App() {
         setIsAuthenticated(true);
         setUser(session.user);
       } else {
-        logger.userAction('Usuário deslogado', {
-          event: _event
-        });
+        logger.userAction('Usuário deslogado', { event: _event });
         setIsAuthenticated(false);
         setUser(null);
       }
+      setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [hardcorePWA]);
+  }, []); // ← Array vazio: hardcorePWA é import estático, nunca muda
+
 
   const handleLogin = (sessionUser) => {
     setUser(sessionUser);
@@ -149,7 +133,11 @@ function App() {
           <SpeedInsights />
           {/* PWA Install Banner */}
           <ForceUpdateBanner />
-          
+
+          {/* ── Aguarda Supabase confirmar auth antes de renderizar qualquer tela ── */}
+          {authLoading ? (
+            <div className="fixed inset-0 bg-black z-50" />
+          ) : (
           <AnimatePresence mode="wait">
             {!isAuthenticated ? (
               showOnboarding ? (
@@ -189,6 +177,7 @@ function App() {
               </motion.div>
             )}
           </AnimatePresence>
+          )} {/* fecha o authLoading ternário */}
 
         </div>
       </div>
