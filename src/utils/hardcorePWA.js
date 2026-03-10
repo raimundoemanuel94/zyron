@@ -1,15 +1,23 @@
 /**
- * ZYRON PWA Manager v2.0
- * 
- * Gerencia o ciclo de vida do Service Worker de forma LIMPA.
- * SEM heartbeats. SEM loops. SEM reloads automáticos.
- * Detecta updates e notifica a UI para que o usuário decida.
+ * ZYRON PWA Manager v3.0
+ *
+ * Ciclo correto de update:
+ *   1. SW detecta nova versão → chama _notifyUpdate()
+ *   2. UI mostra banner → usuário clica "Atualizar"
+ *   3. applyUpdate() → salva versão no localStorage → skipWaiting
+ *   4. Aguarda evento 'controllerchange' → ENTÃO recarrega (1x)
+ *
+ * Proteção contra loop:
+ *   - localStorage guarda a versão "em update" antes do reload
+ *   - ForceUpdateBanner checa essa entrada e não mostra o banner
+ *     se a versão já foi aplicada
  */
 export class ZyronPWA {
   constructor() {
     this.swRegistration = null;
-    this.hasUpdate = false;
-    this._onUpdateCallbacks = [];
+    this.hasUpdate      = false;
+    this._onUpdateCbs   = [];
+    this._isApplying    = false; // previne duplo clique
 
     this.init();
   }
@@ -18,38 +26,48 @@ export class ZyronPWA {
     if (!('serviceWorker' in navigator)) return;
 
     try {
-      // Registrar (ou obter registro existente)
       this.swRegistration =
         (await navigator.serviceWorker.getRegistration()) ||
         (await navigator.serviceWorker.register('/sw.js'));
 
       console.log('[PWA] Registro obtido');
 
-      // Escutar quando um novo SW é encontrado
+      // ── Detecta update: novo SW instalado enquanto há controlador ativo ──
       this.swRegistration.addEventListener('updatefound', () => {
         const newWorker = this.swRegistration.installing;
         if (!newWorker) return;
 
         newWorker.addEventListener('statechange', () => {
-          // Novo SW instalado e há um controlador existente → é um UPDATE real
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            console.log('[PWA] Nova versão disponível!');
+          if (
+            newWorker.state === 'installed' &&
+            navigator.serviceWorker.controller
+          ) {
+            console.log('[PWA] Nova versão disponível (updatefound)');
             this.hasUpdate = true;
-            this._notifyUpdate();
+            this._notifyUpdate('updatefound');
           }
         });
       });
 
-      // Escutar mensagens do SW (ex: UPDATE_AVAILABLE na ativação)
+      // ── Detecta update: mensagem direta do SW (ativação com caches antigos) ──
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data?.type === 'UPDATE_AVAILABLE') {
-          console.log('[PWA] SW enviou UPDATE_AVAILABLE');
+          const version = event.data.version || '';
+
+          // Se já aplicamos este update (localStorage), ignora
+          const applied = localStorage.getItem('zyron-last-applied-version');
+          if (applied === version) {
+            console.log('[PWA] UPDATE_AVAILABLE ignorado — versão já aplicada:', version);
+            return;
+          }
+
+          console.log('[PWA] UPDATE_AVAILABLE recebido do SW:', version);
           this.hasUpdate = true;
-          this._notifyUpdate();
+          this._notifyUpdate(version);
         }
       });
 
-      // Verificar atualizações a cada 1 hora (leve, sem loop agressivo)
+      // ── Verifica atualizações a cada 1 hora ──
       setInterval(() => {
         this.swRegistration?.update().catch(() => {});
       }, 60 * 60 * 1000);
@@ -59,30 +77,49 @@ export class ZyronPWA {
     }
   }
 
-  /** Registra um callback para quando houver update disponível */
+  /** Registra callback para quando houver update disponível */
   onUpdate(cb) {
-    this._onUpdateCallbacks.push(cb);
-    // Se já tiver update pendente, notifica imediatamente
-    if (this.hasUpdate) cb();
+    this._onUpdateCbs.push(cb);
+    if (this.hasUpdate) cb(); // já tem update pendente
   }
 
-  /** Aplica o update (skipWaiting + reload UMA VEZ) */
+  /**
+   * Aplica update corretamente:
+   * 1. Salva versão aplicada no localStorage
+   * 2. Manda skipWaiting para o SW em espera
+   * 3. Aguarda controllerchange → ENTÃO recarrega (evita loop)
+   */
   applyUpdate() {
+    if (this._isApplying) return;
+    this._isApplying = true;
+
+    console.log('[PWA] Aplicando update...');
+
+    // Guarda a versão atual do cache para não re-exibir o banner
     if (this.swRegistration?.waiting) {
+      // Escuta controllerchange: dispara quando o SW.waiting assumiu controle
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) return;
+        reloaded = true;
+        console.log('[PWA] controllerchange → recarregando');
+        window.location.reload();
+      });
+
       this.swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+    } else {
+      // Nenhum SW em espera — reload simples
+      console.log('[PWA] Nenhum SW em espera, reload simples');
+      window.location.reload();
     }
-    // Reload controlado — só acontece quando o USUÁRIO clica
-    window.location.reload();
   }
 
-  /** Limpar cache manualmente */
+  /** Limpa o cache via SW */
   clearCache() {
-    if (this.swRegistration?.active) {
-      this.swRegistration.active.postMessage({ type: 'CLEAR_CACHE' });
-    }
+    this.swRegistration?.active?.postMessage({ type: 'CLEAR_CACHE' });
   }
 
-  /** Pedir permissão de notificação (opcional) */
   async requestNotificationPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
       return (await Notification.requestPermission()) === 'granted';
@@ -91,14 +128,15 @@ export class ZyronPWA {
   }
 
   /** @private */
-  _notifyUpdate() {
-    this._onUpdateCallbacks.forEach((cb) => cb());
-    // Dispara evento custom para quem preferir escutar via DOM
-    window.dispatchEvent(new CustomEvent('zyron-update-available'));
+  _notifyUpdate(version = '') {
+    this._onUpdateCbs.forEach((cb) => cb(version));
+    window.dispatchEvent(
+      new CustomEvent('zyron-update-available', { detail: { version } })
+    );
   }
 }
 
-// ── Instância global singleton ──────────────────────────────────────────────
+// ── Singleton global ────────────────────────────────────────────────────────
 let hardcorePWA = null;
 
 if (typeof window !== 'undefined') {

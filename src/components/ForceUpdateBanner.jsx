@@ -29,7 +29,8 @@ export default function ForceUpdateBanner() {
 
   useEffect(() => {
     if (hardcorePWA) {
-      hardcorePWA.onUpdate(() => showBanner());
+      // Recebe a versão do update para poder guardá-la no localStorage
+      hardcorePWA.onUpdate((version) => showBanner(version || ''));
     }
     const handler = (e) => showBanner(e?.detail?.version || '');
     window.addEventListener('zyron-update-available', handler);
@@ -38,13 +39,16 @@ export default function ForceUpdateBanner() {
 
   // Animação de progresso fake ao clicar "Atualizar"
   const handleUpdate = () => {
+    // Salva a versão ANTES do reload — evita o banner reaparecer após atualização
+    localStorage.setItem(STORAGE_KEY, updateVersion);
+    localStorage.setItem('zyron-last-applied-version', updateVersion);
+
     let p = 0;
     progressRef.current = setInterval(() => {
       p += Math.random() * 25 + 10;
       if (p >= 100) {
         p = 100;
         clearInterval(progressRef.current);
-        // Aplica update via PWA manager
         if (hardcorePWA) {
           hardcorePWA.applyUpdate();
         } else {
