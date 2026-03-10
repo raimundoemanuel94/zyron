@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, Edit2, RotateCcw, Trash2, X, AlertTriangle, Bell, Send, FileCode, Activity, Trophy, Cake, Clock, Megaphone, ChevronRight, Calendar, LayoutDashboard, CreditCard, UserCheck } from 'lucide-react';
+import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, Edit2, RotateCcw, Trash2, X, AlertTriangle, Bell, Send, FileCode, Activity, Trophy, Cake, Clock, Megaphone, ChevronRight, Calendar, LayoutDashboard, CreditCard, UserCheck, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { workoutData } from '../data/workoutData';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
