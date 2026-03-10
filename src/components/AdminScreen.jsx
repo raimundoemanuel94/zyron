@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, Edit2, RotateCcw, Trash2, X, AlertTriangle, Bell, Send, FileCode, Activity } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, Edit2, RotateCcw, Trash2, X, AlertTriangle, Bell, Send, FileCode, Activity, Trophy, Cake, Clock, Megaphone, ChevronRight, Calendar, LayoutDashboard, CreditCard, UserCheck } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { workoutData } from '../data/workoutData';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import AdminFinanceiro from './admin/AdminFinanceiro';
+import AdminPersonais from './admin/AdminPersonais';
+import PersonalDashboard from './admin/PersonalDashboard';
 
 // Flatten all exercises from workoutData to use in the multi-select
 const allExercises = Object.values(workoutData).flatMap(day => day.exercises || []).filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
 
-export default function AdminScreen({ onLogout, onBack }) {
+export default function AdminScreen({ user, onLogout, onBack }) {
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'active', 'inactive'
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [adminTab, setAdminTab] = useState('dashboard'); // 'dashboard' | 'financeiro' | 'personais'
   
   // Modals state
   const [editUser, setEditUser] = useState(null);
@@ -25,10 +30,41 @@ export default function AdminScreen({ onLogout, onBack }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [analyticsData, setAnalyticsData] = useState([]);
 
+  // ── Tier 1 States ──
+  const [churnRiskUsers, setChurnRiskUsers] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [birthdays, setBirthdays] = useState([]);
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastData, setBroadcastData] = useState({ title: '', message: '' });
+  const [timelineUser, setTimelineUser] = useState(null);
+  const [timelineData, setTimelineData] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
   useEffect(() => {
-    fetchUsers();
-    fetchAnalytics();
-  }, []);
+    const init = async () => {
+      await fetchCurrentUserProfile();
+      fetchUsers();
+      fetchAnalytics();
+      fetchChurnRisk();
+      fetchLeaderboard();
+      fetchBirthdays();
+    };
+    init();
+  }, [user]);
+
+  const fetchCurrentUserProfile = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      if (data) setCurrentUserProfile(data);
+    } catch (e) {
+      console.error('Erro ao buscar perfil atual:', e);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -81,13 +117,173 @@ export default function AdminScreen({ onLogout, onBack }) {
     }
   };
 
-  const filteredUsers = users.filter(user => {
+  // ── TIER 1: Alunos em Risco (sem treinar 7+ dias) ──
+  const fetchChurnRisk = async () => {
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const cutoff = sevenDaysAgo.toISOString().split('T')[0];
+
+      // Buscar todos os profiles
+      const { data: allProfiles } = await supabase.from('profiles').select('id, name, email');
+      if (!allProfiles) return;
+
+      // Buscar quem treinou nos últimos 7 dias
+      const { data: recentStats } = await supabase
+        .from('daily_stats')
+        .select('user_id')
+        .gte('date', cutoff);
+
+      const activeIds = new Set((recentStats || []).map(s => s.user_id));
+      const atRisk = allProfiles.filter(p => !activeIds.has(p.id));
+      setChurnRiskUsers(atRisk);
+    } catch (err) {
+      console.error('Erro churn risk:', err);
+    }
+  };
+
+  // ── TIER 1: Leaderboard (treinos no mês) ──
+  const fetchLeaderboard = async () => {
+    try {
+      const firstOfMonth = new Date();
+      firstOfMonth.setDate(1);
+      const from = firstOfMonth.toISOString().split('T')[0];
+
+      const { data } = await supabase
+        .from('workout_logs')
+        .select('user_id, id')
+        .gte('created_at', from);
+
+      if (!data) return;
+
+      // Agrupar por user_id
+      const counts = {};
+      data.forEach(log => {
+        counts[log.user_id] = (counts[log.user_id] || 0) + 1;
+      });
+
+      // Buscar nomes
+      const userIds = Object.keys(counts);
+      if (userIds.length === 0) { setLeaderboard([]); return; }
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', userIds);
+
+      const nameMap = {};
+      (profiles || []).forEach(p => { nameMap[p.id] = p.name || 'Sem Nome'; });
+
+      const ranked = Object.entries(counts)
+        .map(([uid, count]) => ({ id: uid, name: nameMap[uid] || uid.substring(0, 8), workouts: count }))
+        .sort((a, b) => b.workouts - a.workouts)
+        .slice(0, 10);
+
+      setLeaderboard(ranked);
+    } catch (err) {
+      console.error('Erro leaderboard:', err);
+    }
+  };
+
+  // ── TIER 1: Aniversariantes do Mês ──
+  const fetchBirthdays = async () => {
+    try {
+      const currentMonth = new Date().getMonth() + 1;
+      const { data } = await supabase.from('profiles').select('id, name, email, birth_date');
+      if (!data) return;
+
+      const bdays = data.filter(p => {
+        if (!p.birth_date) return false;
+        const month = new Date(p.birth_date).getMonth() + 1;
+        return month === currentMonth;
+      }).map(p => ({
+        ...p,
+        day: new Date(p.birth_date).getDate()
+      })).sort((a, b) => a.day - b.day);
+
+      setBirthdays(bdays);
+    } catch (err) {
+      console.error('Erro birthdays:', err);
+    }
+  };
+
+  // ── TIER 1: Timeline do Aluno ──
+  const fetchUserTimeline = async (userId) => {
+    setTimelineLoading(true);
+    try {
+      const { data } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      setTimelineData(data || []);
+    } catch (err) {
+      console.error('Erro timeline:', err);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  const handleOpenTimeline = (user) => {
+    setTimelineUser(user);
+    fetchUserTimeline(user.id);
+  };
+
+  // ── TIER 1: Broadcast (notificar todos) ──
+  const handleBroadcast = async () => {
+    if (!broadcastData.title || !broadcastData.message) return alert("Preencha título e mensagem");
+    setIsProcessing(true);
+    try {
+      const inserts = domainUsers.map(u => ({
+        user_id: u.id,
+        title: broadcastData.title,
+        message: broadcastData.message
+      }));
+      const { error } = await supabase.from('notifications').insert(inserts);
+      if (error) throw error;
+      setShowBroadcast(false);
+      setBroadcastData({ title: '', message: '' });
+      alert(`Notificação enviada para ${domainUsers.length} alunos!`);
+    } catch (error) {
+      alert("Erro ao enviar broadcast: " + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ── Filtragem por Role (Personal vê apenas seus alunos) ──
+  const getDomainUsers = () => {
+    if (!currentUserProfile) return [];
+    if (currentUserProfile.role === 'ADMIN') return users;
+    
+    try {
+      const trainerData = JSON.parse(localStorage.getItem('zyron-personais') || '[]');
+      // Busca vínculo por email ou nome
+      const myTrainerInfo = trainerData.find(t => 
+        (t.email && t.email === currentUserProfile.email) || 
+        (t.name && t.name === currentUserProfile.name)
+      );
+      
+      if (myTrainerInfo && myTrainerInfo.students) {
+        return users.filter(u => myTrainerInfo.students.includes(u.id));
+      }
+    } catch (e) {
+      console.error('Erro ao filtrar alunos do personal:', e);
+    }
+    return [];
+  };
+
+  const domainUsers = getDomainUsers();
+
+  const filteredUsers = domainUsers.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (filterStatus === 'all') return matchesSearch;
     
-    // Mock status based on ID to demonstrate filter functionality (80% active)
+    // Mock status based on ID
     const isActive = user.id.charCodeAt(0) % 5 !== 0; 
     
     if (filterStatus === 'active') return matchesSearch && isActive;
@@ -202,6 +398,18 @@ export default function AdminScreen({ onLogout, onBack }) {
     }));
   };
 
+  if (loading && !currentUserProfile) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <Loader2 className="text-yellow-400 animate-spin" size={48} />
+      </div>
+    );
+  }
+
+  if (currentUserProfile?.role === 'PERSONAL' || user?.user_metadata?.role === 'PERSONAL') {
+    return <PersonalDashboard user={user} onLogout={onLogout} onBack={onBack} />;
+  }
+
   return (
     <div className="min-h-screen bg-neutral-950 text-slate-100 font-sans p-6 selection:bg-yellow-400 selection:text-black">
       {/* Background Decor */}
@@ -232,7 +440,43 @@ export default function AdminScreen({ onLogout, onBack }) {
           </button>
         </header>
 
-        {/* KPIs */}
+        {/* Tab Navigation */}
+        <div className="flex bg-neutral-900/50 backdrop-blur-md rounded-2xl p-1.5 border border-white/5 mb-10 gap-1">
+          {[
+            { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, public: true },
+            { key: 'financeiro', label: 'Financeiro', icon: CreditCard, public: currentUserProfile?.role === 'ADMIN' },
+            { key: 'personais', label: 'Personais', icon: UserCheck, public: currentUserProfile?.role === 'ADMIN' },
+          ].map(tab => {
+            if (!tab.public) return null;
+            const Icon = tab.icon;
+            const active = adminTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setAdminTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  active
+                    ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.2)]'
+                    : 'text-neutral-500 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ══════ TAB: FINANCEIRO ══════ */}
+        {adminTab === 'financeiro' && <AdminFinanceiro users={domainUsers} />}
+
+        {/* ══════ TAB: PERSONAIS ══════ */}
+        {adminTab === 'personais' && <AdminPersonais users={domainUsers} />}
+
+        {/* ══════ TAB: DASHBOARD (conteúdo já existente) ══════ */}
+        {adminTab === 'dashboard' && (
+        <>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-colors"></div>
@@ -335,11 +579,139 @@ export default function AdminScreen({ onLogout, onBack }) {
           </div>
         </div>
 
+        {/* ═══════════════ TIER 1 SECTIONS ═══════════════ */}
+
+        {/* ── 1. Alunos em Risco (Churn) ── */}
+        {churnRiskUsers.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-500/5 backdrop-blur-md p-6 rounded-3xl border border-red-500/20 mb-10 relative overflow-hidden"
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-red-500 via-orange-500 to-red-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-500/10 rounded-xl">
+                  <AlertTriangle className="text-red-500" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black italic uppercase tracking-tight text-red-400">Alunos em Risco</h2>
+                  <p className="text-[10px] text-red-400/60 uppercase tracking-widest font-bold">Sem treinar há 7+ dias</p>
+                </div>
+              </div>
+              <span className="text-3xl font-black italic text-red-400">{churnRiskUsers.length}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-2">
+              {churnRiskUsers.slice(0, 12).map(u => (
+                <div key={u.id} className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-2 border border-red-500/10 group">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center text-[10px] font-black text-red-400">
+                      {u.name?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                    <span className="text-sm font-bold text-neutral-300 truncate max-w-[120px]">{u.name || u.email?.split('@')[0]}</span>
+                  </div>
+                  <button
+                    onClick={() => { setNotificationUser(u); setNotificationData({ title: 'Sentimos sua falta!', message: `Fala ${u.name || 'campeão'}! Faz tempo que você não treina. Vamos voltar com tudo? 💪` }); }}
+                    className="px-2 py-1 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all"
+                  >
+                    Lembrar
+                  </button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── 2. Leaderboard + 4. Aniversariantes (2 colunas) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+          {/* Leaderboard */}
+          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-yellow-500 via-amber-400 to-yellow-600" />
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-yellow-500/10 rounded-xl">
+                <Trophy className="text-yellow-500" size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black italic uppercase tracking-tight text-white">Ranking do Mês</h2>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Top Atletas — {new Date().toLocaleString('pt-BR', { month: 'long' })}</p>
+              </div>
+            </div>
+            {leaderboard.length === 0 ? (
+              <p className="text-neutral-500 text-sm text-center py-8 font-bold">Nenhum treino registrado este mês</p>
+            ) : (
+              <div className="space-y-2">
+                {leaderboard.map((u, i) => {
+                  const medals = ['bg-yellow-500 text-black', 'bg-neutral-400 text-black', 'bg-amber-700 text-white'];
+                  const medalColor = i < 3 ? medals[i] : 'bg-neutral-800 text-neutral-400';
+                  return (
+                    <div key={u.id} className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-2.5 border border-white/5 hover:border-yellow-500/20 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black ${medalColor}`}>
+                          {i + 1}
+                        </div>
+                        <span className={`text-sm font-bold ${i === 0 ? 'text-yellow-400' : 'text-neutral-300'}`}>{u.name}</span>
+                      </div>
+                      <span className="text-sm font-black text-yellow-500">{u.workouts} <span className="text-[9px] text-neutral-500 uppercase tracking-widest">treinos</span></span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Aniversariantes */}
+          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-pink-500 via-purple-500 to-pink-500" />
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2 bg-pink-500/10 rounded-xl">
+                <Cake className="text-pink-400" size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-black italic uppercase tracking-tight text-white">Aniversariantes</h2>
+                <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">{new Date().toLocaleString('pt-BR', { month: 'long' })}</p>
+              </div>
+            </div>
+            {birthdays.length === 0 ? (
+              <p className="text-neutral-500 text-sm text-center py-8 font-bold">Nenhum aniversariante este mês</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+                {birthdays.map(u => (
+                  <div key={u.id} className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-2.5 border border-white/5 group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-pink-500/20 flex items-center justify-center text-[10px] font-black text-pink-400">
+                        🎂
+                      </div>
+                      <div>
+                        <span className="text-sm font-bold text-neutral-300">{u.name || 'Sem Nome'}</span>
+                        <p className="text-[9px] text-neutral-500 font-bold">Dia {u.day}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setNotificationUser(u); setNotificationData({ title: '🎉 Feliz Aniversário!', message: `Parabéns ${u.name || ''}! O ZYRON deseja um dia incrível. Continue evoluindo! 🎂💪` }); }}
+                      className="px-2 py-1 bg-pink-500/10 hover:bg-pink-500 text-pink-400 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      Parabéns
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* User Table */}
+
         <div className="bg-neutral-900/50 backdrop-blur-md rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[600px]">
           <div className="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-neutral-950/50">
-            <h2 className="text-xl font-black italic uppercase tracking-tight text-white">Gestão de Operadores</h2>
-            
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-black italic uppercase tracking-tight text-white">Gestão de Operadores</h2>
+              <button
+                onClick={() => setShowBroadcast(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/10 hover:bg-yellow-500 text-yellow-500 hover:text-black rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-yellow-500/20"
+              >
+                <Megaphone size={14} /> Notificar Todos
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
               {/* Filtros Rápidos */}
               <div className="flex bg-black/50 border border-white/10 rounded-lg p-1 w-full sm:w-auto">
@@ -394,7 +766,7 @@ export default function AdminScreen({ onLogout, onBack }) {
                 </thead>
                 <tbody>
                   {filteredUsers.map((u) => (
-                    <tr key={u.id} className="border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer">
+                    <tr key={u.id} onClick={() => handleOpenTimeline(u)} className="border-b border-white/5 hover:bg-white/5 transition-colors group cursor-pointer">
                       <td className="p-4 py-6">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs ${u.role === 'ADMIN' ? 'bg-red-500 text-white' : 'bg-neutral-800 text-yellow-500 border border-yellow-500/20'}`}>
@@ -462,9 +834,11 @@ export default function AdminScreen({ onLogout, onBack }) {
           </div>
         </div>
 
-      </div>
+        </>
+      )}
 
       {/* Editar Usuário Modal */}
+
       {editUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-neutral-900 border border-white/10 rounded-3xl w-full max-w-lg p-6 shadow-2xl">
@@ -688,6 +1062,187 @@ export default function AdminScreen({ onLogout, onBack }) {
         </div>
       )}
 
+      {/* ══════ Modal Broadcast (Notificar Todos) ══════ */}
+      {showBroadcast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-neutral-900 border border-yellow-500/20 rounded-3xl w-full max-w-md p-6 shadow-[0_0_40px_rgba(234,179,8,0.1)]"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-500/10 rounded-xl text-yellow-400">
+                  <Megaphone size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black italic uppercase text-white leading-none">Broadcast</h3>
+                  <p className="text-[10px] text-yellow-400 uppercase tracking-widest font-bold mt-1">Para: Todos ({users.length} alunos)</p>
+                </div>
+              </div>
+              <button onClick={() => setShowBroadcast(false)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full"><X size={20} /></button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Título</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Nova ficha disponível!"
+                  value={broadcastData.title}
+                  onChange={(e) => setBroadcastData({...broadcastData, title: e.target.value})}
+                  className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none transition-colors placeholder:text-neutral-600"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest">Mensagem</label>
+                <textarea
+                  placeholder="Ex: A partir de hoje, todos os alunos têm acesso à ficha atualizada..."
+                  rows={4}
+                  value={broadcastData.message}
+                  onChange={(e) => setBroadcastData({...broadcastData, message: e.target.value})}
+                  className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none transition-colors placeholder:text-neutral-600 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button onClick={() => setShowBroadcast(false)} className="px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs bg-neutral-800 hover:bg-neutral-700 transition-colors">Cancelar</button>
+              <button disabled={isProcessing} onClick={handleBroadcast} className="px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs bg-yellow-500 hover:bg-yellow-400 text-black shadow-[0_0_20px_rgba(234,179,8,0.2)] transition-all flex items-center justify-center gap-2 min-w-[150px]">
+                {isProcessing ? <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <><Megaphone size={16} /> Enviar para Todos</>}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ══════ Modal Timeline do Aluno ══════ */}
+      <AnimatePresence>
+        {timelineUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-neutral-900 border border-white/10 rounded-3xl w-full max-w-lg p-6 shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-500/10 rounded-xl text-yellow-400">
+                    <Clock size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black italic uppercase text-white leading-none">Timeline</h3>
+                    <p className="text-[10px] text-yellow-400 uppercase tracking-widest font-bold mt-1">{timelineUser.name || timelineUser.email} — Últimos 30 treinos</p>
+                  </div>
+                </div>
+                <button onClick={() => setTimelineUser(null)} className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full"><X size={20} /></button>
+              </div>
+
+              {/* Perfil Summary Area */}
+              <div className="grid grid-cols-3 gap-2 mb-6 shrink-0">
+                <div className="bg-black/30 rounded-2xl p-3 border border-white/5 text-center">
+                   <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">Peso Atual</p>
+                   <p className="text-sm font-black text-yellow-400">{timelineUser.weight || '--'} kg</p>
+                </div>
+                <div className="bg-black/30 rounded-2xl p-3 border border-white/5 text-center">
+                   <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">Objetivo</p>
+                   <p className="text-sm font-black text-emerald-400 uppercase tracking-tighter truncate">{timelineUser.goal || 'Geral'}</p>
+                </div>
+                <div className="bg-black/30 rounded-2xl p-3 border border-white/5 text-center">
+                   <p className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">Foco</p>
+                   <p className="text-sm font-black text-indigo-400 uppercase tracking-tighter truncate">{timelineUser.level || 'Full Body'}</p>
+                </div>
+              </div>
+
+              {/* Quick Docs (Dieta) */}
+              <div className="mb-6 shrink-0">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <FileCode size={12} className="text-neutral-500" />
+                  <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Documentos & Dieta</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                   <button className="flex items-center gap-2 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] font-bold text-red-400 whitespace-nowrap">
+                     <FileText size={14} /> Plano Alimentar.pdf
+                   </button>
+                   <button className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10px] font-bold text-blue-400 whitespace-nowrap">
+                     <Activity size={14} /> Exames.pdf
+                   </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 mb-3 px-1">
+                <Dumbbell size={12} className="text-neutral-500" />
+                <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Histórico de Treinos</span>
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+                {timelineLoading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="w-8 h-8 border-4 border-yellow-400/20 border-t-yellow-400 rounded-full animate-spin" />
+                  </div>
+                ) : timelineData.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <Calendar size={40} className="mb-3 opacity-30" />
+                    <p className="text-sm font-bold uppercase tracking-widest">Nenhum treino registrado</p>
+                  </div>
+                ) : (
+                  timelineData.map((log, i) => {
+                    const date = new Date(log.created_at);
+                    const dayStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+                    const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    const durMin = log.duration_seconds ? Math.floor(log.duration_seconds / 60) : '—';
+                    const setsCount = log.total_sets || log.sets_count || '—';
+
+                    return (
+                      <motion.div
+                        key={log.id || i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.03 }}
+                        className="flex items-center gap-4 bg-black/30 rounded-xl px-4 py-3 border border-white/5 hover:border-yellow-500/20 transition-colors"
+                      >
+                        {/* Date pill */}
+                        <div className="flex flex-col items-center min-w-[44px]">
+                          <span className="text-sm font-black text-yellow-400">{dayStr}</span>
+                          <span className="text-[9px] text-neutral-500 font-bold">{timeStr}</span>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-px h-10 bg-white/10" />
+
+                        {/* Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-neutral-300 uppercase tracking-wider">
+                              Treino {log.workout_key || ''}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 mt-1">
+                            <span className="text-[10px] text-neutral-500 font-bold">
+                              ⏱ {durMin}min
+                            </span>
+                            <span className="text-[10px] text-neutral-500 font-bold">
+                              💪 {setsCount} séries
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    </div>
     </div>
   );
 }

@@ -152,11 +152,12 @@ function App() {
                 transition={{ duration: 0.5 }}
                 className="w-full"
               >
-                {viewManager === 'admin' && user?.role === 'ADMIN' ? (
-                  <AdminScreen onLogout={handleLogout} onBack={() => setViewManager('app')} />
+                {viewManager === 'admin' ? (
+                  <AdminScreen user={user} onLogout={handleLogout} onBack={() => setViewManager('app')} />
                 ) : (
                   <FichaDeTreinoScreen user={user} onLogout={handleLogout} onOpenAdmin={() => setViewManager('admin')} />
                 )}
+
               </motion.div>
             )}
           </AnimatePresence>

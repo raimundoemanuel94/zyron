@@ -55,7 +55,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination } from 'swiper/modules';
 import { workoutData } from '../data/workoutData';
-import { Anatomy3D } from './Anatomy3D';
+import Anatomy3D from './Anatomy3D';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import WorkoutCard from './WorkoutCard';
 import WorkoutCompleted from './WorkoutCompleted';
@@ -179,7 +179,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 id: user.id,
                 email: user.email,
                 name: user.email?.split('@')[0] || 'Usuário',
-                role: user.email === 'raiiimundoemanuel2018@gmail.com' ? 'ADMIN' : 'USER',
+                role: user.user_metadata?.role || 
+                      (['raiiimundoemanuel2018@gmail.com', 'raimundoemanuel2018@gmail.com', 'raimundoemanuel1@gmail.com'].includes(user.email?.toLowerCase()) ? 'ADMIN' : 'USER'),
                 created_at: new Date().toISOString()
               })
               .select('*')
@@ -684,7 +685,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               {nightMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            {(userProfile?.role === 'ADMIN' || user?.role === 'ADMIN') && (
+            {((userProfile?.role === 'ADMIN' || user?.role === 'ADMIN' || user?.user_metadata?.role === 'ADMIN' || ['raiiimundoemanuel2018@gmail.com', 'raimundoemanuel2018@gmail.com', 'raimundoemanuel1@gmail.com'].includes(user?.email?.toLowerCase())) || 
+               (userProfile?.role === 'PERSONAL' || user?.role === 'PERSONAL' || user?.user_metadata?.role === 'PERSONAL')) && (
               <button 
                 onClick={onOpenAdmin}
                 className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all border border-red-500/20 group flex items-center gap-2"
