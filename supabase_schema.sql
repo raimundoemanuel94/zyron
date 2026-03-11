@@ -144,3 +144,19 @@ CREATE POLICY "Admins can delete custom workouts" ON public.custom_workouts
   FOR DELETE USING (
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'ADMIN')
   );
+
+-- Criação da tabela de Fotos de Treino
+CREATE TABLE public.workout_photos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  workout_log_id UUID REFERENCES public.workout_logs(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.workout_photos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own photos" ON public.workout_photos
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());

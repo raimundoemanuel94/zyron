@@ -22,16 +22,26 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
           .eq('id', user.id)
           .single();
 
-        if (profileError) throw profileError;
-        
-        console.log('[RBACGuard] Role fetched from Supabase:', profile?.role);
-        // Retorna o papel para o App gerenciar a visão
-        onRoleVerified(profile?.role || 'USER');
+        if (profileError) {
+          if (profileError.code === 'PGRST116') {
+            console.warn('[RBACGuard] Perfil não encontrado. Criando perfil padrão...');
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({ id: user.id, email: user.email, role: 'USER' });
+            
+            if (insertError) throw insertError;
+            onRoleVerified('USER');
+          } else {
+            throw profileError;
+          }
+        } else {
+          console.log('[RBACGuard] Role fetched from Supabase:', profile?.role);
+          onRoleVerified(profile?.role || 'USER');
+        }
       } catch (err) {
         console.error('[RBACGuard] Erro na verificação:', err);
-        setError('Falha na validação de privilégios. Re-autentique.');
+        setError(`Erro: ${err.message || 'Falha na validação de privilégios'}. Código: ${err.code || 'N/A'}`);
       } finally {
-        // Delay estético para "Segurança Industrial"
         setTimeout(() => setVerifying(false), 800);
       }
     }
@@ -76,15 +86,29 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
         <ShieldAlert className="text-red-600 mb-4" size={64} />
-        <h3 className="text-xl font-black text-white uppercase italic">{error}</h3>
-        <button 
-          onClick={() => window.location.reload()}
-          className="mt-6 px-8 py-3 bg-red-600/10 border border-red-600/30 text-red-600 font-black uppercase tracking-widest text-xs hover:bg-red-600 hover:text-white transition-all rounded-xl"
-        >
-          Tentar Novamente
-        </button>
+        <h3 className="text-xl font-black text-white uppercase italic mb-2">Erro de Acesso Industrial</h3>
+        <p className="text-neutral-500 text-xs uppercase tracking-widest font-bold mb-6 max-w-xs">
+          {error}
+        </p>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-yellow-500 text-black font-black uppercase tracking-widest text-xs hover:bg-yellow-400 transition-all rounded-xl shadow-[0_0_20px_rgba(234,179,8,0.2)]"
+          >
+            Tentar Novamente (Recarregar)
+          </button>
+          <button 
+            onClick={async () => {
+              await supabase.auth.signOut();
+              window.location.reload();
+            }}
+            className="px-8 py-3 bg-neutral-900 border border-white/5 text-neutral-500 font-black uppercase tracking-widest text-xs hover:text-white transition-all rounded-xl"
+          >
+            Sair e Re-autenticar
+          </button>
+        </div>
       </div>
     );
   }

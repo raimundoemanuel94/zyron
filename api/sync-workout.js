@@ -50,9 +50,24 @@ export default async function handler(req) {
     }
 
     const userId = user.id;
-    let photoUrl = null;
+    // 1. Insert Workout Log
+    const { data: workoutLog, error: workoutError } = await supabase
+      .from('workout_logs')
+      .insert({
+        user_id: userId,
+        workout_key: workout.workout_key,
+        duration_seconds: workout.duration_seconds,
+        created_at: workout.created_at || new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    // 0. Handle Photo Upload (Base64 -> Supabase Storage)
+    if (workoutError) {
+      console.error('Workout Insert Error:', workoutError);
+      throw new Error(`Workout insert failed: ${workoutError.message}`);
+    }
+
+    // 2. Handle Photo Upload (Base64 -> Supabase Storage)
     if (workout.photo_payload) {
       try {
         const parts = workout.photo_payload.split(',');
@@ -81,31 +96,19 @@ export default async function handler(req) {
           .storage
           .from('workout_photos')
           .getPublicUrl(fileName);
+          
+        // Insert into workout_photos table
+        await supabase.from('workout_photos').insert({
+           workout_log_id: workoutLog.id,
+           user_id: userId,
+           storage_path: publicUrl
+        });
 
-        photoUrl = publicUrl;
       } catch (uploadErr) {
         console.error('Storage Upload Error:', uploadErr);
         // We continue without photo if upload fails, or we could throw. 
         // For UX, it's better to save the workout even if the photo fails.
       }
-    }
-
-    // 1. Insert Workout Log
-    const { data: workoutLog, error: workoutError } = await supabase
-      .from('workout_logs')
-      .insert({
-        user_id: userId,
-        workout_key: workout.workout_key,
-        duration_seconds: workout.duration_seconds,
-        photo_url: photoUrl,
-        created_at: workout.created_at || new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (workoutError) {
-      console.error('Workout Insert Error:', workoutError);
-      throw new Error(`Workout insert failed: ${workoutError.message}`);
     }
 
     // 2. Insert Sets in Batch (linking via workout_id)
@@ -131,6 +134,9 @@ export default async function handler(req) {
         throw new Error(`Sets batch insert failed: ${setsError.message}`);
       }
     }
+
+    // 3. Update Profiles last_synced_at
+    await supabase.from('profiles').update({ last_synced_at: new Date().toISOString() }).eq('id', userId);
 
     return new Response(JSON.stringify({ 
       success: true, 

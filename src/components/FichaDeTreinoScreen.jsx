@@ -55,7 +55,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination } from 'swiper/modules';
 import { workoutData } from '../data/workoutData';
-import Anatomy3D from './Anatomy3D';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import WorkoutCard from './WorkoutCard';
 import WorkoutCompleted from './WorkoutCompleted';

@@ -20,7 +20,6 @@ import PWASplashScreen from './components/PWASplashScreen';
 import ForceUpdateBanner from './components/ForceUpdateBanner';
 import RBACGuard from './components/RBACGuard';
 import PersonalDashboard from './components/admin/PersonalDashboard';
-import hardcorePWA from './utils/hardcorePWA.js';
 import audioUnlocker from './utils/audioUnlock.js';
 
 const DebugOverlay = ({ user, userRole, viewManager }) => (
@@ -57,11 +56,6 @@ function App() {
       url: window.location.href,
       timestamp: new Date().toISOString()
     });
-
-    // PWA Manager (já auto-inicializou via import)
-    if (hardcorePWA) {
-      console.log('[App] PWA Manager ativo');
-    }
 
 
     // ── Auth sempre verificado, independente do PWA ──────────────────────
@@ -176,22 +170,18 @@ function App() {
                   transition={{ duration: 0.5 }}
                   className="w-full"
                 >
-                  {/* Prioridade: ADMIN e visão Admin selecionada */}
-                  {userRole === 'ADMIN' && viewManager === 'admin' ? (
+                  {/* Prioridade: Visão explícita pelo viewManager */}
+                  {viewManager === 'admin' ? (
                     <AdminScreen user={user} onLogout={handleLogout} onBack={() => setViewManager('app')} />
                   ) : 
-                  /* Se for PERSONAL (independente do viewManager na inicialização) ou se forçado pelo viewManager */
-                  userRole === 'PERSONAL' || viewManager === 'personal' ? (
-                    <PersonalDashboard user={user} onLogout={handleLogout} onBack={() => {
-                      // Se for ADMIN, pode voltar pro app, se for só PERSONAL, o logout é o caminho
-                      if (userRole === 'ADMIN') setViewManager('app');
-                    }} />
+                  viewManager === 'personal' ? (
+                    <PersonalDashboard user={user} onLogout={handleLogout} onBack={() => setViewManager('app')} />
                   ) : (
-                    /* Aluno padrão ou ADMIN no modo app */
+                    /* Aluno padrão (USER) no modo app, default inicial para todos */
                     <FichaDeTreinoScreen 
                       user={user} 
                       onLogout={handleLogout} 
-                      onOpenAdmin={() => {
+                      onOpenAdmin={() => { 
                         if (userRole === 'ADMIN') setViewManager('admin');
                         else if (userRole === 'PERSONAL') setViewManager('personal');
                       }} 

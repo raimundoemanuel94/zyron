@@ -4,18 +4,90 @@ import logger from '../utils/logger';
 import { db as zyronDB } from '../utils/db';
 
 /**
- * useSyncWorkout Hook - ZYRON Advanced Sync v2 (Photos Support)
+ * useSyncWorkout Hook - ZYRON Advanced Sync v2 (Photos + IndexedDB Queue)
  */
 export function useSyncWorkout(user) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [syncQueue, setSyncQueue] = useState(() => {
+  const [syncPending, setSyncPending] = useState(0);
+
+  // Initialize queue length from IndexedDB
+  useEffect(() => {
+    const initQueue = async () => {
+      try {
+        const queue = await zyronDB.getSyncQueue();
+        setSyncPending(queue.length);
+      } catch (e) {
+        console.error('Failed to init sync queue', e);
+      }
+    };
+    initQueue();
+  }, []);
+
+  const performSync = useCallback(async () => {
+    if (!navigator.onLine) return;
+    
     try {
-      const saved = localStorage.getItem('ZYRON_PENDING_WORKOUTS');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      const queue = await zyronDB.getSyncQueue();
+      if (queue.length === 0) {
+        setSyncPending(0);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      logger.systemEvent('Iniciando sincronização de itens pendentes', { items: queue.length });
+
+      for (const item of queue) {
+        try {
+          if (item.retryCount >= 5) {
+             logger.warn('Skip sync for item (max retries)', { id: item.id });
+             continue;
+          }
+
+          // ZYRON ADVANCED: Check if there's a photo in IndexedDB for this workout
+          if (item.workout && item.workout.photo_id) {
+            const photoData = await zyronDB.getPhoto(item.workout.photo_id);
+            if (photoData) {
+              item.workout.photo_payload = photoData;
+            }
+          }
+
+          const response = await fetch('/api/sync-workout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify(item)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || 'Sync failed');
+          }
+
+          // Success: Clean up IndexedDB photo and queue item
+          if (item.workout && item.workout.photo_id) {
+            await zyronDB.deletePhoto(item.workout.photo_id);
+          }
+          await zyronDB.removeFromSyncQueue(item.id);
+          
+          logger.systemEvent('Item sincronizado com sucesso', { id: item.id });
+        } catch (err) {
+          logger.error('Falha ao sincronizar item individual', { id: item.id }, err);
+          await zyronDB.updateSyncRetry(item.id, (item.retryCount || 0) + 1, 'failed');
+        }
+      }
+
+      // Re-evaluate pending
+      const newQueue = await zyronDB.getSyncQueue();
+      setSyncPending(newQueue.length);
+      
+    } catch (e) {
+       logger.error('Sync process failed globally', {}, e);
     }
-  });
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => {
@@ -31,61 +103,7 @@ export function useSyncWorkout(user) {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [syncQueue]);
-
-  useEffect(() => {
-    localStorage.setItem('ZYRON_PENDING_WORKOUTS', JSON.stringify(syncQueue));
-  }, [syncQueue]);
-
-  const performSync = useCallback(async () => {
-    if (!navigator.onLine || syncQueue.length === 0) return;
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-
-    logger.systemEvent('Iniciando sincronização de treinos pendentes', { items: syncQueue.length });
-
-    const updatedQueue = [...syncQueue];
-    const failedItems = [];
-
-    for (const item of updatedQueue) {
-      try {
-        // ZYRON ADVANCED: Check if there's a photo in IndexedDB for this workout
-        if (item.workout.photo_id) {
-          const photoData = await zyronDB.getPhoto(item.workout.photo_id);
-          if (photoData) {
-            item.workout.photo_payload = photoData;
-          }
-        }
-
-        const response = await fetch('/api/sync-workout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`
-          },
-          body: JSON.stringify(item)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || errorData.error || 'Sync failed');
-        }
-
-        // Success: Clean up IndexedDB if a photo was synced
-        if (item.workout.photo_id) {
-          await zyronDB.deletePhoto(item.workout.photo_id);
-        }
-
-        logger.systemEvent('Treino (com foto) sincronizado com sucesso', { workoutKey: item.workout.workout_key });
-      } catch (err) {
-        logger.error('Falha ao sincronizar treino individual', { workoutKey: item.workout.workout_key }, err);
-        failedItems.push(item);
-      }
-    }
-
-    setSyncQueue(failedItems);
-  }, [syncQueue]);
+  }, [performSync]);
 
   /**
    * Main method to log a workout
@@ -93,12 +111,13 @@ export function useSyncWorkout(user) {
    * @param {Array} sets
    */
   const logWorkout = useCallback(async (workout, sets) => {
-    const payload = { workout, sets };
+    const payload = { type: 'workout_log', workout, sets };
 
     // If offline, queue immediately. Photo is already in indexedDB via WorkoutCompleted.jsx
     if (!navigator.onLine) {
-      logger.warn('Offline: Treino salvo localmente (ZYRON_PENDING_WORKOUTS + IndexedDB)');
-      setSyncQueue(prev => [...prev, payload]);
+      logger.warn('Offline: Treino salvo no IndexedDB Queue');
+      await zyronDB.addToSyncQueue(payload);
+      setSyncPending(prev => prev + 1);
       return { success: true, status: 'queued' };
     }
 
@@ -129,7 +148,8 @@ export function useSyncWorkout(user) {
     } catch (err) {
       logger.warn('Erro na sincronização imediata, enfileirando...', {}, err);
       // Ensure payload is queued
-      setSyncQueue(prev => [...prev, payload]);
+      await zyronDB.addToSyncQueue(payload);
+      setSyncPending(prev => prev + 1);
       return { success: true, status: 'queued' };
     }
   }, []);
@@ -137,7 +157,7 @@ export function useSyncWorkout(user) {
   return { 
     isOnline, 
     logWorkout, 
-    syncPending: syncQueue.length, 
+    syncPending, 
     performSync 
   };
 }

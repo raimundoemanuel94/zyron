@@ -1,65 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import hardcorePWA from '../utils/hardcorePWA';
-
-const STORAGE_KEY = 'zyron-dismissed-version';
+import { useRegisterSW } from 'virtual:pwa-register/react';
+import logger from '../utils/logger';
 
 export default function ForceUpdateBanner() {
-  const [isVisible, setIsVisible] = useState(false);
-  const [updateVersion, setUpdateVersion] = useState('');
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(null);
-  const shownRef = useRef(false); // garante que só mostra 1 vez por sessão
 
-  const showBanner = (version = '') => {
-    // Não mostrar se já foi dispensado para esta versão
-    const dismissed = localStorage.getItem(STORAGE_KEY);
-    if (dismissed === version) return;
-    // Não mostrar mais de uma vez por sessão
-    if (shownRef.current) return;
-    shownRef.current = true;
-    setUpdateVersion(version);
-    setIsVisible(true);
-  };
+  // ZYRON: The native, correct way to handle Vite PWA updates in Prompt Mode
+  const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('[PWA] SW Registrado:', r);
+    },
+    onRegisterError(error) {
+      console.error('[PWA] Erro no registro do SW:', error);
+    },
+  });
 
-  const handleDismiss = () => {
-    localStorage.setItem(STORAGE_KEY, updateVersion);
-    setIsVisible(false);
-  };
-
-  useEffect(() => {
-    if (hardcorePWA) {
-      // Recebe a versão do update para poder guardá-la no localStorage
-      hardcorePWA.onUpdate((version) => showBanner(version || ''));
-    }
-    const handler = (e) => showBanner(e?.detail?.version || '');
-    window.addEventListener('zyron-update-available', handler);
-    return () => window.removeEventListener('zyron-update-available', handler);
-  }, []);
-
-  // Animação de progresso fake ao clicar "Atualizar"
   const handleUpdate = () => {
-    // Salva a versão ANTES do reload — evita o banner reaparecer após atualização
-    localStorage.setItem(STORAGE_KEY, updateVersion);
-    localStorage.setItem('zyron-last-applied-version', updateVersion);
-
+    logger.systemEvent('Usuário iniciou atualização do PWA (Prompt Mode)');
     let p = 0;
     progressRef.current = setInterval(() => {
       p += Math.random() * 25 + 10;
       if (p >= 100) {
         p = 100;
         clearInterval(progressRef.current);
-        if (hardcorePWA) {
-          hardcorePWA.applyUpdate();
-        } else {
-          window.location.reload();
-        }
+        // Aplica o update matando o Worker antigo e recarrega a página instantaneamente
+        updateServiceWorker(true);
       }
       setProgress(p);
     }, 200);
   };
 
-  if (!isVisible) return null;
+  const close = () => {
+    setNeedRefresh(false);
+  };
+
+  if (!needRefresh) return null;
 
   return (
     <AnimatePresence>
@@ -68,13 +48,13 @@ export default function ForceUpdateBanner() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: -100, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed top-0 left-0 right-0 z-[100] p-3"
+        className="fixed top-0 left-0 right-0 z-100 p-3"
       >
         <div className="relative mx-auto max-w-md overflow-hidden rounded-2xl border border-white/10 bg-black/70 backdrop-blur-xl shadow-[0_8px_40px_rgba(253,224,71,0.15)]">
           {/* Barra de progresso amarela no topo */}
           {progress > 0 && (
             <motion.div
-              className="absolute top-0 left-0 h-[3px] bg-gradient-to-r from-yellow-400 to-yellow-200"
+              className="absolute top-0 left-0 h-[3px] bg-linear-to-r from-yellow-400 to-yellow-200"
               initial={{ width: '0%' }}
               animate={{ width: `${progress}%` }}
               transition={{ ease: 'easeOut', duration: 0.3 }}
@@ -83,11 +63,11 @@ export default function ForceUpdateBanner() {
 
           <div className="flex items-center gap-3 px-4 py-3">
             {/* Ícone animado */}
-            <div className="relative flex-shrink-0">
+            <div className="relative shrink-0">
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/20"
+                className="w-10 h-10 rounded-xl bg-linear-to-br from-yellow-400 to-amber-500 flex items-center justify-center shadow-lg shadow-yellow-400/20"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -115,18 +95,18 @@ export default function ForceUpdateBanner() {
             </div>
 
             {/* Botões */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               {progress === 0 ? (
                 <>
                   <button
-                    onClick={() => setIsVisible(false)}
+                    onClick={close}
                     className="text-neutral-500 text-xs font-medium px-2 py-1.5 rounded-lg hover:text-white hover:bg-white/10 transition-all"
                   >
                     Depois
                   </button>
                   <button
                     onClick={handleUpdate}
-                    className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 text-black text-xs font-black uppercase tracking-wide shadow-lg shadow-yellow-400/20 hover:shadow-yellow-400/40 active:scale-95 transition-all"
+                    className="px-4 py-1.5 rounded-xl bg-linear-to-r from-yellow-400 to-amber-500 text-black text-xs font-black uppercase tracking-wide shadow-lg shadow-yellow-400/20 hover:shadow-yellow-400/40 active:scale-95 transition-all"
                   >
                     Atualizar
                   </button>

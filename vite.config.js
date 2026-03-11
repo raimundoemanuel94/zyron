@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: [
         'favicon.ico', 
         'apple-touch-icon.png', 
@@ -110,6 +110,7 @@ export default defineConfig({
             },
           },
         ],
+        clientsClaim: true,
       },
     }),
     {
@@ -166,4 +167,18 @@ export default defineConfig({
       }
     }
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-db': ['@supabase/supabase-js'],
+          'vendor-3d': ['three', '@react-three/fiber', '@react-three/drei']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  }
 });

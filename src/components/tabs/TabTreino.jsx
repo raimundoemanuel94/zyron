@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dumbbell, ShieldAlert, Zap, Play, PlayCircle, Coffee, Flame } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -8,7 +8,7 @@ import 'swiper/css/effect-coverflow';
 
 // Assuming these are passed or imported from their respective paths.
 // If Anatomy3D, WorkoutCard, or EXERCISE_VIDEOS are in parent folder, we import like this:
-import Anatomy3D from '../Anatomy3D';
+const Anatomy3D = lazy(() => import('../Anatomy3D'));
 import WorkoutCard from '../WorkoutCard';
 import { EXERCISE_VIDEOS } from '../FichaDeTreinoScreen';
 
@@ -209,7 +209,9 @@ export default function TabTreino({
           )}
 
           {currentWorkout?.exercises?.length > 0 && (
-            <Anatomy3D activeGroup={currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group} />
+            <Suspense fallback={<div className="h-40 flex items-center justify-center text-yellow-500 font-bold text-xs uppercase animate-pulse tracking-widest">Carregando Corpo 3D...</div>}>
+              <Anatomy3D activeGroup={currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group} />
+            </Suspense>
           )}
 
           {!currentWorkout?.exercises?.length ? (

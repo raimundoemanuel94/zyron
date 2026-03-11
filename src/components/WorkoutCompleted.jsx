@@ -4,6 +4,7 @@ import { Trophy, Camera, CheckCircle, Share2, ArrowRight, X, Instagram, Download
 import { db } from '../utils/db';
 import logger from '../utils/logger';
 import { generateShareableImage, getLocalizedDayName } from '../utils/imageGenerator';
+import { supabase } from '../lib/supabase';
 
 export default function WorkoutCompleted({ workout, sets, onFinish }) {
   const [photo, setPhoto] = useState(null);
@@ -12,6 +13,49 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showCelebration, setShowCelebration] = useState(true);
+  const [trainedDays, setTrainedDays] = useState([]);
+
+  useEffect(() => {
+    // Fetch this week's workouts to determine the streak
+    const fetchWeeklyStreak = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Get the start of the current week (Sunday)
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const { data, error } = await supabase
+          .from('workout_logs')
+          .select('created_at')
+          .eq('user_id', session.user.id)
+          .gte('created_at', startOfWeek.toISOString());
+        
+        let days = [];
+        if (data && data.length > 0) {
+          days = data.map(log => new Date(log.created_at).getDay());
+        }
+        
+        // Always include today since they just finished a workout
+        const todayIdx = new Date().getDay();
+        if (!days.includes(todayIdx)) {
+          days.push(todayIdx);
+        }
+        
+        setTrainedDays([...new Set(days)]);
+      } catch (e) {
+        console.error('Failed to fetch weekly streak', e);
+        setTrainedDays([new Date().getDay()]); // Fallback
+      }
+    };
+    
+    // Quick local fallback for instant render
+    setTrainedDays([new Date().getDay()]);
+    fetchWeeklyStreak();
+  }, []);
 
   useEffect(() => {
     // Auto-hide large trophy after 3 seconds
@@ -37,7 +81,8 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
         const stats = {
           duration: `${Math.floor(workout.duration_seconds / 60)}m ${workout.duration_seconds % 60}s`,
           sets: `${sets.length} SETS`,
-          dayName: getLocalizedDayName()
+          dayName: getLocalizedDayName(),
+          trainedDays: trainedDays
         };
         const blob = await generateShareableImage(base64, stats);
         setShareableBlob(blob);

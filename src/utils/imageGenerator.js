@@ -38,126 +38,67 @@ export async function generateShareableImage(photoBase64, stats) {
       const offsetY = (H - drawH) / 2;
       ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
-      // ── 3. Gradiente superior sutil (escurece topo para legibilidade) ─────
-      const topGrad = ctx.createLinearGradient(0, 0, 0, 500);
-      topGrad.addColorStop(0, 'rgba(0,0,0,0.70)');
-      topGrad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = topGrad;
-      ctx.fillRect(0, 0, W, 400);
-
-      // ── 4. Gradiente inferior de contraste (Y: 900 → H) ─────────────────
-      const botGrad = ctx.createLinearGradient(0, 900, 0, H);
+      // ── 3. Gradiente inferior de contraste (Y: H - 500 → H) ─────────────────
+      // Menos gradiente, apenas o suficiente para os textos na parte de baixo
+      const botGrad = ctx.createLinearGradient(0, H - 500, 0, H);
       botGrad.addColorStop(0,    'rgba(0,0,0,0)');
-      botGrad.addColorStop(0.45, 'rgba(0,0,0,0.75)');
-      botGrad.addColorStop(1,    'rgba(0,0,0,0.97)');
+      botGrad.addColorStop(0.6,  'rgba(0,0,0,0.6)');
+      botGrad.addColorStop(1,    'rgba(0,0,0,0.9)');
       ctx.fillStyle = botGrad;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, H - 500, W, 500);
 
       // ══════════════════════════════════════════════════════════════════════
-      // TEXTOS — calculados de BAIXO para CIMA
+      // CORPO REFORMULADO (CLEAN)
       // ══════════════════════════════════════════════════════════════════════
 
-      // ── [BASE] Y = H - 60  →  Tagline ────────────────────────────────────
-      ctx.textAlign = 'center';
-      ctx.font      = '400 28px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.fillText('ESTILO DE VIDA INDUSTRIAL', W / 2, H - 60);
-
-      // ── [1]   Y = H - 110 →  Marca d'água "ZYRON" ────────────────────────
-      ctx.font      = 'bold italic 80px sans-serif';
-      ctx.fillStyle = '#FDE047';
-      ctx.fillText('ZYRON', W / 2, H - 110);
-
-      // ── [2]  Frase motivacional clean (substitui stats) ───────────────────
-      //  Y = H - 220 → "MAIS UM" (pequeno, branco, letra espaçada)
-      ctx.textAlign = 'center';
-      ctx.font      = '300 52px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.letterSpacing = '12px'; // não funciona em canvas — separado a seguir
-      ctx.fillText('M A I S   U M', W / 2, H - 340);
-
-      //  Y = H - 270 → "TREINO FEITO" (enorme, amarelo, bold italic)
-      ctx.font      = 'bold italic 118px sans-serif';
-      ctx.fillStyle = '#FDE047';
-      ctx.fillText('TREINO FEITO', W / 2, H - 220);
-
-      // Linha divisória sutil abaixo da frase
-      ctx.strokeStyle = 'rgba(253,224,71,0.25)';
-      ctx.lineWidth   = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(120, H - 175);
-      ctx.lineTo(W - 120, H - 175);
-      ctx.stroke();
-
-      // ── [5]   Y = H - 430 →  "GYM · ZYRON" badge ─────────────────────────
-      // Fundo pill amarelo
-      const badgeW = 320;
-      const badgeH = 70;
-      const badgeX = (W - badgeW) / 2;
-      const badgeY = H - 500;
-      const r = 35;
-      ctx.beginPath();
-      ctx.moveTo(badgeX + r, badgeY);
-      ctx.lineTo(badgeX + badgeW - r, badgeY);
-      ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + r);
-      ctx.lineTo(badgeX + badgeW, badgeY + badgeH - r);
-      ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - r, badgeY + badgeH);
-      ctx.lineTo(badgeX + r, badgeY + badgeH);
-      ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - r);
-      ctx.lineTo(badgeX, badgeY + r);
-      ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
-      ctx.closePath();
-      ctx.fillStyle = '#FDE047';
-      ctx.fill();
-
-      ctx.font      = 'bold 34px sans-serif';
-      ctx.fillStyle = '#000000';
-      ctx.textAlign = 'center';
-      ctx.fillText('🏋️  GYM · ZYRON', W / 2, badgeY + 46);
-
-      // ── [6]   Y = H - 590 → Dias da Semana estilo Mtfit ──────────────────
+      // ── Dias da Semana estilo Mtfit (Agressive Streak) ──────────────────
       const dayLabels  = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
       const todayIdx   = stats.dayIndex ?? new Date().getDay(); // 0=Dom
+      const trainedDays = stats.trainedDays || [todayIdx]; // Fallback to at least today
+
       const cellSize   = 100;
       const gap        = 28;
       const totalW     = dayLabels.length * cellSize + (dayLabels.length - 1) * gap;
       const startX     = (W - totalW) / 2;
-      const baseY      = H - 630;
+      const baseY      = H - 250;
 
       dayLabels.forEach((lbl, i) => {
         const cx = startX + i * (cellSize + gap) + cellSize / 2;
         const cy = baseY;
         const isToday = i === todayIdx;
+        const isTrained = trainedDays.includes(i);
 
         // Círculo de fundo
         ctx.beginPath();
         ctx.arc(cx, cy, cellSize / 2, 0, Math.PI * 2);
 
-        if (isToday) {
-          ctx.fillStyle = '#FDE047';
+        if (isTrained) {
+          ctx.fillStyle = '#FDE047'; // Aggressive Yellow fill for trained days
         } else {
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.fillStyle = 'rgba(255,255,255,0.08)'; // Dim background for untrained
         }
         ctx.fill();
 
-        // Borda no dia ativo
+        // Borda agressiva no dia atual
         if (isToday) {
-          ctx.strokeStyle = '#FDE047';
-          ctx.lineWidth = 4;
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 6;
           ctx.stroke();
         }
 
-        // Letra do dia
-        ctx.font      = isToday ? 'bold 40px sans-serif' : '500 38px sans-serif';
-        ctx.fillStyle = isToday ? '#000000' : 'rgba(255,255,255,0.5)';
+        // Letra do dia ou Ícone de Check
+        ctx.font      = isTrained ? 'bold 44px sans-serif' : '500 38px sans-serif';
+        ctx.fillStyle = isTrained ? '#000000' : 'rgba(255,255,255,0.4)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(lbl, cx, cy);
+        
+        // Em vez da letra, se treinou, podemos colocar um 'X' ou usar a letra forte
+        ctx.fillText(isTrained ? 'X' : lbl, cx, cy + 4); 
 
-        // Ponto embaixo do dia ativo
-        if (isToday) {
+        // Ponto embaixo contínuo para dias de série (streak)
+        if (isTrained) {
           ctx.beginPath();
-          ctx.arc(cx, cy + cellSize / 2 + 14, 6, 0, Math.PI * 2);
+          ctx.arc(cx, cy + cellSize / 2 + 18, 8, 0, Math.PI * 2);
           ctx.fillStyle = '#FDE047';
           ctx.fill();
         }
@@ -166,23 +107,17 @@ export async function generateShareableImage(photoBase64, stats) {
       // Reset textBaseline
       ctx.textBaseline = 'alphabetic';
 
-      // ══════════════════════════════════════════════════════════════════════
-      // TOPO — Título do Dia
-      // ══════════════════════════════════════════════════════════════════════
-
-      // ── [TOPO 1] Y = 175 →  Nome do Dia em amarelo grande ─────────────────
-      ctx.textAlign = 'left';
-      ctx.font      = 'bold italic 88px sans-serif';
+      // ── Logo "ZYRON" ────────────────────────
+      ctx.textAlign = 'center';
+      ctx.font      = 'bold italic 72px sans-serif';
       ctx.fillStyle = '#FDE047';
-      ctx.fillText((stats.dayName || 'DIA DE TREINO').toUpperCase(), 80, 175);
+      ctx.fillText('ZYRON', W / 2, H - 110);
 
-      // ── [TOPO 2] Y = 240 →  Sublinha decorativa amarela ──────────────────
-      ctx.strokeStyle = '#FDE047';
-      ctx.lineWidth   = 6;
-      ctx.beginPath();
-      ctx.moveTo(80, 215);
-      ctx.lineTo(460, 215);
-      ctx.stroke();
+      // ── Tagline ────────────────────────────────────
+      ctx.font      = '400 24px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.letterSpacing = '4px';
+      ctx.fillText('A FORÇA DA SUA EVOLUÇÃO.', W / 2, H - 60);
 
       // ── 5. Retorna Blob JPEG ───────────────────────────────────────────────
       canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
