@@ -23,6 +23,7 @@ export const MusicProvider = ({ children }) => {
   const playerRef = useRef(null); // Ref para o iframe do YouTube
   const silentAudioRef = useRef(null); // Ref para o elemento de áudio silencioso
   const backgroundAudioRef = useRef(null); // Ref para o elemento de áudio de background para iOS
+  const preloadAudioRef = useRef(null); // Ref para fazer preload da próxima música da CDN
   const audioSourceNode = useRef(null);
   const gainNode = useRef(null);
   const analyserNode = useRef(null);
@@ -225,6 +226,22 @@ export const MusicProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [isPlaying]);
 
+  // Audio Watchdog: Recupera o áudio nativo caso o celular pause por inatividade/bateria
+  useEffect(() => {
+    let watchdogInterval;
+    if (isPlaying) {
+      watchdogInterval = setInterval(() => {
+        if (backgroundAudioRef.current && backgroundAudioRef.current.paused) {
+           console.log('🐕 Watchdog: Áudio detectado como pausado de forma anômala. Retomando...');
+           backgroundAudioRef.current.play().catch(e => console.log('Watchdog falhou ao retomar:', e));
+        }
+      }, 5000); // Checa a cada 5 segundos
+    } else {
+      clearInterval(watchdogInterval);
+    }
+    return () => clearInterval(watchdogInterval);
+  }, [isPlaying]);
+
   const loadVideoById = async (track) => {
     if (!track) return;
     
@@ -272,8 +289,40 @@ export const MusicProvider = ({ children }) => {
             if (success) {
               // Salvar referência para controle
               if (backgroundAudioRef.current) {
-                backgroundAudioRef.current = audioElement;
+                // Parar o áudio anterior se houver
+                backgroundAudioRef.current.pause();
+                backgroundAudioRef.current.src = '';
               }
+              backgroundAudioRef.current = audioElement;
+              
+              // Evento para tocar a próxima música automaticamente
+              audioElement.onended = () => {
+                console.log('🎵 Track ended, playing next...');
+                nextTrack();
+              };
+
+              // PRELOAD DA PRÓXIMA MÚSICA (UX instantâneo)
+              if (playlist && playlist.length > 0) {
+                 const currentIndex = playlist.findIndex(t => t.id === track.id);
+                 if (currentIndex !== -1) {
+                    const nextItem = playlist[(currentIndex + 1) % playlist.length];
+                    if (nextItem && nextItem.id) {
+                       // Disparar uma busca suave para a Vercel engatilhar o proxy da próxima sem pausar a tela atual
+                       fetch(`/api/audio-stream/${nextItem.id}`)
+                         .then(res => res.json())
+                         .then(data => {
+                            if (data && data.audioUrl) {
+                               console.log('🔄 Preloading next track:', nextItem.title);
+                               const preloadAudio = new Audio(data.audioUrl);
+                               preloadAudio.preload = 'auto';
+                               preloadAudioRef.current = preloadAudio;
+                            }
+                         })
+                         .catch(e => console.warn('Preload falhou (ignorado):', e));
+                    }
+                 }
+              }
+
               return;
             }
             
