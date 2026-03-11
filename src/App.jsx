@@ -6,8 +6,6 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MusicProvider } from './contexts/MusicContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { NotificationProvider } from './contexts/NotificationContext';
 import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
 import GlobalPlayer from './components/GlobalPlayer';
 import OnboardingScreen from './components/OnboardingScreen';
@@ -17,7 +15,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ErrorDiagnostics from './components/ErrorDiagnostics';
 import ErrorLogger from './components/ErrorLogger';
 import PWASplashScreen from './components/PWASplashScreen';
-import ForceUpdateBanner from './components/ForceUpdateBanner';
 import RBACGuard from './components/RBACGuard';
 import PersonalDashboard from './components/admin/PersonalDashboard';
 import audioUnlocker from './utils/audioUnlock.js';
@@ -128,8 +125,7 @@ function App() {
         
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white overflow-hidden">
           <SpeedInsights />
-          {/* PWA Install Banner */}
-          <ForceUpdateBanner />
+          {/* PWA Install Banner removed */}
 
           {/* ── Aguarda Supabase confirmar auth antes de renderizar qualquer tela ── */}
           {authLoading ? (
