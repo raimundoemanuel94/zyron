@@ -205,9 +205,9 @@ export default function GlobalPlayer({ constraintsRef }) {
                </p>
             </div>
 
-            {/* Quick Controls */}
             <div className="flex items-center gap-1.5 pr-1">
               <button 
+                onClick={(e) => { e.stopPropagation(); togglePlay(); }}
                 onTouchStart={(e) => { e.stopPropagation(); togglePlay(); }}
                 className="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-black active:scale-90 transition-transform shadow-md"
               >
@@ -215,6 +215,7 @@ export default function GlobalPlayer({ constraintsRef }) {
               </button>
               
               <button 
+                onClick={(e) => { e.stopPropagation(); nextTrack(); }}
                 onTouchStart={(e) => { e.stopPropagation(); nextTrack(); }}
                 className="text-white/40 hover:text-white transition-colors p-1"
               >

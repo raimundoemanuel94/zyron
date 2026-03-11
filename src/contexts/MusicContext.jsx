@@ -264,6 +264,7 @@ export const MusicProvider = ({ children }) => {
             audioElement.src = streamData.audioUrl;
             audioElement.volume = volume / 100;
             audioElement.crossOrigin = "anonymous";
+            audioElement.playsInline = true;
             
             // Usar estratégia agressiva para PWA
             const success = await forcePlayAudio(audioElement, track.id);
@@ -534,6 +535,7 @@ export const MusicProvider = ({ children }) => {
       const testAudio = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
       testAudio.volume = 0.1;
       testAudio.loop = true;
+      testAudio.playsInline = true;
       await testAudio.play();
       console.log('🔊 Áudio de teste iniciado');
       
