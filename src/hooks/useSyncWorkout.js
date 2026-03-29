@@ -5,6 +5,7 @@ import { db as zyronDB } from '../utils/db';
 
 /**
  * useSyncWorkout Hook - ZYRON Advanced Sync v2 (Photos + IndexedDB Queue)
+ * NOW DIRECTLY USING SUPABASE CLIENT Bypassing /api endpoint for local dev/Vite compat
  */
 export function useSyncWorkout(user) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -22,6 +23,85 @@ export function useSyncWorkout(user) {
     };
     initQueue();
   }, []);
+
+  const processItem = async (item, session) => {
+    const userId = session.user.id;
+    
+    // 1. Insert Workout Log
+    const { data: workoutLog, error: workoutError } = await supabase
+      .from('workout_logs')
+      .insert({
+        user_id: userId,
+        workout_key: String(item.workout.workout_key),
+        duration_seconds: item.workout.duration_seconds,
+        created_at: item.workout.created_at || new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (workoutError) throw new Error(workoutError.message);
+
+    // 2. Handle Photo Upload
+    if (item.workout.photo_payload) {
+      try {
+        const parts = item.workout.photo_payload.split(',');
+        const base64Data = parts[1];
+        const contentType = parts[0].split(';')[0].split(':')[1];
+        const fileName = `${userId}/${Date.now()}.jpg`;
+
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from('workout_photos')
+          .upload(fileName, bytes, {
+            contentType: contentType,
+            upsert: true
+          });
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase
+            .storage
+            .from('workout_photos')
+            .getPublicUrl(fileName);
+            
+          await supabase.from('workout_photos').insert({
+            workout_log_id: workoutLog.id,
+            user_id: userId,
+            storage_path: publicUrl
+          });
+        }
+      } catch (uploadErr) {
+        logger.error('Storage Upload Error:', {}, uploadErr);
+      }
+    }
+
+    // 3. Insert Sets
+    if (item.sets && item.sets.length > 0) {
+      const setLogs = item.sets.map((set, idx) => ({
+        user_id: userId,
+        workout_id: workoutLog.id,
+        exercise_id: set.exercise_id,
+        set_number: set.set_number || (idx + 1),
+        weight_kg: parseFloat(set.weight_kg) || 0,
+        reps: parseInt(set.reps) || 0,
+        rpe: parseInt(set.rpe) || null
+      }));
+
+      const { error: setsError } = await supabase
+        .from('set_logs')
+        .insert(setLogs);
+
+      if (setsError) throw new Error(setsError.message);
+    }
+
+    // 4. Update Profile
+    await supabase.from('profiles').update({ last_synced_at: new Date().toISOString() }).eq('id', userId);
+  };
 
   const performSync = useCallback(async () => {
     if (!navigator.onLine) return;
@@ -45,27 +125,15 @@ export function useSyncWorkout(user) {
              continue;
           }
 
-          // ZYRON ADVANCED: Check if there's a photo in IndexedDB for this workout
-          if (item.workout && item.workout.photo_id) {
+          if (item.workout && item.workout.photo_id && !item.workout.photo_payload) {
             const photoData = await zyronDB.getPhoto(item.workout.photo_id);
             if (photoData) {
               item.workout.photo_payload = photoData;
             }
           }
 
-          const response = await fetch('/api/sync-workout', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.access_token}`
-            },
-            body: JSON.stringify(item)
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || 'Sync failed');
-          }
+          // Process using Supabase directly
+          await processItem(item, session);
 
           // Success: Clean up IndexedDB photo and queue item
           if (item.workout && item.workout.photo_id) {
@@ -105,15 +173,9 @@ export function useSyncWorkout(user) {
     };
   }, [performSync]);
 
-  /**
-   * Main method to log a workout
-   * @param {Object} workout - Now includes photo_id (indexedDB) and photo_payload (base64)
-   * @param {Array} sets
-   */
   const logWorkout = useCallback(async (workout, sets) => {
     const payload = { type: 'workout_log', workout, sets };
 
-    // If offline, queue immediately. Photo is already in indexedDB via WorkoutCompleted.jsx
     if (!navigator.onLine) {
       logger.warn('Offline: Treino salvo no IndexedDB Queue');
       await zyronDB.addToSyncQueue(payload);
@@ -125,20 +187,10 @@ export function useSyncWorkout(user) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('No active session');
 
-      const response = await fetch('/api/sync-workout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      // Process direct to Supabase
+      await processItem(payload, session);
 
-      if (!response.ok) {
-        throw new Error('API unstable, queueing for later');
-      }
-
-      // If it was an immediate Success, and there was a photo_id, clean it from DB
+      // Clean photo db if success
       if (workout.photo_id) {
         await zyronDB.deletePhoto(workout.photo_id);
       }
@@ -147,7 +199,10 @@ export function useSyncWorkout(user) {
       return { success: true, status: 'synced' };
     } catch (err) {
       logger.warn('Erro na sincronização imediata, enfileirando...', {}, err);
-      // Ensure payload is queued
+      if (workout.photo_id && workout.photo_payload) {
+         await zyronDB.savePhoto(workout.photo_id, workout.photo_payload);
+         delete payload.workout.photo_payload; // reduce size in queue
+      }
       await zyronDB.addToSyncQueue(payload);
       setSyncPending(prev => prev + 1);
       return { success: true, status: 'queued' };
