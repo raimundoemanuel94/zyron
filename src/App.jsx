@@ -7,7 +7,7 @@ import { MusicProvider } from './contexts/MusicContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { useAuth } from './contexts/AuthContext';
 import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
-import GlobalPlayer from './components/GlobalPlayer';
+import GlobalPlayer from './components/GlobalhPlayer';
 import OnboardingScreen from './components/OnboardingScreen';
 import LoginScreen from './components/LoginScreen';
 import AdminScreen from './components/AdminScreen';
