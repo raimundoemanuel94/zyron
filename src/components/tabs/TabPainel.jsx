@@ -1,7 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Zap, Droplets, Beef, Crown, CreditCard, Flame, CheckCircle2, BellRing, X } from 'lucide-react';
+import { 
+  Activity, 
+  Zap, 
+  Droplets, 
+  Flame, 
+  CheckCircle2, 
+  Bell, 
+  X, 
+  Play, 
+  Clock, 
+  Heart, 
+  Moon, 
+  Menu 
+} from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  ResponsiveContainer, 
+  YAxis, 
+  XAxis, 
+  Tooltip as RechartsTooltip 
+} from 'recharts';
 import { supabase } from '../../lib/supabase';
+import haptics from '../../utils/haptics';
 
 const GlassCard = ({ children, className = '' }) => (
   <div className={`bg-neutral-900/50 backdrop-blur-md border border-white/5 p-6 rounded-3xl shadow-xl ${className}`}>
@@ -22,13 +44,11 @@ export default function TabPainel({
   proteinGoal,
   setProtein
 }) {
-  const [activeNotification, setActiveNotification] = useState(null);
   const [trainedDays, setTrainedDays] = useState([]);
   const remainingProtein = Math.max(0, proteinGoal - protein);
 
   useEffect(() => {
     if (user?.id) {
-      fetchNotifications();
       fetchWeekStreak();
     }
   }, [user]);
@@ -66,282 +86,164 @@ export default function TabPainel({
     }
   };
 
-  const fetchNotifications = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle(); // Use maybeSingle to avoid 406 Not Acceptable on empty results
-        
-      if (error) {
-        // Silently ignore schema/permission errors
-        return;
-      }
-        
-      if (data) {
-        setActiveNotification(data);
-      }
-    } catch (e) {
-      // Silenced to avoid console spam
-    }
-  };
 
-  const markAsRead = async () => {
-    if (!activeNotification) return;
-    try {
-      await supabase.from('notifications').update({ is_read: true }).eq('id', activeNotification.id);
-      setActiveNotification(null);
-    } catch (e) {
-      console.error(e);
-      setActiveNotification(null);
-    }
-  };
   
   // Saudação dinâmica baseada na hora e frase motivacional:
   const hour = new Date().getHours();
-  let greeting = 'BOA NOITE';
-  if (hour >= 5 && hour < 12) greeting = 'BOM DIA';
-  else if (hour >= 12 && hour < 18) greeting = 'BOA TARDE';
+  // Mock data para bio-métricas (em um app real viria do Apple Health/Google Fit)
+  const bioMetrics = {
+    hrv: 68,
+    sleep: 7.2,
+    rhr: 52
+  };
 
-  const quotes = [
-    "A DISCIPLINA FORJA O AÇO.",
-    "BEM-VINDO À FÁBRICA DE MONSTROS.",
-    "O DESCANSO TAMBÉM É TREINO.",
-    "HOJE É DIA DE ESMAGAR.",
-    "SÓ OS FORTES SOBREVIVEM.",
-    "CADA GOTA DE SUOR CONTA."
+  // Mock data para telemetria (tempo de treino nos últimos 7 dias)
+  const chartData = [
+    { day: 'Seg', time: 45 },
+    { day: 'Ter', time: 60 },
+    { day: 'Qua', time: 0 },
+    { day: 'Qui', time: 50 },
+    { day: 'Sex', time: 75 },
+    { day: 'Sáb', time: 90 },
+    { day: 'Dom', time: 40 }
   ];
-  // Usa o dia do mês para parear a frase de forma determinística
-  const quote = quotes[new Date().getDate() % quotes.length];
-
-  // Imagem de fundo dinâmica (usando Unsplash estilizado)
-  // Caso o treino contenha "Peito", "Costas", etc, poderíamos variar a URL.
-  // Por enquanto uma imagem bem pesada e industrial:
-  const bgImage = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1470&auto=format&fit=crop";
 
   return (
-    <motion.div
-      key="painel"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
-    >
-      {/* HEADER E DATA */}
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight italic">Painel de Controle</h2>
-          <p className="text-[10px] text-neutral-500 font-black uppercase tracking-widest">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        </div>
-        <div className="p-3 bg-yellow-500/10 rounded-2xl border border-yellow-500/20">
-          <span className="text-2xl">📊</span>
-        </div>
-      </div>
-
-      {/* STREAK MOMENTUM - Dados Reais do Supabase */}
-      <GlassCard className="mb-6 border-yellow-500/20 bg-neutral-900/40">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block mb-1">Momentum</span>
-            <h3 className="text-lg font-black uppercase italic tracking-tight text-white flex items-center gap-2">
-              Sequência de Treinos <span className="text-orange-500">🔥</span>
-            </h3>
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-black text-yellow-400 italic">{trainedDays.length}</span>
-            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest block">esta semana</span>
-          </div>
-        </div>
-        
-        <div className="flex justify-between items-center">
-          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, idx) => {
-            const isActive = trainedDays.includes(idx);
-            const isToday = idx === today;
-            return (
-              <div key={idx} className="flex flex-col items-center gap-1.5">
-                <span className={`text-[9px] font-black uppercase ${isToday ? 'text-yellow-400' : 'text-neutral-500'}`}>{day}</span>
-                <div className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-all ${
-                  isActive 
-                    ? 'bg-yellow-400 border-yellow-400 text-neutral-950 shadow-[0_0_10px_rgba(253,224,71,0.3)]' 
-                    : isToday 
-                      ? 'bg-neutral-900 border-yellow-400/30 text-yellow-400/50'
-                      : 'bg-neutral-900 border-neutral-800 text-neutral-700'
-                }`}>
-                  {isActive ? <span className="font-bold text-xs">✓</span> : <div className="w-1.5 h-1.5 rounded-full bg-neutral-800"></div>}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </GlassCard>
-
-      {/* WELCOME DASHBOARD EXPERIENCIE (HERO CARD) */}
-      <div 
-        className="bg-neutral-900/80 backdrop-blur-xl border border-yellow-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden group min-h-[280px] flex flex-col justify-end"
-        style={{
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundBlendMode: 'overlay'
-        }}
+      <motion.div
+        key="painel"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 1.05 }}
+        className="flex flex-col gap-4 h-full max-h-[calc(100vh-180px)] overflow-hidden"
       >
-        {/* Overlay Dark Gradient Misto para garantir leitura */}
-        <div className="absolute inset-0 bg-linear-to-t from-neutral-950 via-neutral-950/80 to-neutral-950/40 pointer-events-none"></div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/20 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
+        {/* SYSTEM STATUS BANNER */}
+      <div className="flex justify-between items-center bg-black border border-yellow-500/20 py-2.5 px-4 rounded-2xl shadow-inner relative overflow-hidden group">
+        <div className="absolute inset-0 bg-yellow-500/5 group-hover:bg-yellow-500/10 transition-colors"></div>
+        <div className="relative z-10">
+          <h3 className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.3em] flex items-center gap-2">
+            ZYRON<span className="text-yellow-400">.</span> <span className="text-neutral-600">ESTADO DO SISTEMA:</span> <span className="text-emerald-400">ÓTIMO</span>
+          </h3>
+        </div>
+        <div className="relative z-10 flex items-center gap-2 px-3 py-1 bg-yellow-400/10 border border-yellow-400/20 rounded-full">
+          <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></div>
+          <span className="text-[8px] font-black text-yellow-400 uppercase tracking-widest">Ativo</span>
+        </div>
+      </div>
+
+      {/* METRICS ROW (2 COLS) */}
+      <div className="grid grid-cols-2 gap-4 h-24">
+        {/* Calories Card */}
+        <div className="bg-neutral-900/60 p-4 rounded-3xl border border-white/5 flex flex-col justify-between">
+          <div className="flex items-center gap-1.5 opacity-60">
+            <Flame size={12} className="text-orange-500" />
+            <span className="text-[8px] font-black uppercase tracking-widest">Calorias</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-black italic">1.240</span>
+            <span className="text-[8px] text-neutral-500 font-bold">/ 2500</span>
+          </div>
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full bg-orange-500 w-[50%] shadow-[0_0_8px_rgba(249,115,22,0.5)]"></div>
+          </div>
+        </div>
+        {/* Hydration Card */}
+        <div className="bg-neutral-900/60 p-4 rounded-3xl border border-white/5 flex flex-col justify-between">
+          <div className="flex items-center gap-1.5 opacity-60">
+            <Droplets size={12} className="text-blue-500" />
+            <span className="text-[8px] font-black uppercase tracking-widest">Hidratação</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="text-xl font-black italic">{water.toFixed(1)}</span>
+            <span className="text-[8px] text-neutral-500 font-bold">/ {waterGoal.toFixed(1)}L</span>
+          </div>
+          <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-blue-500 transition-all duration-1000 shadow-[0_0_8px_rgba(59,130,246,0.5)]" 
+              style={{ width: `${Math.min(100, (water / waterGoal) * 100)}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      {/* PROTOCOLO ATIVO CARD */}
+      <div className="bg-neutral-900/60 p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-neutral-950 rounded-2xl flex items-center justify-center border border-white/5 shadow-lg group-hover:border-yellow-500/30 transition-colors">
+            <Zap size={24} className="text-yellow-400" />
+          </div>
+          <div>
+            <h4 className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-0.5">Protocolo Ativo</h4>
+            <h3 className="text-sm font-black text-white uppercase italic tracking-tighter">
+              {currentWorkout?.title || 'Hipertrofia Tática'}
+            </h3>
+            <div className="flex gap-4 mt-1">
+              <div className="text-[8px] font-bold text-neutral-500 uppercase">CARGA MÉDIA: <span className="text-white ml-1">85kg</span></div>
+              <div className="text-[8px] font-bold text-neutral-500 uppercase">REPS TOTAIS: <span className="text-white ml-1">120</span></div>
+            </div>
+          </div>
+        </div>
+        <button 
+          onClick={() => startSession(today)}
+          className="w-10 h-10 bg-yellow-400 rounded-xl flex items-center justify-center text-black shadow-[0_0_20px_rgba(253,224,71,0.3)] hover:scale-110 active:scale-95 transition-all"
+        >
+          <Play size={20} fill="currentColor" />
+        </button>
+      </div>
+
+      {/* TELEMETRIA (CHART) */}
+      <div className="bg-neutral-900/60 p-5 rounded-3xl border border-white/5 flex flex-col flex-1 min-h-0">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h4 className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-0.5">Telemetria</h4>
+            <h3 className="text-xs font-black text-white uppercase italic tracking-widest">Tempo de Treino</h3>
+          </div>
+          <span className="text-[8px] font-black text-yellow-400 px-2 py-1 bg-yellow-400/10 border border-yellow-400/20 rounded-lg">7 DIAS</span>
+        </div>
         
-        <div className="relative z-10 flex flex-col gap-5">
-          <div className="space-y-1">
-            <span className="inline-block px-3 py-1 bg-yellow-400/20 text-yellow-400 text-[10px] font-black uppercase tracking-widest border border-yellow-400/30 rounded-full backdrop-blur-sm mb-2">
-              {greeting}, {user?.name?.split(' ')[0] || 'PRO'}
-            </span>
-            <h2 className="text-3xl font-black uppercase tracking-tighter italic text-white leading-[1.1]">
-              {quote}
-            </h2>
-            <p className="text-sm font-bold text-neutral-400 mt-2 tracking-wide uppercase">
-              FOCO DO DIA: <span className="text-yellow-400 ml-1">{currentWorkout?.title || 'DESCANSO'}</span>
-            </p>
-          </div>
-          
-          <button 
-            onClick={() => {
-              if (navigator.vibrate) navigator.vibrate(50);
-              startSession(today);
-            }}
-            className="group relative w-full bg-yellow-400 text-black font-black uppercase tracking-[0.2em] py-4 rounded-xl flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(253,224,71,0.2)] hover:shadow-[0_0_40px_rgba(253,224,71,0.4)] transition-all active:scale-95 overflow-hidden"
-          >
-            <span className="relative z-10 flex items-center gap-2">Iniciar Sessão ⚡</span>
-            {/* Shimmer Effect */}
-            <div className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
-          </button>
+        <div className="flex-1 w-full -ml-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <XAxis 
+                dataKey="day" 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fill: '#525252', fontSize: 8, fontWeight: 900 }} 
+                dy={10}
+              />
+              <YAxis hide domain={[0, 'auto']} />
+              <RechartsTooltip 
+                contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #ffffff1a', borderRadius: '12px', fontSize: '10px' }}
+                itemStyle={{ color: '#FDE047', fontWeight: 'bold' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="time" 
+                stroke="#FDE047" 
+                strokeWidth={3} 
+                dot={{ fill: '#FDE047', strokeWidth: 0, r: 4 }}
+                activeDot={{ r: 6, stroke: '#000', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
-      {/* WIDGETS DE SAÚDE E METAS */}
-      <h3 className="text-lg font-black uppercase italic tracking-tight text-white mb-2 ml-1">Metas Diárias</h3>
-      <div className="grid grid-cols-2 gap-6">
-        {/* Water Widget */}
-        <div className="space-y-4 bg-neutral-900/40 p-4 rounded-3xl border border-white/5 shadow-lg relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-blue-500/10 transition-colors"></div>
-          <div className="flex items-center gap-2 relative z-10">
-            <span className="text-blue-400 text-lg">💧</span>
-            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Hidratação</span>
-          </div>
-          <div className={`relative h-32 w-full bg-neutral-950/80 rounded-2xl border ${isHydrationAlert && water < waterGoal ? 'border-yellow-400 shadow-[0_0_15px_rgba(253,224,71,0.3)] animate-pulse' : 'border-white/5'} overflow-hidden flex items-center justify-center transition-all z-10`}>
-            <svg className="w-24 h-24 transform -rotate-90">
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-neutral-900" />
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="251.2" strokeDashoffset={251.2 - (Math.min(100, (water / waterGoal) * 100) / 100) * 251.2} className="text-blue-500 transition-all duration-1000" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 12px rgba(59,130,246,0.6))' }} />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black italic text-white">{water.toFixed(1)}<span className="text-xs text-blue-500">L</span></span>
-              <span className="text-[8px] font-bold text-neutral-500 uppercase mt-1">META {waterGoal.toFixed(1)}L</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 relative z-10">
-            {[0.25, 0.5].map(val => (
-              <button 
-                key={val}
-                onClick={() => {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  handleWaterDrink(Number(val));
-                }}
-                className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-all hover:shadow-[0_0_15px_rgba(59,130,246,0.4)] active:scale-95 text-neutral-400"
-              >
-                +{val >= 1 ? val : val.toString().substring(1)}L
-              </button>
-            ))}
-          </div>
+      {/* BIO-DADOS FOOTER ROW */}
+      <div className="grid grid-cols-3 gap-3 h-16">
+        <div className="bg-neutral-950/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
+          <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest mb-1">VFC</span>
+          <span className="text-xs font-black italic text-white">{bioMetrics.hrv} <span className="text-[8px] text-neutral-600 not-italic">ms</span></span>
         </div>
-
-        {/* Protein Widget */}
-        <div className="space-y-4 bg-neutral-900/40 p-4 rounded-3xl border border-white/5 shadow-lg flex flex-col relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-colors"></div>
-          <div className="flex items-center gap-2 relative z-10">
-            <span className="text-red-400 text-lg">🥩</span>
-            <span className="text-[10px] font-black text-red-400 uppercase tracking-widest">Proteína</span>
-          </div>
-          <div className="relative h-32 w-full bg-neutral-950/80 rounded-2xl border border-white/5 overflow-hidden flex items-center justify-center z-10">
-            {remainingProtein === 0 && (
-              <div className="absolute top-2 right-2 bg-emerald-500/20 text-emerald-400 text-[8px] font-black px-2 py-1 rounded-full border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.3)] z-20">
-                BATEU
-              </div>
-            )}
-            
-            <svg className="w-24 h-24 transform -rotate-90">
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-neutral-900" />
-              <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="6" fill="transparent" strokeDasharray="251.2" strokeDashoffset={251.2 - (Math.min(100, (protein / proteinGoal) * 100) / 100) * 251.2} className="text-red-500 transition-all duration-1000" strokeLinecap="round" style={{ filter: 'drop-shadow(0 0 12px rgba(248,113,113,0.6))' }} />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-black italic text-white">{protein}<span className="text-xs text-red-500">g</span></span>
-              <span className="text-[8px] font-bold text-neutral-500 uppercase mt-1">META {proteinGoal}g</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2 mt-auto relative z-10">
-            {[30, 50].map(val => (
-              <button 
-                key={val}
-                onClick={() => {
-                  if (navigator.vibrate) navigator.vibrate(50);
-                  setProtein(prev => prev + Number(val));
-                }}
-                className="py-2 bg-neutral-900/80 backdrop-blur-md border border-white/5 rounded-xl text-[10px] font-black hover:bg-red-500 hover:text-white hover:border-red-500 transition-all hover:shadow-[0_0_15px_rgba(248,113,113,0.4)] active:scale-95 text-neutral-400"
-              >
-                +{val}g
-              </button>
-            ))}
-          </div>
+        <div className="bg-neutral-950/40 rounded-2xl border border-yellow-500/20 flex flex-col items-center justify-center relative overflow-hidden group">
+          <div className="absolute inset-0 bg-yellow-500/5"></div>
+          <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest mb-1 relative z-10">Dormir</span>
+          <span className="text-xs font-black italic text-white relative z-10">{bioMetrics.sleep} <span className="text-[8px] text-neutral-600 not-italic">h</span></span>
+        </div>
+        <div className="bg-neutral-950/40 rounded-2xl border border-white/5 flex flex-col items-center justify-center">
+          <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest mb-1">RHR</span>
+          <span className="text-xs font-black italic text-white">{bioMetrics.rhr} <span className="text-[8px] text-neutral-600 not-italic">bpm</span></span>
         </div>
       </div>
-
-      {/* NOTIFICATION MODAL */}
-      <AnimatePresence>
-        {activeNotification && (
-          <motion.div 
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed inset-x-4 bottom-24 z-50 max-w-xl mx-auto"
-          >
-            <div className="bg-neutral-900 border border-indigo-500/30 rounded-3xl p-6 shadow-[0_20px_50px_rgba(99,102,241,0.2)] relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-[40px] pointer-events-none"></div>
-              
-              <div className="flex justify-between items-start relative z-10 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-500/30 font-bold text-xl">
-                    🔔
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Mensagem da Administração</h4>
-                    <h3 className="text-lg font-black italic uppercase text-white leading-tight">{activeNotification.title}</h3>
-                  </div>
-                </div>
-                <button 
-                  onClick={markAsRead}
-                  className="p-2 bg-neutral-800 hover:bg-neutral-700 rounded-full text-neutral-400 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="relative z-10 bg-black/40 rounded-xl p-4 border border-white/5 mb-4">
-                <p className="text-sm font-medium text-neutral-300 whitespace-pre-wrap leading-relaxed">
-                  {activeNotification.message}
-                </p>
-              </div>
-
-              <button 
-                onClick={markAsRead}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors border border-indigo-500/50 shadow-[0_0_20px_rgba(99,102,241,0.3)]"
-              >
-                Entendido
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }

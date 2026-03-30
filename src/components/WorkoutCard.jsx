@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History, Play, Square, X, ChevronDown, ChevronUp } from 'lucide-react';
+import haptics from '../utils/haptics';
 
 export default function WorkoutCard({
   ex,
@@ -10,7 +11,9 @@ export default function WorkoutCard({
   onUpdateLoad,
   prHistoryLoad,
   showPR,
-  videoQuery
+  videoQuery,
+  onActivateMuscle,
+  isPremiumUser
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
@@ -52,8 +55,13 @@ export default function WorkoutCard({
     if (!isRunning) {
       setIsRunning(true);
       setSetTimer(0);
+      // Activate muscle pump on start (if premium user)
+      if (onActivateMuscle && isPremiumUser) {
+        onActivateMuscle(ex.id);
+      }
     } else {
       setIsRunning(false);
+      haptics.success();
       playMetalSound();
       
       // Feature request: "Ao clicar em finalizar, dispare automaticamente o temporizador de descanso no topo e REGISTRE A CARGA"
@@ -105,6 +113,7 @@ export default function WorkoutCard({
 
   // Haptic Picker Handlers - Feature 2
   const handleLoadChange = (delta) => {
+    haptics.light();
     const currentLoad = parseFloat(load) || 0;
     const newLoad = Math.max(0, currentLoad + delta);
     onUpdateLoad(ex.id, newLoad.toString());
@@ -123,9 +132,15 @@ export default function WorkoutCard({
             ? 'border-yellow-400 animate-neon-pulse z-10' 
             : 'border-white/5 hover:border-yellow-400/30 shadow-2xl shadow-black/40'
       }`}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onClick={() => {
         if (!completed && !isExpanded) {
+          haptics.medium();
           setIsExpanded(true);
+          // Activate muscle pump on card click (if premium user)
+          if (onActivateMuscle && isPremiumUser) {
+            onActivateMuscle(ex.id);
+          }
         }
       }}
     >

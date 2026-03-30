@@ -10,6 +10,7 @@ import FichaDeTreinoScreen from './components/FichaDeTreinoScreen';
 import GlobalPlayer from './components/GlobalPlayer';
 import OnboardingScreen from './components/OnboardingScreen';
 import LoginScreen from './components/LoginScreen';
+import LoginScreenModerno from './components/LoginScreenModerno';
 import AdminScreen from './components/AdminScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import ErrorDiagnostics from './components/ErrorDiagnostics';
@@ -18,29 +19,9 @@ import PWASplashScreen from './components/PWASplashScreen';
 import RBACGuard from './components/RBACGuard';
 import PersonalDashboard from './components/admin/PersonalDashboard';
 import audioUnlocker from './utils/audioUnlock.js';
+import hardcorePWA from './utils/hardcorePWA.js';
 
-/* ── Debug Overlay — só aparece em modo desenvolvimento ── */
-const DebugOverlay = ({ user, userRole, viewManager }) => {
-  // Esconde completamente em produção
-  if (import.meta.env.PROD) return null;
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-yellow-500/20 p-2 z-50 text-[8px] font-mono flex justify-around items-center backdrop-blur-md">
-      <div className="flex gap-4">
-        <span className="text-neutral-500 uppercase">UID:</span>
-        <span className="text-white">{user?.id?.slice(0, 8)}...</span>
-      </div>
-      <div className="flex gap-4">
-        <span className="text-neutral-500 uppercase">ROLE:</span>
-        <span className="text-yellow-400 font-bold">{userRole || 'FETCHING...'}</span>
-      </div>
-      <div className="flex gap-4">
-        <span className="text-neutral-500 uppercase">VIEW:</span>
-        <span className="text-white uppercase">{viewManager}</span>
-      </div>
-    </div>
-  );
-};
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -90,6 +71,25 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Initialize Audio Context on first interaction
+  useEffect(() => {
+    const handleInteraction = async () => {
+      await audioUnlocker.init();
+      await audioUnlocker.unlock();
+      // Once unlocked, we can remove the global listener
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+
+    return () => {
+      window.removeEventListener('click', handleInteraction);
+      window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
+
   const handleLogin = (sessionUser) => {
     setUser(sessionUser);
     setIsAuthenticated(true);
@@ -119,10 +119,7 @@ function App() {
           <SpeedInsights />
 
           {authLoading ? (
-            /* Tela de aguardo — preto puro enquanto Supabase confirma auth */
-            <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-yellow-400/20 border-t-yellow-400 rounded-full animate-spin" />
-            </div>
+            <PWASplashScreen />
           ) : (
             <AnimatePresence mode="wait">
               {!isAuthenticated ? (
@@ -147,7 +144,7 @@ function App() {
                     exit={{ opacity: 0 }}
                     className="w-full"
                   >
-                    <LoginScreen
+                    <LoginScreenModerno
                       onLogin={handleLogin}
                       onRegisterClick={() => setShowOnboarding(true)}
                     />
@@ -196,11 +193,6 @@ function App() {
             </AnimatePresence>
           )}
         </div>
-
-        {/* ── Debug Overlay — apenas em desenvolvimento ── */}
-        {isAuthenticated && (
-          <DebugOverlay user={user} userRole={userRole} viewManager={viewManager} />
-        )}
       </div>
     </MusicProvider>
   );

@@ -8,9 +8,10 @@ import 'swiper/css/effect-coverflow';
 
 // Assuming these are passed or imported from their respective paths.
 // If Anatomy3D, WorkoutCard, or EXERCISE_VIDEOS are in parent folder, we import like this:
-const Anatomy3D = lazy(() => import('../Anatomy3D'));
+import AnatomyMap2D from '../AnatomyMap2D';
 import WorkoutCard from '../WorkoutCard';
 import { EXERCISE_VIDEOS } from '../FichaDeTreinoScreen';
+import haptics from '../../utils/haptics';
 
 export default function TabTreino({
   today,
@@ -26,7 +27,12 @@ export default function TabTreino({
   loads,
   updateLoad,
   prHistory,
-  showPR
+  showPR,
+  onActivateMuscle,
+  isPremiumUser,
+  currentExerciseId,
+  activePrimaryMuscles,
+  activeMuscles
 }) {
   const [cardioRunning, setCardioRunning] = useState(false);
   const [cardioTime, setCardioTime] = useState(0);
@@ -126,6 +132,7 @@ export default function TabTreino({
                         <button 
                           onClick={(e) => {
                             if(e && e.stopPropagation) e.stopPropagation();
+                            haptics.heavy();
                             startSession(parseInt(key));
                           }}
                           className="mt-6 w-full py-4 bg-yellow-500 border border-yellow-400 text-white font-black rounded-2xl hover:bg-yellow-400 transition-all uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 group/btn"
@@ -165,7 +172,10 @@ export default function TabTreino({
           ) : (
             <div className="px-1">
               <button 
-                onClick={() => startSession(today)}
+                onClick={() => {
+                  haptics.heavy();
+                  startSession(today);
+                }}
                 className="w-full relative overflow-hidden bg-neutral-900 border border-white/5 hover:bg-neutral-800 p-5 rounded-2xl font-black uppercase tracking-[0.2em] italic flex items-center justify-center gap-3 transition-all group"
               >
                 <span className="text-yellow-400 text-xl group-hover:scale-110 transition-transform">⚡</span> 
@@ -209,9 +219,13 @@ export default function TabTreino({
           )}
 
           {currentWorkout?.exercises?.length > 0 && (
-            <Suspense fallback={<div className="h-40 flex items-center justify-center text-yellow-500 font-bold text-xs uppercase animate-pulse tracking-widest">Carregando Corpo 3D...</div>}>
-              <Anatomy3D activeGroup={currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group} />
-            </Suspense>
+            <AnatomyMap2D
+              activeGroup={
+                isPremiumUser && activePrimaryMuscles?.length > 0
+                  ? activePrimaryMuscles[0]
+                  : currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group
+              }
+            />
           )}
 
           {!currentWorkout?.exercises?.length ? (
@@ -220,18 +234,26 @@ export default function TabTreino({
               <p className="text-neutral-500 font-black uppercase tracking-widest text-lg">OFF DAY - Descanso Ativo</p>
             </div>
           ) : (
-            currentWorkout.exercises.map((ex) => (
-              <WorkoutCard
+            currentWorkout.exercises.map((ex, i) => (
+              <motion.div
                 key={ex.id}
-                ex={ex}
-                completed={completedExercises.includes(ex.id)}
-                onComplete={handleExerciseComplete}
-                load={loads[ex.id]}
-                onUpdateLoad={updateLoad}
-                prHistoryLoad={prHistory[ex.id]}
-                showPR={showPR}
-                videoQuery={EXERCISE_VIDEOS[ex.id] || 'vcBig73oqpE'}
-              />
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <WorkoutCard
+                  ex={ex}
+                  completed={completedExercises.includes(ex.id)}
+                  onComplete={handleExerciseComplete}
+                  load={loads[ex.id]}
+                  onUpdateLoad={updateLoad}
+                  prHistoryLoad={prHistory[ex.id]}
+                  showPR={showPR}
+                  videoQuery={EXERCISE_VIDEOS[ex.id] || 'vcBig73oqpE'}
+                  onActivateMuscle={onActivateMuscle}
+                  isPremiumUser={isPremiumUser}
+                />
+              </motion.div>
             ))
           )}
 
@@ -286,7 +308,10 @@ export default function TabTreino({
           )}
 
           <button 
-            onClick={() => setIsTraining(false)}
+            onClick={() => {
+              haptics.heavy();
+              setIsTraining(false);
+            }}
             className="w-full bg-neutral-900/50 hover:bg-red-600 border border-white/5 hover:border-red-500 p-6 rounded-3xl font-black uppercase tracking-[0.3em] italic text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-4 mt-8"
           >
             <span className="text-xl">🛑</span> FINALIZAR SESSÃO

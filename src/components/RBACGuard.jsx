@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
-import { ShieldAlert, Cpu } from 'lucide-react';
+import { ShieldAlert, Cpu, Dumbbell } from 'lucide-react';
 
 /**
  * RBACGuard - Middleware de Proteção de Rota Industrial
@@ -42,7 +42,7 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
         console.error('[RBACGuard] Erro na verificação:', err);
         setError(`Erro: ${err.message || 'Falha na validação de privilégios'}. Código: ${err.code || 'N/A'}`);
       } finally {
-        setTimeout(() => setVerifying(false), 800);
+        setTimeout(() => setVerifying(false), 4000);
       }
     }
 
@@ -52,33 +52,32 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
   if (verifying) {
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="relative mb-8">
-          <div className="absolute inset-0 bg-yellow-400/20 blur-3xl animate-pulse rounded-full" />
+        <div className="relative mb-10 flex justify-center">
+          <div className="absolute inset-0 bg-yellow-500/20 blur-[50px] animate-pulse rounded-full w-32 h-32 ml-auto mr-auto" />
           <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-            className="relative p-6 border-2 border-dashed border-yellow-400/30 rounded-full"
+            animate={{ scale: [1, 1.15, 1], rotate: [-5, 5, -5] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+            className="relative p-6 bg-neutral-900 border border-white/5 shadow-[0_0_40px_rgba(253,224,71,0.15)] rounded-3xl"
           >
-            <Cpu className="text-yellow-400" size={48} />
+            <Dumbbell className="text-yellow-400 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" size={64} />
           </motion.div>
         </div>
         
-        <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter mb-2">
-          INICIALIZANDO ZYRON...
+        <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter mb-4 drop-shadow-lg">
+          FORJANDO<br/><span className="text-yellow-400">RESULTADOS...</span>
         </h2>
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map(i => (
-            <motion.div 
-              key={i}
-              animate={{ opacity: [0.2, 1, 0.2] }}
-              transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-              className="w-2 h-2 bg-yellow-400 rounded-full"
-            />
-          ))}
+        
+        <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden mb-6 relative">
+          <motion.div
+            className="absolute top-0 left-0 h-full w-24 bg-linear-to-r from-transparent via-yellow-400 to-transparent blur-[1px]"
+            animate={{ x: [-100, 250] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+            style={{ boxShadow: '0 0 10px rgba(253,224,71,0.5)' }}
+          />
         </div>
         
-        <p className="mt-6 text-[10px] font-black text-neutral-500 uppercase tracking-[0.4em] max-w-xs">
-          Verificando protocolos de segurança e nível de autorização
+        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] max-w-xs">
+          Sincronizando banco de dados de performance
         </p>
       </div>
     );

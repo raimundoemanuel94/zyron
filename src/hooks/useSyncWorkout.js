@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import logger from '../utils/logger';
 import { db as zyronDB } from '../utils/db';
+import { sanitizeWorkoutState } from '../utils/sanitizer';
 
 /**
  * useSyncWorkout Hook - ZYRON Advanced Sync v2 (Photos + IndexedDB Queue)
@@ -174,7 +175,10 @@ export function useSyncWorkout(user) {
   }, [performSync]);
 
   const logWorkout = useCallback(async (workout, sets) => {
-    const payload = { type: 'workout_log', workout, sets };
+    // NUCLEAR CLEANUP: Sanitize inputs before anything
+    const cleanWorkout = sanitizeWorkoutState(workout);
+    const cleanSets = sanitizeWorkoutState(sets);
+    const payload = { type: 'workout_log', workout: cleanWorkout, sets: cleanSets };
 
     if (!navigator.onLine) {
       logger.warn('Offline: Treino salvo no IndexedDB Queue');
