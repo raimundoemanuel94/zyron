@@ -7,10 +7,9 @@ import 'swiper/css';
 import 'swiper/css/effect-coverflow';
 
 // Assuming these are passed or imported from their respective paths.
-// If Anatomy3D, WorkoutCard, or EXERCISE_VIDEOS are in parent folder, we import like this:
+// If Anatomy3D, WorkoutCard are in parent folder, we import like this:
 import AnatomyMap2D from '../AnatomyMap2D';
 import WorkoutCard from '../WorkoutCard';
-import { EXERCISE_VIDEOS } from '../FichaDeTreinoScreen';
 import haptics from '../../utils/haptics';
 
 export default function TabTreino({
@@ -141,22 +140,6 @@ export default function TabTreino({
                           Selecionar
                         </button>
 
-                        <button
-                          onClick={(e) => {
-                            if(e && e.stopPropagation) e.stopPropagation();
-                            const firstEx = workout.exercises[0];
-                            if (firstEx) {
-                              setVideoModal({ 
-                                name: `Técnica: ${firstEx.name}`, 
-                                query: EXERCISE_VIDEOS[firstEx.id] || firstEx.name + ' técnica exercício' 
-                              });
-                            }
-                          }}
-                          className="mt-2 w-full py-2 bg-neutral-900/50 text-neutral-400 hover:text-white font-black rounded-xl border border-white/5 hover:border-yellow-400/30 transition-all uppercase text-[8px] tracking-[0.2em] flex items-center justify-center gap-2"
-                        >
-                          <span className="text-xs">🎥</span>
-                          Pré-visualizar Técnica
-                        </button>
                       </div>
                     </motion.div>
                   </SwiperSlide>
@@ -249,7 +232,6 @@ export default function TabTreino({
                   onUpdateLoad={updateLoad}
                   prHistoryLoad={prHistory[ex.id]}
                   showPR={showPR}
-                  videoQuery={EXERCISE_VIDEOS[ex.id] || 'vcBig73oqpE'}
                   onActivateMuscle={onActivateMuscle}
                   isPremiumUser={isPremiumUser}
                 />

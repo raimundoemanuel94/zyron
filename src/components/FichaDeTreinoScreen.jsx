@@ -79,41 +79,9 @@ import 'swiper/css';
 import 'swiper/css/effect-coverflow';
 import 'swiper/css/pagination';
 
-// YouTube Direct Video IDs for each exercise
-// Replace these with your own preferred tutorial video IDs
-export const EXERCISE_VIDEOS = {
-  'p1': '50RSzhMG5Hc', // Supino Reto Barra
-  'p2': 'Fa-X2ByLHaY', // Supino Inclinado Halter
-  'p_cm': 'nuTuKjcQRHg', // Crucifixo Maquina (using crossover as proxy)
-  'p3': 'nuTuKjcQRHg', // Cross Over
-  't1': '5PPKThQuR3M', // Triceps Pulley
-  't2': 'VnFopAIGO7E', // Triceps Corda
-  't3': '40Cx-IfJhA0', // Triceps Testa
-  't_mb': '2OymsPc-9Tw', // Mergulho Banco (using frances as proxy)
-  'c1': '3qj46qsOgfI', // Puxada Aberta
-  'c_rc': 'fEA4O71kFr4', // Remada Curvada (using baixa as proxy)
-  'c_rm': 'mjFIZX68F_8', // Remada Maquina (using serrote as proxy)
-  'c_pd': 'mjFIZX68F_8', // Pulldown
-  'b1': 'iA4RH6zDin0', // Rosca Direta Barra W
-  'b_ra': '8PN6YfFC6Q4', // Rosca Alternada (using martelo as proxy)
-  'b3': 'Qm4NdQttdi8', // Rosca Concentrada
-  'l1': '3vTRFnzCMaA', // Agachamento Livre
-  'l2': 'DQ4-HXFlKXI', // Leg Press 45
-  'l3': 'I_uBK4DDflU', // Extensora
-  'l4': 'PcTCUdxywHo', // Mesa Flexora
-  'l_st': 'PcTCUdxywHo', // Stiff
-  'l_ep': 'PcTCUdxywHo', // Elevacao Pelvica
-  'ca1': 'ZQdqLXtNpMQ',// Gemeos em Pe
-  'ca_s': 'ZQdqLXtNpMQ', // Panturrilha Sentado
-  's1': 'DFXtzdXN_iY', // Desenvolvimento Halter
-  's2': 'yURmeIEl1Fg', // Elevacao Lateral
-  's3': 'F6toacmeUlA', // Elevacao Frontal
-  's4': 'C9Q9so5Fqws', // Crucifixo Inverso
-  's_et': 'C9Q9so5Fqws', // Encolhimento
-  'b_rw': 'iA4RH6zDin0', // Rosca Barra W
-  'b2': '8PN6YfFC6Q4', // Rosca Martelo
-  'b_bi': 'Qm4NdQttdi8', // Rosca Banco Inclinado
-};
+// Video functionality removed in favor of anatomical muscle visualization
+// Exercises now display interactive muscle maps instead of video tutorials
+// Muscle data is stored in Supabase exercises_muscles table
 
 const QUICK_ACTIONS = [
   { id: 'session', icon: Zap, label: 'Iniciar Treino' },

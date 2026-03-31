@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History, Play, Square, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckCircle2, Trophy, Zap, Plus, Minus, History, Square, ChevronDown, ChevronUp } from 'lucide-react';
 import haptics from '../utils/haptics';
+import ExerciseAnatomy from './ExerciseAnatomy';
 
 export default function WorkoutCard({
   ex,
@@ -11,16 +12,13 @@ export default function WorkoutCard({
   onUpdateLoad,
   prHistoryLoad,
   showPR,
-  videoQuery,
   onActivateMuscle,
   isPremiumUser
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSet, setActiveSet] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
   const [setTimer, setSetTimer] = useState(0);
-  const [showVideo, setShowVideo] = useState(false);
   const cardRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -84,20 +82,13 @@ export default function WorkoutCard({
     }
   };
 
-  // Smart Play (Intersection Observer) - Feature 1
+  // Intersection observer for expanded state tracking
   useEffect(() => {
-    if (!isExpanded) {
-      setVideoPlaying(false);
-      return;
-    }
+    if (!isExpanded) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setVideoPlaying(true);
-        } else {
-          setVideoPlaying(false);
-        }
+        // Track visibility when expanded for analytics
       },
       { threshold: 0.5 }
     );
@@ -170,69 +161,40 @@ export default function WorkoutCard({
       </AnimatePresence>
 
       <div className="flex flex-col gap-4">
-        {/* Banner Area (Click to Expand Video) */}
-        <div 
+        {/* Exercise Image Banner */}
+        <div
           className="relative h-40 -mx-6 -mt-6 mb-2 overflow-hidden cursor-pointer group/banner border-b border-yellow-400/20"
           onClick={(e) => {
             e.stopPropagation();
             if (!isExpanded) setIsExpanded(true);
-            setShowVideo(!showVideo);
           }}
         >
-          <img 
-            src={ex.image || `https://img.youtube.com/vi/${videoQuery}/0.jpg`} 
+          <img
+            src={ex.image || "/images/zyron-hero-impact.png"}
             alt={ex.name}
             className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 scale-105 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-linear-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="bg-yellow-400/10 backdrop-blur-md p-4 rounded-full border border-yellow-400/50 group-hover:scale-110 group-hover:bg-yellow-400/30 transition-all">
-              <Play className="text-yellow-400 fill-yellow-400" size={32} />
-            </div>
-          </div>
           <div className="absolute bottom-3 left-6 flex items-center gap-2">
              <div className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" />
-             <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.3em] drop-shadow-lg">Técnica Industrial</span>
+             <span className="text-[10px] font-black text-yellow-400 uppercase tracking-[0.3em] drop-shadow-lg">Forma Perfeita</span>
           </div>
         </div>
 
-        {/* Inline Video Expander */}
+        {/* Anatomical Muscle Map */}
         <AnimatePresence>
-          {showVideo && (
-            <React.Fragment>
-              <div 
-                className="fixed inset-0 z-40 bg-transparent" 
-                onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
+          {isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <ExerciseAnatomy
+                exerciseId={ex.id}
+                activeMuscles={[]}
+                view="front"
               />
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden bg-black rounded-2xl border border-white/10 relative z-50"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="relative aspect-video">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoQuery}?autoplay=1&modestbranding=1&rel=0`}
-                    title={ex.name}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
-                    className="absolute top-2 right-2 p-2 bg-black/60 rounded-full text-white hover:bg-red-500 transition-colors z-10"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
-                  className="w-full py-3 bg-neutral-900 text-neutral-400 font-black uppercase text-[10px] tracking-widest hover:text-white transition-colors"
-                >
-                  X FECHAR VÍDEO
-                </button>
-              </motion.div>
-            </React.Fragment>
+            </motion.div>
           )}
         </AnimatePresence>
 
