@@ -1,38 +1,59 @@
-# dependencies
+# Dependências
 node_modules/
 .pnp
 .pnp.js
+package-lock.json
 
-# build output
+# Build & Vite Cache
 dist/
 dist-ssr/
+.vite/
+.vercel/
 
-# environment variables
+# Environment Variables (CRÍTICO - NUNCA committar)
 .env
 .env.local
 .env.*.local
 
-# editor
+# IDE & Editor
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# debug
+# Logs (NUNCA committar)
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+build-log.txt
+build_err.txt
+*.log
 
-# vercel
-.vercel
+# Temporários (NUNCA committar)
+tmp_*.js
+tmp_*.py
+*.bak
+*.tmp
+.cache/
 
-.vercel
-.env*.local
+# OS Specific
+.DS_Store
+Thumbs.db
+*.orig
+*.rej
 
-# vite
-.vite/
+# Backup Files
+*.backup
+*.bak
+*~
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE Local Settings
+.vscode/settings.json
+.idea/workspace.xml
