@@ -1,127 +1,141 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RotateCcw, Zap, Activity } from 'lucide-react';
-import BodyMapCore from './BodyMap/BodyMapCore';
-import { BACK_POINTS } from '../data/bodyMapPoints';
 
-const COLOR_PUMP    = '#ef4444'; // Vermelho pump (modo treino)
-const COLOR_INTER   = '#f59e0b'; // Amarelo Zyron (modo interativo)
+const COLOR_GLOW = '#ef4444'; // Red for muscle "pump"
+const IMAGE_FRONT = '/images/atlas-front.png';
+const IMAGE_BACK = '/images/atlas-back.png';
 
-const BACK_KEYS = BACK_POINTS.map(p => p.key);
+export default function AnatomyMap2D({ activeGroup }) {
+  // Determine if we should show FRONT or BACK view
+  const view = useMemo(() => {
+    const backGroups = ['Costas', 'Tríceps', 'Panturrilha', 'Posterior', 'Glúteos'];
+    return backGroups.includes(activeGroup) ? 'BACK' : 'FRONT';
+  }, [activeGroup]);
 
-export default function AnatomyMap2D({
-  activeGroup,
-  interactive = false,
-  onMuscleSelect,
-  compact = false,
-}) {
-  const [manualView, setManualView] = useState(null);
+  // Muscle mapping to % coordinates [top, left, width, height]
+  const muscles = {
+    // FRONT VIEW
+    'Peito': { 
+      front: { 
+        top: '23%', left: '46.5%', width: '12%', height: '8%', 
+        dual: { top: '23%', left: '53.5%' } 
+      } 
+    },
+    'Abdômen': { front: { top: '38%', left: '50%', width: '12%', height: '15%' } },
+    'Bíceps': { front: { top: '32%', left: '33%', width: '8%', height: '12%', dual: { top: '32%', left: '67%' } } },
+    'Ombro': { 
+        front: { top: '21%', left: '33%', width: '10%', height: '10%', dual: { top: '21%', left: '67%' } },
+        back: { top: '21%', left: '33%', width: '12%', height: '12%', dual: { top: '21%', left: '67%' } }
+    },
+    'Perna': { front: { top: '65%', left: '42%', width: '12%', height: '20%', dual: { top: '65%', left: '58%' } } },
+    'Antebraço': { front: { top: '48%', left: '25%', width: '8%', height: '12%', dual: { top: '48%', left: '75%' } } },
+    
+    // BACK VIEW
+    'Costas': { back: { top: '35%', left: '50%', width: '40%', height: '22%' } },
+    'Tríceps': { back: { top: '32%', left: '33%', width: '10%', height: '15%', dual: { top: '32%', left: '67%' } } },
+    'Panturrilha': { back: { top: '78%', left: '44%', width: '8%', height: '12%', dual: { top: '78%', left: '56%' } } },
+    'Glúteos': { back: { top: '52%', left: '50%', width: '30%', height: '12%' } },
+  };
 
-  const autoView = useMemo(
-    () => (!activeGroup ? 'FRONT' : BACK_KEYS.includes(activeGroup) ? 'BACK' : 'FRONT'),
-    [activeGroup]
-  );
+  const currentMuscle = muscles[activeGroup];
+  const activeOverlay = currentMuscle ? (view === 'FRONT' ? currentMuscle.front : currentMuscle.back) : null;
 
-  const view = manualView || autoView;
-
-  // ── Versão compacta (Silhueta simples) ──────────────────────────────────────
-  if (compact) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <BodyMapCore 
-          view={view} 
-          activeGroup={activeGroup} 
-          interactive={false} 
-          showLabels={false}
-          className="bg-transparent border-none"
-        />
-      </div>
-    );
-  }
-
-  // ── Versão completa (HUD + Mapa Interativo) ──────────────────────────────────
   return (
-    <div className={`w-full bg-black rounded-3xl border border-white/5 overflow-hidden relative shadow-[inset_0_0_100px_rgba(0,0,0,1)] flex items-center justify-center ${interactive ? 'h-[440px]' : 'h-72'}`}>
-
-      {/* HUD Superior Esquerdo */}
-      <div className="absolute top-5 left-5 z-20">
+    <div className="h-72 w-full bg-black rounded-3xl border border-white/5 overflow-hidden relative shadow-[inset_0_0_100px_rgba(0,0,0,1)] flex items-center justify-center p-2 group">
+      
+      {/* HUD OVERLAY - TOP LEFT */}
+      <div className="absolute top-4 left-5 z-20">
         <div className="flex items-center gap-3">
           <div className="relative flex items-center justify-center">
-            <div className={`w-3 h-3 rounded-full ${interactive ? 'bg-yellow-400 shadow-[0_0_15px_rgba(253,224,71,0.8)]' : 'bg-red-600 shadow-[0_0_20px_#ef4444]'}`} />
-            <div className={`absolute w-6 h-6 border rounded-full animate-ping opacity-30 ${interactive ? 'border-yellow-400' : 'border-red-500'}`} />
+             <div className="w-3 h-3 rounded-full bg-red-600 shadow-[0_0_15px_#ef4444]" />
+             <div className="absolute w-6 h-6 border border-red-500/20 rounded-full animate-ping" />
           </div>
           <div>
-            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white italic leading-none">
-              {interactive ? 'Anatomical Engine' : 'Neural Monitor'}
-            </h4>
-            <span className={`text-[8px] font-black uppercase tracking-widest mt-1 block ${interactive ? 'text-yellow-400' : 'text-red-500'}`}>
-              {interactive ? 'Selecione a Musculatura' : (activeGroup ? 'PUMP ATIVO' : 'SISTEMA EM ESPERA')}
-            </span>
+            <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-white italic">Neural Monitor</h4>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[7px] font-black text-neutral-500 uppercase tracking-widest leading-none underline decoration-red-500/30">Target:</span>
+              <span className="text-[7px] font-black text-red-500 uppercase tracking-widest leading-none">
+                {activeGroup ? 'PUMP ATIVO' : 'EM ESPERA'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Setores de Visão (Frente/Costas) */}
-      <div className="absolute top-5 right-5 z-20 flex gap-2">
-        {['FRONT', 'BACK'].map(v => (
-          <button
-            key={v}
-            onClick={() => setManualView(v)}
-            className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-all border ${
-              view === v
-                ? 'bg-yellow-400 text-neutral-950 border-yellow-400'
-                : 'bg-white/5 text-neutral-500 border-white/10 hover:border-white/20'
-            }`}
-          >
-            {v === 'FRONT' ? 'Frente' : 'Costas'}
-          </button>
-        ))}
-      </div>
-
-      {/* Core do Mapa Muscular SVG */}
-      <div className="w-full h-full p-4 flex items-center justify-center">
-        <BodyMapCore
-          view={view}
-          activeGroup={activeGroup}
-          onMuscleSelect={onMuscleSelect}
-          interactive={interactive}
-          showLabels={true}
-          className="bg-transparent border-none shadow-none"
-        />
-      </div>
-
-      {/* Botão GIRAR (Somente Modo Interativo) */}
-      {interactive && (
-        <button
-          onClick={() => setManualView(v => (v || view) === 'FRONT' ? 'BACK' : 'FRONT')}
-          className="absolute bottom-5 right-5 z-20 flex flex-col items-center gap-1.5 bg-yellow-400/10 hover:bg-yellow-400/20 border border-yellow-400/30 rounded-2xl px-5 py-2.5 transition-all active:scale-95 group shadow-lg"
+      <AnimatePresence mode="wait">
+        <motion.div
+           key={view}
+           initial={{ opacity: 0, scale: 0.95, filter: 'brightness(2)' }}
+           animate={{ opacity: 1, scale: 1, filter: 'brightness(1)' }}
+           exit={{ opacity: 0, scale: 1.05 }}
+           transition={{ duration: 0.5, ease: "circOut" }}
+           className="relative h-full aspect-1/2 flex items-center justify-center"
         >
-          <RotateCcw size={18} className="text-yellow-400 group-hover:rotate-180 transition-transform duration-500" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-yellow-400">GIRAR MODELO</span>
-        </button>
-      )}
+          {/* Base Atlas Image */}
+          <img 
+            src={view === 'FRONT' ? IMAGE_FRONT : IMAGE_BACK} 
+            className="h-full w-full object-cover mix-blend-screen opacity-90"
+            alt="Anatomical Map"
+          />
 
-      {/* Footer HUD (Dados Técnicos) */}
-      {!interactive && (
-        <>
-          <div className="absolute bottom-5 left-6 z-20 flex flex-col gap-2">
-            <div className="flex gap-1.5">
-              <div className="w-1.5 h-4 bg-red-600/40 rounded-full animate-pulse" />
-              <div className="w-1.5 h-4 bg-red-600/20 rounded-full" />
-              <div className="w-1.5 h-4 bg-red-600/10 rounded-full" />
-            </div>
-            <span className="text-[7px] font-mono text-neutral-600 tracking-tighter uppercase flex items-center gap-2">
-              <Activity size={8} /> ENGINE_CORE.v4.SVG.ACTIVE
-            </span>
-          </div>
-          <div className="absolute bottom-5 right-8 z-20 text-right">
-            <span className="text-[9px] font-bold text-neutral-500 uppercase tracking-widest block mb-0.5 opacity-60">Status Muscular</span>
-            <span className="text-lg font-black text-red-500 uppercase italic tracking-tighter drop-shadow-[0_0_12px_rgba(239,68,68,0.5)]">
-              {activeGroup || 'NO_DATA'}
-            </span>
-          </div>
-        </>
-      )}
+          {/* Muscle Glow Overlay */}
+          {activeOverlay && (
+            <>
+                <motion.div 
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: [0.8, 1, 0.8], scale: [0.98, 1.02, 0.98] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                    className="absolute pointer-events-none rounded-full blur-[12px]"
+                    style={{
+                        top: activeOverlay.top,
+                        left: activeOverlay.left,
+                        width: activeOverlay.width,
+                        height: activeOverlay.height,
+                        transform: 'translate(-50%, -50%)',
+                        background: `radial-gradient(circle, ${COLOR_GLOW} 50%, transparent 90%)`
+                    }}
+                />
+                {activeOverlay.dual && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: [0.8, 1, 0.8], scale: [0.98, 1.02, 0.98] }}
+                        transition={{ duration: 1.2, repeat: Infinity }}
+                        className="absolute pointer-events-none rounded-full blur-[12px]"
+                        style={{
+                            top: activeOverlay.dual.top,
+                            left: activeOverlay.dual.left,
+                            width: activeOverlay.width,
+                            height: activeOverlay.height,
+                            transform: 'translate(-50%, -50%)',
+                            background: `radial-gradient(circle, ${COLOR_GLOW} 50%, transparent 90%)`
+                        }}
+                    />
+                )}
+            </>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* FOOTER HUD */}
+      <div className="absolute bottom-4 left-5 z-20 flex flex-col gap-1.5">
+         <div className="flex gap-1">
+            <div className="w-1 h-3 bg-red-600/40 rounded-full" />
+            <div className="w-1 h-3 bg-red-600/20 rounded-full" />
+         </div>
+         <span className="text-[6px] font-mono text-neutral-600 tracking-tighter uppercase">ANATOMY.ENGINE.v3.0.RED</span>
+      </div>
+
+      <div className="absolute bottom-4 right-6 z-20 text-right">
+        <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest block mb-0.5">Musculatura</span>
+        <span className="text-sm font-black text-red-500 uppercase italic tracking-tighter drop-shadow-lg">
+          {activeGroup || '---'}
+        </span>
+      </div>
+
+      {/* Decorative Scan Effects */}
+      <div className="absolute inset-0 pointer-events-none opacity-10">
+        <div className="w-full h-full bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.4)_50%),linear-gradient(90deg,rgba(255,0,0,0.05),rgba(0,0,0,0),rgba(255,0,0,0.05))] bg-[length:100%_4px,10px_100%]" />
+      </div>
     </div>
   );
 }
