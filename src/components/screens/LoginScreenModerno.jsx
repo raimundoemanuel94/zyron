@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Loader, Mail, Lock } from "lucide-react";
-import { supabase } from "../lib/supabase";
-import logger from "../utils/logger";
+import { supabase } from "../../lib/supabase";
+import logger from "../../utils/logger";
 
 const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
   const [email, setEmail]               = useState("");

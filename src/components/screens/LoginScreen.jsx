@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 /* ── Typewriter hook — loop infinito ── */
 function useTypewriter(text, speed = 65, eraseSpeed = 35, hold = 2500, delay = 1200) {
