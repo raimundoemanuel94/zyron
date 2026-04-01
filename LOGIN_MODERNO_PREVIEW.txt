@@ -1,0 +1,292 @@
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                                                                             ║
+║                   🎯 LOGIN MODERNO - VISUAL PREVIEW 🎯                    ║
+║                                                                             ║
+║                          Novo Design Zyron                                 ║
+║                                                                             ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      DESKTOP VIEW (1024px+)                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────┬──────────────────────────────────────┐  │
+│  │                              │                                      │  │
+│  │                              │  ┌────────────────────────────────┐  │  │
+│  │                              │  │                                │  │  │
+│  │      IMAGEM GRANDE           │  │      ⚡ ZYRON ⚡              │  │  │
+│  │      Atleta/Mulher           │  │  ⚡ A FORÇA DA SUA EVOLUÇÃO   │  │  │
+│  │      em Ação                 │  │                                │  │  │
+│  │                              │  │  ┌────────────────────────────┤  │  │
+│  │      [Overlay gradient       │  │  │                            │  │  │
+│  │       from-black]            │  │  │  📧 EMAIL                 │  │  │
+│  │                              │  │  │  [════════════════════════ │  │  │
+│  │      Glow decorativo:        │  │  │   seu@email.com       ]   │  │  │
+│  │      ◎ (canto superior)      │  │  │                            │  │  │
+│  │      ◎ (canto inferior)      │  │  │  🔐 SENHA                 │  │  │
+│  │                              │  │  │  [════════════════════════ │  │  │
+│  │                              │  │  │   ••••••••             👁️ ]   │  │
+│  │                              │  │  │                            │  │  │
+│  │                              │  │  │  [> ENTRAR NO SISTEMA →]   │  │  │
+│  │                              │  │  │                            │  │  │
+│  │                              │  │  │  ─────────────────────     │  │  │
+│  │                              │  │  │           OU               │  │  │
+│  │                              │  │  │  ─────────────────────     │  │  │
+│  │                              │  │  │                            │  │  │
+│  │                              │  │  │  [NOVO? CRIAR CONTA]       │  │  │
+│  │                              │  │  │                            │  │  │
+│  │                              │  │  │  🔒 Acesso Criptografado  │  │  │
+│  │                              │  │  └────────────────────────────┘  │  │
+│  │                              │                                      │  │
+│  └──────────────────────────────┴──────────────────────────────────────┘  │
+│  50% width              50% width (com padding)                             │
+│                                                                             │
+│  Imagem:                      Form:                                        │
+│  ├─ 100% height              ├─ Glassmorphism (backdrop-blur)            │
+│  ├─ Overlay preto 70%        ├─ Border: white/10                         │
+│  ├─ Gradient overlay         ├─ Rounded-3xl                              │
+│  └─ Efeito de profundidade   └─ Shadow: 2xl                              │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      TABLET VIEW (768-1024px)                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│                  ┌─────────────────────────────────────┐                  │
+│                  │                                     │                  │
+│                  │      ⚡ ZYRON ⚡                    │                  │
+│                  │  ⚡ A FORÇA DA SUA EVOLUÇÃO         │                  │
+│                  │                                     │                  │
+│  ┌───────────┐  │  ┌───────────────────────────────┐  │                  │
+│  │           │  │  │                               │  │                  │
+│  │  Imagem   │  │  │  📧 EMAIL                    │  │                  │
+│  │  menor    │  │  │  [═════════════════════════  │  │                  │
+│  │  side-by- │  │  │   seu@email.com         ]    │  │                  │
+│  │  side     │  │  │                               │  │                  │
+│  │           │  │  │  🔐 SENHA                    │  │                  │
+│  │           │  │  │  [═════════════════════════  │  │                  │
+│  │           │  │  │   ••••••••              👁️  ]   │                  │
+│  │           │  │  │                               │  │                  │
+│  │           │  │  │  [> ENTRAR NO SISTEMA →]     │  │                  │
+│  │           │  │  │                               │  │                  │
+│  │           │  │  │  [NOVO? CRIAR CONTA]         │  │                  │
+│  │           │  │  └───────────────────────────────┘  │                  │
+│  │           │  │                                     │                  │
+│  └───────────┘  └─────────────────────────────────────┘                  │
+│  40% width          60% width                                              │
+│                                                                             │
+│  Imagem reduzida para         Form redimensionado                          │
+│  caber ao lado do form        para maior                                   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      MOBILE VIEW (<768px)                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                                                                      │  │
+│  │              ⚡ ZYRON ⚡                                            │  │
+│  │          ⚡ A FORÇA DA SUA EVOLUÇÃO                                │  │
+│  │                                                                      │  │
+│  │          ┌──────────────────────────────────────────────────┐      │  │
+│  │          │                                                  │      │  │
+│  │          │          📧 EMAIL                              │      │  │
+│  │          │          [════════════════════════════════ │      │  │
+│  │          │           seu@email.com               ]          │      │  │
+│  │          │                                                  │      │  │
+│  │          │          🔐 SENHA                              │      │  │
+│  │          │          [════════════════════════════════ │      │  │
+│  │          │           ••••••••                    👁️]        │      │  │
+│  │          │                                                  │      │  │
+│  │          │          [> ENTRAR NO SISTEMA →]               │      │  │
+│  │          │                                                  │      │  │
+│  │          │          ──────────────────────────────         │      │  │
+│  │          │                      OU                         │      │  │
+│  │          │          ──────────────────────────────         │      │  │
+│  │          │                                                  │      │  │
+│  │          │          [NOVO? CRIAR CONTA]                   │      │  │
+│  │          │                                                  │      │  │
+│  │          │          🔒 Acesso Criptografado              │      │  │
+│  │          └──────────────────────────────────────────────────┘      │  │
+│  │                                                                      │  │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │  │
+│  │  │                                                              │  │  │
+│  │  │       [Imagem gradient do fundo]                            │  │  │
+│  │  │       [Mostra no rodapé/background]                        │  │  │
+│  │  │       [Overlay preto 70%]                                  │  │  │
+│  │  │                                                              │  │  │
+│  │  └──────────────────────────────────────────────────────────────┘  │  │
+│  │                                                                      │  │
+│  │  ⚡ A FORÇA DA SUA EVOLUÇÃO                                       │  │
+│  │                                                                      │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  Form: 100% width                                                           │
+│  Imagem: No fundo, parcialmente visível                                     │
+│  Layout: Vertical (coluna única)                                            │
+│  Padding: Extra para conforto mobile                                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                      COMPONENTES E ESTILOS                                 ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║                                                                             ║
+║  LOGO                                                                       ║
+║  ├─ Tamanho: 4xl (mobile) → 5xl (desktop)                                 ║
+║  ├─ Cor: Gradient yellow-300 → yellow-400 → amber-500                    ║
+║  ├─ Font: Black italic bold                                                ║
+║  └─ Efeito: Drop-shadow amarelo sutil                                      ║
+║                                                                             ║
+║  SLOGAN                                                                     ║
+║  ├─ Texto: "⚡ A FORÇA DA SUA EVOLUÇÃO"                                    ║
+║  ├─ Cor: text-yellow-400                                                   ║
+║  ├─ Tamanho: xs (mobile) → sm (desktop)                                    ║
+║  └─ Spacing: tracking-[0.3em] (bem espaçado)                              ║
+║                                                                             ║
+║  FORM CARD                                                                  ║
+║  ├─ Fundo: backdrop-blur-xl bg-white/5                                     ║
+║  ├─ Border: white/10 rounded-3xl                                           ║
+║  ├─ Shadow: shadow-2xl shadow-black/50                                     ║
+║  ├─ Efeito: Glassmorphism (trendy 2024)                                    ║
+║  └─ Padding: p-8 (desktop) → p-6 (mobile)                                  ║
+║                                                                             ║
+║  INPUTS                                                                     ║
+║  ├─ Fundo: bg-black/40 (transparente)                                      ║
+║  ├─ Border: white/10 → yellow-400/50 (focus)                              ║
+║  ├─ Rounded: lg                                                             ║
+║  ├─ Padding: py-3 pl-12 pr-4 (icon + padding)                             ║
+║  ├─ Ícone esquerda: Mail/Lock gray → yellow (focus)                       ║
+║  ├─ Ícone direita: Eye toggle (show/hide password)                        ║
+║  └─ Placeholder: text-neutral-600 (sutil)                                  ║
+║                                                                             ║
+║  BOTÃO PRINCIPAL                                                            ║
+║  ├─ Fundo: gradient yellow-400 → amber-500                                ║
+║  ├─ Hover: gradient yellow-300 → amber-400 (mais claro)                   ║
+║  ├─ Tamanho: py-4 (grande, confortável)                                    ║
+║  ├─ Font: black uppercase italic                                           ║
+║  ├─ Rounded: lg                                                             ║
+║  ├─ Shadow: lg shadow-yellow-400/30 (hover: /50)                           ║
+║  ├─ Disabled: opacity-50 cursor-not-allowed                                ║
+║  └─ Ícone: ArrowRight + "ENTRAR NO SISTEMA"                               ║
+║                                                                             ║
+║  TOGGLE (Signup/Login)                                                     ║
+║  ├─ Fundo: bg-white/5                                                      ║
+║  ├─ Border: white/10 → yellow-400/30 (hover)                              ║
+║  ├─ Texto: white font-black uppercase                                      ║
+║  └─ Efeito: scale 1 → 1.02 (hover)                                         ║
+║                                                                             ║
+║  MENSAGEM DE ERRO                                                           ║
+║  ├─ Sucesso: bg-emerald-500/20 border-emerald-500/50 text-emerald-400    ║
+║  ├─ Erro: bg-red-500/20 border-red-500/50 text-red-400                   ║
+║  ├─ Rounded: xl                                                             ║
+║  ├─ Animação: fade-in/out (300ms)                                          ║
+║  └─ Desaparece: auto após 3s (para sucesso)                                ║
+║                                                                             ║
+║  DIVIDER (OU)                                                               ║
+║  ├─ Estilo: line left | OR | line right                                    ║
+║  ├─ Cor: white/10                                                          ║
+║  └─ Texto: text-neutral-500 uppercase bold                                 ║
+║                                                                             ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                         FLUXO DE INTERAÇÃO                                 ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║                                                                             ║
+║  1. PÁGINA CARREGA                                                          ║
+║     └─ Logo entra com scale 0.9 → 1 (500ms)                               ║
+║     └─ Form entra com opacity 0 → 1 (600ms, delay 300ms)                  ║
+║     └─ Imagem de fundo em scale 1.1 → 1 (800ms)                           ║
+║                                                                             ║
+║  2. USUÁRIO DIGITA EMAIL                                                   ║
+║     └─ Input border: white/10 (normal)                                     ║
+║     └─ Input border: yellow-400/50 (focus)                                ║
+║     └─ Ícone: gray (normal) → yellow (focus)                              ║
+║     └─ Input box-shadow: subtle yellow glow                                ║
+║                                                                             ║
+║  3. USUÁRIO DIGITA SENHA                                                   ║
+║     └─ Mesmo efeito do email                                               ║
+║     └─ Ícone eye toggle no lado direito                                    ║
+║     └─ Click eye: show/hide password                                       ║
+║                                                                             ║
+║  4. USUÁRIO CLICA BOTÃO "ENTRAR"                                           ║
+║     └─ Hover: scale 1 → 1.02, shadow intensifica                           ║
+║     └─ Tap: scale 1.02 → 0.98 (click feedback)                            ║
+║     └─ Spinner aparece: "Processando..."                                   ║
+║     └─ Botão desabilitado (opacity-50)                                     ║
+║     └─ Aguarda resposta Supabase...                                        ║
+║                                                                             ║
+║  5. SUCESSO                                                                 ║
+║     └─ Mensagem verde: "✅ Acesso concedido"                              ║
+║     └─ App navega para dashboard                                           ║
+║                                                                             ║
+║  6. ERRO                                                                    ║
+║     └─ Mensagem vermelha: "Email ou senha inválidos"                      ║
+║     └─ Spinner desaparece                                                  ║
+║     └─ Usuário pode tentar novamente                                       ║
+║                                                                             ║
+║  7. TOGGLE PARA SIGNUP                                                     ║
+║     └─ Click "NOVO? CRIAR CONTA"                                          ║
+║     └─ isSigningUp muda para true                                          ║
+║     └─ Texto muda para "Criar Conta" / "Junte-se..."                      ║
+║     └─ Botão muda para "Criar Conta"                                       ║
+║     └─ Toggle volta para "Já tem conta? Entrar"                            ║
+║                                                                             ║
+║  8. SIGNUP SUCESSO                                                          ║
+║     └─ Mensagem verde: "✅ Conta criada! Verifique seu email."            ║
+║     └─ Auto-toggle para login após 3s                                      ║
+║                                                                             ║
+║  9. SIGNUP ERRO                                                             ║
+║     └─ Mensagem vermelha com motivo                                        ║
+║     └─ Usuário pode tentar novamente                                       ║
+║                                                                             ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                      EXEMPLO: IMAGEM IDEAL                                 ║
+╠═════════════════════════════════════════════════════════════════════════════╣
+║                                                                             ║
+║  Características:                                                           ║
+║  ├─ Mulher/atleta em ação (exercitando)                                    ║
+║  ├─ Pose dinâmica (correr, pular, boxar, treinar)                          ║
+║  ├─ Roupa de gym/esportiva (top/shorts)                                    ║
+║  ├─ Corpo bem definido/tonificado (fitness vibe)                           ║
+║  ├─ Fundo desfocado/escuro (deixa pessoa em foco)                          ║
+║  ├─ Cor dominante: escura (complementa overlay)                            ║
+║  ├─ Proporção: portrait (altura > largura)                                 ║
+║  └─ Energia/atitude: motivacional, power, força                            ║
+║                                                                             ║
+║  Dimensões:                                                                 ║
+║  ├─ Mínimo: 800×1000px                                                     ║
+║  ├─ Ideal: 1200×1600px                                                     ║
+║  ├─ Máximo: 1920×2560px                                                    ║
+║  ├─ Aspect ratio: 0.6–0.75 (portrait)                                      ║
+║  └─ Peso: < 500KB (otimizado)                                              ║
+║                                                                             ║
+║  Onde encontrar:                                                            ║
+║  ├─ Unsplash: "female athlete" / "fitness woman"                          ║
+║  ├─ Pexels: "woman gym" / "athlete training"                              ║
+║  ├─ Pixabay: "fitness woman" / "gym workout"                              ║
+║  └─ Sua própria foto (se tiver alta qualidade)                             ║
+║                                                                             ║
+║  Exemplo de URL Unsplash:                                                  ║
+║  https://images.unsplash.com/photo-[...]?w=1200&h=1600&fit=crop           ║
+║                                                                             ║
+╚═════════════════════════════════════════════════════════════════════════════╝
+
+
+PRONTO PARA USAR! 🚀
+
+Basta adicionar sua imagem em `public/images/athlete-bg.jpg`
+E tudo funcionará perfeitamente!
+
+Teste agora: npm run dev

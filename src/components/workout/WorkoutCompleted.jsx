@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Camera, CheckCircle, Share2, ArrowRight, X, Instagram, Download } from 'lucide-react';
-import { db } from '../../utils/db';
-import logger from '../../utils/logger';
-import { generateShareableImage, getLocalizedDayName } from '../../utils/imageGenerator';
-import { supabase } from '../../lib/supabase';
+import { db } from '../utils/db';
+import logger from '../utils/logger';
+import { generateShareableImage, getLocalizedDayName } from '../utils/imageGenerator';
+import { supabase } from '../lib/supabase';
 
 export default function WorkoutCompleted({ workout, sets, onFinish }) {
   const [photo, setPhoto] = useState(null);
