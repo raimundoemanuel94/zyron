@@ -56,14 +56,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow, Pagination } from 'swiper/modules';
-import { workoutData } from '../data/workoutData';
+import { workoutData } from '../../data/workoutData';
 import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { MoreHorizontal } from 'lucide-react';
 import WorkoutCard from './WorkoutCard';
 import WorkoutCompleted from './WorkoutCompleted';
-import { supabase } from '../lib/supabase';
-import { sanitizeWorkoutState } from '../utils/sanitizer';
-import hardcorePWA from '../utils/hardcorePWA';
+import { supabase } from '../../lib/supabase';
+import { sanitizeWorkoutState } from '../../utils/sanitizer';
+import hardcorePWA from '../../utils/hardcorePWA';
 
 import TabPainel from './tabs/TabPainel';
 import TabTreino from './tabs/TabTreino';
@@ -71,8 +71,8 @@ import TabEvolucao from './tabs/TabEvolucao';
 import TabPerfil from './tabs/TabPerfil';
 import TabCoach from './tabs/TabCoach';
 import MusclePumpWrapper from './MusclePumpWrapper';
-import { useSyncWorkout } from '../hooks/useSyncWorkout';
-import haptics from '../utils/haptics';
+import { useSyncWorkout } from '../../hooks/useSyncWorkout';
+import haptics from '../../utils/haptics';
 
 // Import Swiper styles
 import 'swiper/css';

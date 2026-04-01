@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { Play, Pause, SkipBack, SkipForward, Music, Maximize2, Zap } from 'lucide-react';
-import { useMusic } from '../contexts/MusicContext';
-import audioUnlocker from '../utils/audioUnlock';
+import { useMusic } from '../../contexts/MusicContext';
+import audioUnlocker from '../../utils/audioUnlock';
 
 /**
  * ZYRON Global Player Component

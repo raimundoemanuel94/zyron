@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History, Play, Square, X, ChevronDown, ChevronUp } from 'lucide-react';
-import haptics from '../utils/haptics';
+import haptics from '../../utils/haptics';
 
 export default function WorkoutCard({
   ex,
