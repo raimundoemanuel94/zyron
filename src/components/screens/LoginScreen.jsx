@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 
 /* ── Typewriter hook — loop infinito ── */
 function useTypewriter(text, speed = 65, eraseSpeed = 35, hold = 2500, delay = 1200) {
@@ -107,7 +107,7 @@ const PrimaryButton = ({ children, loading, ...props }) => (
 /* ══════════════════════════════════════════
    COMPONENTE PRINCIPAL
 ══════════════════════════════════════════ */
-const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
+const LoginScreen = ({ onLogin, onRegisterClick }) => {
   const [email, setEmail]                   = useState("");
   const [password, setPassword]             = useState("");
   const [newPassword, setNewPassword]       = useState("");
@@ -393,4 +393,4 @@ const IndustrialLogin = ({ onLogin, onRegisterClick }) => {
   );
 };
 
-export default IndustrialLogin;
+export default LoginScreen;

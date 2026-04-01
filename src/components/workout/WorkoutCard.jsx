@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Trophy, Zap, Plus, Minus, History, Square, ChevronDown, ChevronUp } from 'lucide-react';
-import haptics from '../utils/haptics';
-import ExerciseAnatomy from './ExerciseAnatomy';
+import haptics from '../../utils/haptics';
+import ExerciseAnatomy from '../anatomy/ExerciseAnatomy';
 
 export default function WorkoutCard({
   ex,

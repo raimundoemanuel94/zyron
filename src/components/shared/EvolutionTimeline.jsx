@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Camera, Clock, ChevronRight, X, Trophy, TrendingUp } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import logger from '../utils/logger';
+import { supabase } from '../../lib/supabase';
+import logger from '../../utils/logger';
 
 export default function EvolutionTimeline({ user }) {
   const [history, setHistory] = useState([]);

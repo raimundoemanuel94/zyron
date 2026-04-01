@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { useMusclePump } from '../hooks/useMusclePump';
+import { useMusclePump } from '../../hooks/useMusclePump';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MusclePumpWrapper({
