@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Zap, Play, Coffee, Flame, ArrowRight, Target, TrendingUp, Check } from 'lucide-react';
+import { Dumbbell, Zap, Play, Coffee, Flame, ArrowRight, Target, TrendingUp, Check, ChevronDown, ChevronUp } from 'lucide-react';
+
+// Cores consistentes com WorkoutCard
+const MUSCLE_COLORS = {
+  'Peito':      { bg: 'bg-amber-500/20',   text: 'text-amber-400',   border: 'border-amber-500/40',   active: 'bg-amber-500 text-black border-amber-400' },
+  'Costas':     { bg: 'bg-blue-500/20',    text: 'text-blue-400',    border: 'border-blue-500/40',    active: 'bg-blue-500 text-white border-blue-400' },
+  'Perna':      { bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/40', active: 'bg-emerald-500 text-black border-emerald-400' },
+  'Bíceps':     { bg: 'bg-purple-500/20',  text: 'text-purple-400',  border: 'border-purple-500/40',  active: 'bg-purple-500 text-white border-purple-400' },
+  'Tríceps':    { bg: 'bg-rose-500/20',    text: 'text-rose-400',    border: 'border-rose-500/40',    active: 'bg-rose-500 text-white border-rose-400' },
+  'Ombro':      { bg: 'bg-sky-500/20',     text: 'text-sky-400',     border: 'border-sky-500/40',     active: 'bg-sky-500 text-white border-sky-400' },
+  'Abdômen':    { bg: 'bg-orange-500/20',  text: 'text-orange-400',  border: 'border-orange-500/40',  active: 'bg-orange-500 text-black border-orange-400' },
+  'Panturrilha':{ bg: 'bg-teal-500/20',    text: 'text-teal-400',    border: 'border-teal-500/40',    active: 'bg-teal-500 text-black border-teal-400' },
+  'Glúteos':    { bg: 'bg-pink-500/20',    text: 'text-pink-400',    border: 'border-pink-500/40',    active: 'bg-pink-500 text-white border-pink-400' },
+};
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { EffectCoverflow } from 'swiper/modules';
 import 'swiper/css';
@@ -43,6 +56,7 @@ export default function SessaoTreinoPremium({
   const [cardioRunning, setCardioRunning] = useState(false);
   const [cardioTime, setCardioTime] = useState(0);
   const [selectedMuscle, setSelectedMuscle] = useState(null);
+  const [anatomyOpen, setAnatomyOpen] = useState(false); // colapsado por padrão
   const cardioTimerRef = useRef(null);
 
   // Cardio Timer Logic
@@ -279,116 +293,163 @@ export default function SessaoTreinoPremium({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="space-y-6"
+          className="space-y-3"
         >
-          {/* SESSION HEADER */}
+          {/* SESSION HEADER — Compacto */}
           <motion.div
-            className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-yellow-500/5 via-neutral-900/30 to-neutral-950 border border-white/5 backdrop-blur-xl p-6"
-            initial={{ opacity: 0, y: -20 }}
+            className="flex items-center justify-between bg-neutral-900/60 backdrop-blur-xl border border-white/5 rounded-2xl px-4 py-3"
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-yellow-400 text-xs font-black uppercase tracking-[0.2em]">Sessão Ativa</p>
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white">
-                  {currentWorkout?.title || 'Treino'}
-                </h2>
-                <div className="flex items-center gap-2 mt-2">
-                  {restTimer === 0 && (
-                    <span className="text-xs font-black text-emerald-400 uppercase">✓ Pronto para próximo set</span>
-                  )}
-                  {restTimer > 0 && (
-                    <span className="text-xs font-black text-yellow-400 uppercase">⏱️ Descansando: {restTimer}s</span>
-                  )}
+            <div className="flex-1 min-w-0">
+              <p className="text-yellow-400 text-[9px] font-black uppercase tracking-[0.2em] leading-none mb-0.5">Sessão Ativa</p>
+              <h2 className="text-lg font-black uppercase italic tracking-tighter text-white leading-tight truncate">
+                {currentWorkout?.title || 'Treino'}
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 ml-3 shrink-0">
+              {restTimer > 0 ? (
+                <div className="flex items-center gap-1.5 bg-yellow-400/10 px-3 py-1.5 rounded-xl border border-yellow-400/20">
+                  <span className="text-[10px] font-black text-yellow-400 uppercase">⏱ {restTimer}s</span>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                  <span className="text-[10px] font-black text-emerald-400 uppercase">✓ Go</span>
+                </div>
+              )}
               <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
+                animate={{ scale: [1, 1.15, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20"
+                className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20"
               >
-                <Flame className="text-emerald-400" size={24} />
+                <Flame className="text-emerald-400" size={18} />
               </motion.div>
             </div>
           </motion.div>
 
-          {/* PRE-CARDIO ALERT */}
+          {/* PRE-CARDIO ALERT — Mais fino */}
           {currentWorkout?.preCardio && (
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="p-4 bg-yellow-400/10 text-yellow-300 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center gap-3 border border-yellow-500/30 backdrop-blur-md"
+              className="px-4 py-2.5 bg-yellow-400/8 text-yellow-300 rounded-xl font-black uppercase tracking-widest text-[9px] flex items-center gap-2 border border-yellow-500/20"
             >
-              <Zap size={16} className="flex-shrink-0" />
-              <span>AQUECIMENTO: {currentWorkout.preCardio}</span>
+              <Zap size={13} className="shrink-0 text-yellow-400" />
+              <span>Aquecimento: {currentWorkout.preCardio}</span>
             </motion.div>
           )}
 
-          {/* ANATOMY MAP - Interactive Muscle Selection */}
+          {/* ANATOMY — Colapsável */}
           {currentWorkout?.exercises?.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-neutral-900/40 border border-white/5 rounded-2xl overflow-hidden"
             >
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(253,224,71,0.05),transparent)] pointer-events-none" />
-
-              <div className="relative z-10">
-                <h3 className="text-white font-black uppercase text-sm tracking-tight mb-4 flex items-center gap-2">
-                  <Target size={18} className="text-yellow-400" />
-                  Músculos Trabalhados
-                </h3>
-
-                <AnatomyMap2D
-                  activeGroup={
-                    isPremiumUser && activePrimaryMuscles?.length > 0
-                      ? activePrimaryMuscles[0]
-                      : currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group
-                  }
-                />
-
-                {/* Muscle Selection Buttons */}
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {[...new Set(currentWorkout.exercises.map(e => e.group))].map(muscle => {
-                    const muscleExercises = getExercisesByMuscle(muscle);
-                    const completedCount = muscleExercises.filter(e => completedExercises.includes(e.id)).length;
-
-                    return (
-                      <motion.button
-                        key={muscle}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setSelectedMuscle(muscle)}
-                        className={`px-4 py-2 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all border ${
-                          selectedMuscle === muscle
-                            ? 'bg-yellow-500 text-black border-yellow-400 shadow-[0_0_20px_rgba(253,224,71,0.4)]'
-                            : 'bg-neutral-800/50 text-yellow-400 border-white/10 hover:border-yellow-500/30'
-                        }`}
-                      >
-                        {muscle} ({completedCount}/{muscleExercises.length})
-                      </motion.button>
-                    );
-                  })}
+              {/* Toggle header */}
+              <button
+                onClick={() => setAnatomyOpen(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/3 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Target size={14} className="text-yellow-400" />
+                  <span className="text-white font-black uppercase text-[11px] tracking-tight">Músculos Trabalhados</span>
+                  {/* Bolhas de cor por músculo */}
+                  <div className="flex gap-1 ml-1">
+                    {[...new Set(currentWorkout.exercises.map(e => e.group))].map(muscle => {
+                      const c = MUSCLE_COLORS[muscle];
+                      return (
+                        <span key={muscle} className={`w-2 h-2 rounded-full ${c?.bg?.replace('/20', '') || 'bg-yellow-400'}`} />
+                      );
+                    })}
+                  </div>
                 </div>
+                <motion.div animate={{ rotate: anatomyOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                  <ChevronDown size={16} className="text-neutral-500" />
+                </motion.div>
+              </button>
+
+              <AnimatePresence>
+                {anatomyOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-4 space-y-3">
+                      {/* Anatomy map menor */}
+                      <div className="scale-95 origin-top rounded-2xl overflow-hidden">
+                        <AnatomyMap2D
+                          activeGroup={
+                            isPremiumUser && activePrimaryMuscles?.length > 0
+                              ? activePrimaryMuscles[0]
+                              : currentWorkout.exercises.find(e => !completedExercises.includes(e.id))?.group
+                          }
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Muscle Filter Buttons — sempre visíveis */}
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSelectedMuscle(null)}
+                  className={`px-3 py-1 rounded-lg font-black uppercase text-[9px] tracking-wider transition-all border ${
+                    selectedMuscle === null
+                      ? 'bg-white/15 text-white border-white/30'
+                      : 'bg-white/5 text-neutral-500 border-white/5 hover:border-white/15'
+                  }`}
+                >
+                  Todos
+                </motion.button>
+
+                {[...new Set(currentWorkout.exercises.map(e => e.group))].map(muscle => {
+                  const muscleExercises = getExercisesByMuscle(muscle);
+                  const completedCount = muscleExercises.filter(e => completedExercises.includes(e.id)).length;
+                  const allDone = completedCount === muscleExercises.length;
+                  const c = MUSCLE_COLORS[muscle] || { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'border-yellow-500/30', active: 'bg-yellow-500 text-black border-yellow-400' };
+
+                  return (
+                    <motion.button
+                      key={muscle}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setSelectedMuscle(muscle === selectedMuscle ? null : muscle)}
+                      className={`px-3 py-1 rounded-lg font-black uppercase text-[9px] tracking-wider transition-all border ${
+                        selectedMuscle === muscle
+                          ? c.active
+                          : allDone
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : `${c.bg} ${c.text} ${c.border}`
+                      }`}
+                    >
+                      {allDone ? '✓ ' : ''}{muscle} {completedCount}/{muscleExercises.length}
+                    </motion.button>
+                  );
+                })}
               </div>
             </motion.div>
           )}
 
           {/* EXERCISES LIST */}
-          <motion.div className="space-y-4">
+          <motion.div className="space-y-2">
             {!currentWorkout?.exercises?.length ? (
-              <div className="text-center p-16 bg-neutral-900/40 backdrop-blur-md rounded-3xl border border-dashed border-neutral-700">
-                <span className="block text-5xl mb-4 opacity-50">😴</span>
-                <p className="text-neutral-500 font-black uppercase tracking-widest text-lg">OFF DAY</p>
-                <p className="text-neutral-600 text-sm mt-2">Descanso Ativo Recomendado</p>
+              <div className="text-center p-12 bg-neutral-900/40 backdrop-blur-md rounded-2xl border border-dashed border-neutral-700/50">
+                <span className="block text-4xl mb-3 opacity-40">😴</span>
+                <p className="text-neutral-500 font-black uppercase tracking-widest">OFF DAY</p>
+                <p className="text-neutral-600 text-xs mt-1">Descanso Ativo Recomendado</p>
               </div>
             ) : (
               <>
-                <div className="px-2">
-                  <h3 className="text-white font-black uppercase text-sm tracking-tight flex items-center gap-2">
-                    <TrendingUp size={18} className="text-emerald-400" />
-                    Exercícios do Treino
-                  </h3>
+                <div className="flex items-center gap-2 px-1 pb-1">
+                  <TrendingUp size={14} className="text-emerald-400" />
+                  <span className="text-neutral-400 font-black uppercase text-[10px] tracking-tight">
+                    Exercícios — {completedExercises.length}/{currentWorkout.exercises.length} concluídos
+                  </span>
                 </div>
 
                 {currentWorkout.exercises
@@ -396,24 +457,10 @@ export default function SessaoTreinoPremium({
                   .map((ex, i) => (
                     <motion.div
                       key={ex.id}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.05 }}
-                      className="relative"
+                      transition={{ delay: i * 0.04 }}
                     >
-                      {completedExercises.includes(ex.id) && (
-                        <motion.div
-                          layoutId={`check-${ex.id}`}
-                          className="absolute -left-3 top-1/2 -translate-y-1/2 z-10"
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                        >
-                          <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                            <Check size={16} className="text-white" />
-                          </div>
-                        </motion.div>
-                      )}
-
                       <WorkoutCard
                         ex={ex}
                         completed={completedExercises.includes(ex.id)}
@@ -432,79 +479,50 @@ export default function SessaoTreinoPremium({
             )}
           </motion.div>
 
-          {/* CARDIO FINISHER */}
+          {/* CARDIO FINISHER — Compacto, expande quando ativo */}
           {currentWorkout?.cardio && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className={`p-6 rounded-3xl transition-all duration-300 border backdrop-blur-xl ${
+            <motion.button
+              layout
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setCardioRunning(!cardioRunning)}
+              className={`w-full rounded-2xl transition-all duration-300 border flex items-center justify-between overflow-hidden ${
                 cardioRunning
-                  ? 'bg-gradient-to-br from-yellow-500 to-amber-500 text-neutral-950 shadow-[0_0_40px_rgba(253,224,71,0.6)] border-yellow-400'
-                  : 'bg-neutral-900/50 border-yellow-500/20'
+                  ? 'bg-gradient-to-r from-yellow-500 to-amber-400 border-yellow-400 shadow-[0_0_25px_rgba(253,224,71,0.4)] p-4'
+                  : 'bg-neutral-900/40 border-yellow-500/15 hover:border-yellow-500/30 px-4 py-3'
               }`}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h4 className={`font-black uppercase tracking-tight italic text-lg ${cardioRunning ? 'text-neutral-950' : 'text-white'}`}>
-                    🔥 Finalização: Cardio
-                  </h4>
-                  <p className={`text-sm font-black uppercase tracking-widest mt-1 ${cardioRunning ? 'text-neutral-800' : 'text-yellow-400'}`}>
-                    {currentWorkout.cardio}
+              <div className={`flex items-center gap-3 ${cardioRunning ? 'text-neutral-950' : 'text-white'}`}>
+                <span className="text-lg">🔥</span>
+                <div className="text-left">
+                  <p className={`text-[9px] font-black uppercase tracking-widest ${cardioRunning ? 'text-neutral-700' : 'text-yellow-400'}`}>
+                    {cardioRunning ? 'Em Execução' : 'Finalização'}
+                  </p>
+                  <p className={`text-sm font-black uppercase italic tracking-tight leading-tight ${cardioRunning ? 'text-neutral-950' : 'text-white'}`}>
+                    {cardioRunning ? '■ Parar Cardio' : `▶ ${currentWorkout.cardio}`}
                   </p>
                 </div>
-                {cardioRunning && (
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                    <span className="text-2xl font-black font-mono tracking-tighter text-neutral-950">
-                      {formatCardioTime(cardioTime)}
-                    </span>
-                  </div>
-                )}
               </div>
-
-              <motion.button
-                layout
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCardioRunning(!cardioRunning);
-                }}
-                className={`w-full h-14 rounded-2xl font-black uppercase tracking-widest flex items-center justify-between px-6 transition-all ${
-                  cardioRunning
-                    ? 'bg-neutral-950 text-yellow-400 shadow-[0_0_20px_rgba(0,0,0,0.8)]'
-                    : 'bg-yellow-400 text-neutral-950 shadow-[0_0_20px_rgba(253,224,71,0.3)] hover:shadow-[0_0_30px_rgba(253,224,71,0.5)]'
-                }`}
-              >
-                <div className="text-left">
-                  <span className="text-[9px] font-black uppercase tracking-widest opacity-80 block">
-                    {cardioRunning ? 'Em Execução' : 'Pronto para Queimar?'}
-                  </span>
-                  <span className="text-lg font-black italic uppercase tracking-tighter">
-                    {cardioRunning ? '■ FINALIZAR' : '▶ INICIAR CARDIO'}
+              {cardioRunning && (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-red-700 rounded-full animate-pulse" />
+                  <span className="text-xl font-black font-mono tracking-tighter text-neutral-950">
+                    {formatCardioTime(cardioTime)}
                   </span>
                 </div>
-
-                {cardioRunning && (
-                  <div className="text-3xl font-black font-mono">
-                    {formatCardioTime(cardioTime)}
-                  </div>
-                )}
-              </motion.button>
-            </motion.div>
+              )}
+            </motion.button>
           )}
 
-          {/* EXIT BUTTON */}
+          {/* EXIT BUTTON — Compacto */}
           <motion.button
-            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               haptics.heavy();
               setIsTraining(false);
             }}
-            className="w-full bg-neutral-900/50 hover:bg-red-600/20 border border-white/5 hover:border-red-500/40 p-6 rounded-3xl font-black uppercase tracking-[0.2em] italic text-neutral-400 hover:text-red-400 transition-all flex items-center justify-center gap-3 mt-8"
+            className="w-full bg-transparent hover:bg-red-600/10 border border-white/5 hover:border-red-500/30 py-3 px-4 rounded-2xl font-black uppercase tracking-widest text-[10px] text-neutral-600 hover:text-red-400 transition-all flex items-center justify-center gap-2 mt-2"
           >
-            <span className="text-2xl">🛑</span>
+            <span>🛑</span>
             FINALIZAR SESSÃO
           </motion.button>
         </motion.div>
