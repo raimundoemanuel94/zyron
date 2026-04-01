@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { TrendingUp, Award, Target, ChevronRight, History, ArrowBigUp, Camera, Plus, Zap, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import EvolutionTimeline from '../EvolutionTimeline';
+import EvolutionTimeline from '../shared/EvolutionTimeline';
 
 // Componente para animar a contagem percentual
 const AnimatedCounter = ({ to }) => {
