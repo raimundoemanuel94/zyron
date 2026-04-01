@@ -4,22 +4,15 @@ import { supabase } from './lib/supabase';
 import logger from './utils/logger';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MusicProvider } from './contexts/MusicContext';
-import { AuthProvider } from './contexts/AuthContext';
-import { useAuth } from './contexts/AuthContext';
 import FichaDeTreinoScreen from './components/screens/FichaDeTreinoScreen';
 import GlobalPlayer from './components/shared/GlobalPlayer';
 import OnboardingScreen from './components/screens/OnboardingScreen';
-import LoginScreen from './components/screens/LoginScreen';
 import LoginScreenModerno from './components/screens/LoginScreenModerno';
 import AdminScreen from './components/screens/AdminScreen';
-import ErrorBoundary from './components/shared/ErrorBoundary';
-import ErrorDiagnostics from './components/shared/ErrorDiagnostics';
-import ErrorLogger from './components/shared/ErrorLogger';
 import PWASplashScreen from './components/screens/PWASplashScreen';
 import RBACGuard from './components/shared/RBACGuard';
 import PersonalDashboard from './components/admin/PersonalDashboard';
 import audioUnlocker from './utils/audioUnlock.js';
-import hardcorePWA from './utils/hardcorePWA.js';
 
 
 
