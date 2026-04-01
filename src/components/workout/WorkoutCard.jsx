@@ -175,7 +175,7 @@ export default function WorkoutCard({
             className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center bg-emerald-500/10 rounded-3xl z-20 border-2 border-emerald-500"
           >
             <motion.div
-              animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.2, 1] }}
+              animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 1 }}
               className="text-5xl mb-2"
             >
@@ -201,6 +201,8 @@ export default function WorkoutCard({
             <ExerciseAnimation
               frame0={animData.frame0}
               frame1={animData.frame1}
+              frame0fb={animData.frame0fb}
+              frame1fb={animData.frame1fb}
               muscles={[]}
               exerciseName={ex.name}
               className="h-16"
@@ -257,6 +259,8 @@ export default function WorkoutCard({
             <ExerciseAnimation
               frame0={animData.frame0}
               frame1={animData.frame1}
+              frame0fb={animData.frame0fb}
+              frame1fb={animData.frame1fb}
               muscles={animData.muscles || []}
               tip={animData.tip || ''}
               instructions={animData.instructions || []}

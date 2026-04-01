@@ -50,6 +50,17 @@ export const EXERCISE_MUSCLE_MAP = {
   's3': { primaryMuscles: ['Ombro'], secondaryMuscles: [] },
   's4': { primaryMuscles: ['Ombro'], secondaryMuscles: ['Costas'] },
   's_et': { primaryMuscles: ['Ombro'], secondaryMuscles: ['Costas'] },
+
+  // Core & Abs
+  'crunch': { primaryMuscles: ['Abdômen'], secondaryMuscles: [] },
+  'leg_raise': { primaryMuscles: ['Abdômen'], secondaryMuscles: ['Perna'] },
+  'plank': { primaryMuscles: ['Abdômen'], secondaryMuscles: ['Ombro', 'Perna'] },
+
+  // Functional & Others
+  'push_up': { primaryMuscles: ['Peito'], secondaryMuscles: ['Tríceps', 'Ombro'] },
+  'pull_up': { primaryMuscles: ['Costas'], secondaryMuscles: ['Bíceps'] },
+  'deadlift': { primaryMuscles: ['Posterior', 'Perna'], secondaryMuscles: ['Costas', 'Glúteos'] },
+  'lunges': { primaryMuscles: ['Perna'], secondaryMuscles: ['Glúteos'] },
 };
 
 /**

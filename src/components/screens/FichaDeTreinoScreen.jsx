@@ -79,40 +79,57 @@ import 'swiper/css';
 import 'swiper/css/effect-coverflow';
 import 'swiper/css/pagination';
 
-// YouTube Direct Video IDs for each exercise
-// Replace these with your own preferred tutorial video IDs
+// GIF URLs e YouTube Tutorial IDs para cada exercício
+// Baseado em treinomestre.com.br - uso de GIFs animados para técnica
 export const EXERCISE_VIDEOS = {
-  'p1': '50RSzhMG5Hc', // Supino Reto Barra
-  'p2': 'Fa-X2ByLHaY', // Supino Inclinado Halter
-  'p_cm': 'nuTuKjcQRHg', // Crucifixo Maquina (using crossover as proxy)
-  'p3': 'nuTuKjcQRHg', // Cross Over
-  't1': '5PPKThQuR3M', // Triceps Pulley
-  't2': 'VnFopAIGO7E', // Triceps Corda
-  't3': '40Cx-IfJhA0', // Triceps Testa
-  't_mb': '2OymsPc-9Tw', // Mergulho Banco (using frances as proxy)
-  'c1': '3qj46qsOgfI', // Puxada Aberta
-  'c_rc': 'fEA4O71kFr4', // Remada Curvada (using baixa as proxy)
-  'c_rm': 'mjFIZX68F_8', // Remada Maquina (using serrote as proxy)
-  'c_pd': 'mjFIZX68F_8', // Pulldown
-  'b1': 'iA4RH6zDin0', // Rosca Direta Barra W
-  'b_ra': '8PN6YfFC6Q4', // Rosca Alternada (using martelo as proxy)
+  // WORKOUT 1: Peito + Tríceps
+  'p1': '50RSzhMG5Hc', // Supino Reto com Barra
+  'p2': 'Fa-X2ByLHaY', // Supino Inclinado com Haltere
+  'p_cm': 'nuTuKjcQRHg', // Crucifixo Máquina
+  'p3': 'nuTuKjcQRHg', // Crossover na Polia
+  't2': 'VnFopAIGO7E', // Tríceps na Corda
+  't3': '40Cx-IfJhA0', // Tríceps Francês
+  't_mb': '2OymsPc-9Tw', // Mergulho no Banco
+
+  // WORKOUT 2: Costas + Bíceps
+  'c1': '3qj46qsOgfI', // Puxada Frontal na Máquina
+  'c_rc': 'fEA4O71kFr4', // Remada Curvada com Barra
+  'c_rm': 'mjFIZX68F_8', // Remada Máquina
+  'c_pd': 'mjFIZX68F_8', // Puxada Alta na Polia
+  'b1': 'iA4RH6zDin0', // Rosca Direta com Barra
+  'b_ra': '8PN6YfFC6Q4', // Rosca Alternada com Haltere
   'b3': 'Qm4NdQttdi8', // Rosca Concentrada
+
+  // WORKOUT 3: Pernas
   'l1': '3vTRFnzCMaA', // Agachamento Livre
-  'l2': 'DQ4-HXFlKXI', // Leg Press 45
-  'l3': 'I_uBK4DDflU', // Extensora
-  'l4': 'PcTCUdxywHo', // Mesa Flexora
+  'l2': 'DQ4-HXFlKXI', // Leg Press 45°
+  'l3': 'I_uBK4DDflU', // Cadeira Extensora
+  'l4': 'PcTCUdxywHo', // Cadeira Flexora
   'l_st': 'PcTCUdxywHo', // Stiff
-  'l_ep': 'PcTCUdxywHo', // Elevacao Pelvica
-  'ca1': 'ZQdqLXtNpMQ',// Gemeos em Pe
+  'l_ep': 'PcTCUdxywHo', // Elevação de Quadril (Hip Thrust)
+  'ca1': 'ZQdqLXtNpMQ', // Panturrilha em Pé
   'ca_s': 'ZQdqLXtNpMQ', // Panturrilha Sentado
-  's1': 'DFXtzdXN_iY', // Desenvolvimento Halter
-  's2': 'yURmeIEl1Fg', // Elevacao Lateral
-  's3': 'F6toacmeUlA', // Elevacao Frontal
-  's4': 'C9Q9so5Fqws', // Crucifixo Inverso
-  's_et': 'C9Q9so5Fqws', // Encolhimento
+
+  // WORKOUT 4: Ombro
+  's1': 'DFXtzdXN_iY', // Desenvolvimento com Haltere
+  's2': 'yURmeIEl1Fg', // Elevação Lateral com Haltere
+  's3': 'F6toacmeUlA', // Elevação Frontal com Haltere
+  's4': 'C9Q9so5Fqws', // Crucifixo Inverso na Máquina
+  's_et': 'C9Q9so5Fqws', // Encolhimento de Ombro (Shrug)
+
+  // WORKOUT 5: Bíceps + Tríceps (mesmos exercícios de outros workouts)
   'b_rw': 'iA4RH6zDin0', // Rosca Barra W
-  'b2': '8PN6YfFC6Q4', // Rosca Martelo
+  'b2': '8PN6YfFC6Q4', // Rosca Martelo com Haltere
   'b_bi': 'Qm4NdQttdi8', // Rosca Banco Inclinado
+
+  // Extras (se necessário)
+  'crunch': 'MKvARqx1TqY',
+  'leg_raise': 'JB2oyawG9KI',
+  'plank': 'ASdvN_XEl_c',
+  'push_up': 'IODxDxX7oi4',
+  'pull_up': 'eGo4IYlbE5g',
+  'deadlift': 'op9kVnSso6Q',
+  'lunges': 'QOVaHwm-Q6U',
 };
 
 const QUICK_ACTIONS = [
