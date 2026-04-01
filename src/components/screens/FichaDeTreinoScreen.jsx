@@ -66,7 +66,7 @@ import { sanitizeWorkoutState } from '../../utils/sanitizer';
 import hardcorePWA from '../../utils/hardcorePWA';
 
 import TabPainel from '../navigation/TabPainel';
-import TabTreino from '../navigation/TabTreino';
+import SessaoTreinoPremium from './SessaoTreinoPremium';
 import TabEvolucao from '../navigation/TabEvolucao';
 import TabPerfil from '../navigation/TabPerfil';
 import TabCoach from '../navigation/TabCoach';
@@ -828,15 +828,29 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             />
           )}
 
-          {/* WORKOUT SCREEN */}
+          {/* WORKOUT SCREEN - PREMIUM MERGED */}
           {activeTab === 'workout' && (
             <MusclePumpWrapper userRole={isAnyAdmin ? 'ADMIN' : 'USER'} isTraining={isTraining}>
-              <TabTreino
-                today={today} workoutData={availableWorkouts} startSession={startSession}
-                setVideoModal={setVideoModal} isTraining={isTraining} setIsTraining={handleFinishSession}
-                currentWorkout={currentWorkout} completedExercises={completedExercises}
-                restTimer={restTimer} handleExerciseComplete={handleExerciseComplete}
-                loads={loads} updateLoad={updateLoad} prHistory={prHistory} showPR={showPR}
+              <SessaoTreinoPremium
+                today={today}
+                workoutData={availableWorkouts}
+                startSession={startSession}
+                setVideoModal={setVideoModal}
+                isTraining={isTraining}
+                setIsTraining={handleFinishSession}
+                currentWorkout={currentWorkout}
+                completedExercises={completedExercises}
+                restTimer={restTimer}
+                handleExerciseComplete={handleExerciseComplete}
+                loads={loads}
+                updateLoad={updateLoad}
+                prHistory={prHistory}
+                showPR={showPR}
+                onActivateMuscle={() => {}}
+                isPremiumUser={true}
+                currentExerciseId={null}
+                activePrimaryMuscles={[]}
+                activeMuscles={[]}
               />
             </MusclePumpWrapper>
           )}
