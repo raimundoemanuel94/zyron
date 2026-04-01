@@ -4,9 +4,9 @@ import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, 
 import { supabase } from '../../lib/supabase';
 import { workoutData } from '../../data/workoutData';
 import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import AdminFinanceiro from './admin/AdminFinanceiro';
-import AdminPersonais from './admin/AdminPersonais';
-import PersonalDashboard from './admin/PersonalDashboard';
+import AdminFinanceiro from '../admin/AdminFinanceiro';
+import AdminPersonais from '../admin/AdminPersonais';
+import PersonalDashboard from '../admin/PersonalDashboard';
 
 // Flatten all exercises from workoutData to use in the multi-select
 const allExercises = Object.values(workoutData).flatMap(day => day.exercises || []).filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
