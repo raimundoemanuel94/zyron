@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="description" content="ZYRON — A Força da Sua Evolução." />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-title" content="ZYRON" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- 🛡️ ZYRON ANTI-CRASH CORE -->
+    <script>
+      // Prevent fatal ReferenceError: GlobalPlayer is not defined in legacy bundles
+      if (typeof window !== "undefined") {
+        window.GlobalPlayer = window.GlobalPlayer || { status: 'RECOVERY' };
+      }
+    </script>
+
+    <!-- ☢️ ZYRON NUCLEAR RECONSTRUCTION SCRIPT v4.0 -->
+    <script>
+      (function() {
+        var flag = 'zyron_recovery_v4_0';
+        if (!localStorage.getItem(flag)) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) regs[i].unregister();
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(ns) {
+              for (var j = 0; j < ns.length; j++) caches.delete(ns[j]);
+            });
+          }
+          localStorage.clear();
+          localStorage.setItem(flag, 'YES');
+          setTimeout(function() { window.location.replace('/'); }, 1500);
+        }
+      })();
+    </script>
+    <!-- iOS Startup Images (Splash Screens) - Matriz de Resoluções Reais -->
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" href="/images/zyron-512.png" />
+    <link rel="apple-touch-icon" href="/images/zyron-192.png" />
+    <link rel="icon" type="image/png" href="/images/zyron-192.png" />
+    <title>ZYRON — A Força da Sua Evolução.</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+    
+  </body>
+</html>
