@@ -77,7 +77,10 @@ export default function TabCoach({ user, profile, metrics, prHistory, workoutDat
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
-  const buildHistory = () => messages.slice(1).map(m => ({ role: m.role, parts: [{ text: m.text }] }));
+  // Keep only last 10 exchanges (20 messages) to avoid API token limits
+  const MAX_HISTORY = 20;
+  const buildHistory = () =>
+    messages.slice(1).slice(-MAX_HISTORY).map(m => ({ role: m.role, parts: [{ text: m.text }] }));
 
   const handleSend = async (text) => {
     const messageText = text || input.trim();
@@ -175,6 +178,16 @@ export default function TabCoach({ user, profile, metrics, prHistory, workoutDat
 
       {/* Mensagens */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-0.5" style={{ scrollbarWidth: 'none' }}>
+        {/* Long conversation notice */}
+        {messages.length > MAX_HISTORY + 1 && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] mb-1"
+            style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.14)' }}>
+            <Zap size={10} style={{ color: C.purple }} />
+            <p className="text-[9px] font-semibold" style={{ color: C.textSub }}>
+              Histórico longo — apenas as últimas {MAX_HISTORY} mensagens são enviadas à IA.
+            </p>
+          </div>
+        )}
         {messages.map((msg, i) => <Message key={i} msg={msg} />)}
         {loading && <TypingIndicator />}
         <div ref={bottomRef} />

@@ -156,12 +156,18 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const { profile, metrics, stats, isLoading: profileLoading, updateProfile } = useProfile(user?.id);
 
   const mergedUser = React.useMemo(() => {
-    if (!profile) return { ...user, name: 'Atleta' };
+    // Fallback chain: profile.name → auth full_name → auth name → email prefix → 'Atleta'
+    const authName = user?.user_metadata?.full_name
+      || user?.user_metadata?.name
+      || user?.email?.split('@')[0]
+      || 'Atleta';
+    if (!profile) return { ...user, name: authName, avatar_url: user?.user_metadata?.avatar_url || null };
     return {
       ...user,
-      name: profile.name || 'ATLETA',
+      name: profile.name || authName,
       email: profile.email || '',
       avatarUrl: profile.avatarUrl || user?.user_metadata?.avatar_url || null,
+      avatar_url: profile.avatarUrl || user?.user_metadata?.avatar_url || null,
       role: profile.role || 'USER',
     };
   }, [user, profile]);
@@ -194,6 +200,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [uploading, setUploading] = useState(false);
   const [localAvatarUrl, setLocalAvatarUrl] = useState(null);
   const [activeNotification, setActiveNotification] = useState(null);
+  const [painelRefreshKey, setPainelRefreshKey] = useState(0);
+  const [sessionStartedAt, setSessionStartedAt] = useState(null);
+  const [sessionLocation, setSessionLocation] = useState(null);
   const avatarInputRef = useRef(null);
 
   // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
@@ -319,7 +328,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           if (session && session.date === todayStr) {
             setIsTraining(!!session.isTraining);
             setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
-            setCompletedExercises(Array.isArray(session.completedExercises) ? session.completedExercises : []);
+            // completedExercises gerenciado pelo hook useExerciseCompletion — não precisa setter manual
             setSessionTime(Number(session.sessionTime) || 0);
             if (session.isTraining) setActiveTab('workout');
           }
@@ -453,7 +462,32 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setSelectedWorkoutKey(safeKey);
     setActiveTab('workout');
     setSessionTime(0);
-    setCompletedExercises([]);
+    setSessionStartedAt(new Date().toISOString());
+
+    // Capturar localização via GPS → Nominatim reverse geocoding
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=pt-BR`,
+              { headers: { 'User-Agent': 'ZyronFitnessApp/4.0' } }
+            );
+            const geo = await res.json();
+            const city  = geo.address?.city || geo.address?.town || geo.address?.village || '';
+            const state = geo.address?.state || '';
+            // Abreviação do estado (ex: "Mato Grosso" → "MT")
+            const stateAbbr = geo.address?.['ISO3166-2-lvl4']?.split('-')[1] || state.slice(0,2).toUpperCase();
+            const label = city ? `${city}${stateAbbr ? ' · ' + stateAbbr : ''}` : state || null;
+            setSessionLocation(label);
+          } catch { /* geolocation disponível mas reverse falhou — continua sem local */ }
+        },
+        () => { /* usuário negou permissão — ok */ },
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    }
+    // completedExercises gerenciado internamente pelo hook useExerciseCompletion
   };
 
   const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
@@ -493,10 +527,22 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   };
 
   const handleFinalSync = async (workoutData, setsData) => {
-    await logWorkout(workoutData, setsData);
+    const endedAt = new Date().toISOString();
+    const enrichedWorkout = {
+      ...workoutData,
+      workout_name: currentWorkout?.title || null,
+      started_at:   sessionStartedAt || workoutData.created_at || endedAt,
+      ended_at:     endedAt,
+      location:     sessionLocation || null,
+    };
+    await logWorkout(enrichedWorkout, setsData);
     setShowCompletedScreen(false);
     setSessionSets([]);
     setLastWorkoutSummary(null);
+    setSessionStartedAt(null);
+    setSessionLocation(null);
+    // Dispara re-fetch no TabPainel para atualizar week strip com dia de hoje
+    setPainelRefreshKey(k => k + 1);
   };
 
   const [voiceTimerActive, setVoiceTimerActive] = useState(false);
@@ -871,8 +917,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               today={today} currentWorkout={currentWorkout}
               startSession={startSession} water={water} waterGoal={waterGoal}
               isHydrationAlert={isHydrationAlert} handleWaterDrink={handleWaterDrink}
+              setWater={setWater}
               protein={protein} proteinGoal={proteinGoal} setProtein={setProtein}
               fullHeight={true}
+              refreshKey={painelRefreshKey}
+              workoutData={availableWorkouts}
             />
           )}
 
@@ -1297,7 +1346,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, transparent, ${C.neon}40, transparent)` }} />
 
               {/* ── PROFILE HEADER ── */}
-              <div className="flex items-center justify-between pt-12 pb-8">
+              <div className="flex items-center justify-between pt-12 pb-5">
                 <div className="flex items-center gap-3">
                   {/* Avatar with neon halo */}
                   <div className="relative shrink-0">
@@ -1335,26 +1384,46 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 </button>
               </div>
 
+              {/* ── QUICK STATS STRIP ── */}
+              <div className="grid grid-cols-3 gap-2 mb-5">
+                {[
+                  { val: stats?.weeklyTrainedDays || 0, label: 'Treinos/Sem', icon: Dumbbell, color: C.neon, rgb: '205,255,90' },
+                  { val: stats?.currentStreak || 0, label: 'Streak', icon: Flame, color: '#FB923C', rgb: '251,146,60' },
+                  { val: stats?.monthlyWorkouts || 0, label: 'No mês', icon: Trophy, color: '#A78BFA', rgb: '167,139,250' },
+                ].map(({ val, label, icon: Icon, color, rgb }) => (
+                  <div key={label} className="flex flex-col items-center py-3 rounded-[14px]"
+                    style={{ background: `rgba(${rgb},0.06)`, border: `1px solid rgba(${rgb},0.14)` }}>
+                    <Icon size={11} style={{ color }} className="mb-1" />
+                    <p className="text-[16px] font-black text-white leading-none">{val}</p>
+                    <p className="text-[7.5px] font-bold uppercase tracking-wider mt-0.5" style={{ color: `rgba(${rgb},0.55)` }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+
               {/* Divider */}
               <div className="mb-4" style={{ height: 1, background: C.border }} />
 
-              {/* ── NAV ITEMS ── */}
-              <div className="space-y-2 flex-1">
+              {/* ── NAVEGAÇÃO ── */}
+              <p className="text-[8px] font-black uppercase tracking-[0.28em] mb-2 ml-1" style={{ color: C.textMute }}>Navegação</p>
+              <div className="space-y-2 mb-4">
 
                 {/* Evolução & Fotos */}
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setActiveTab('progress'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
-                  style={{ background: 'rgba(205,255,90,0.04)', border: `1px solid ${C.neonBorder}` }}
+                  style={{ background: 'rgba(205,255,90,0.05)', border: `1px solid ${C.neonBorder}` }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: C.neonBg }}>
                       <Trophy size={14} style={{ color: C.neon }} />
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-widest text-white">Evolução & Fotos</span>
+                    <div className="text-left">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-white leading-none">Evolução</p>
+                      <p className="text-[8.5px] mt-0.5" style={{ color: C.neonDim }}>Fotos & Gráficos</p>
+                    </div>
                   </div>
-                  <ChevronRight size={14} style={{ color: C.textSub }} />
+                  <ChevronRight size={14} style={{ color: C.neonDim }} />
                 </motion.button>
 
                 {/* Perfil & Voz */}
@@ -1362,16 +1431,24 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setActiveTab('perfil'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}
+                  style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.16)' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                      <Target size={14} style={{ color: C.textSub }} />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: 'rgba(139,92,246,0.10)' }}>
+                      <User size={14} style={{ color: '#A78BFA' }} />
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Perfil & Voz</span>
+                    <div className="text-left">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-white leading-none">Perfil</p>
+                      <p className="text-[8.5px] mt-0.5" style={{ color: 'rgba(167,139,250,0.55)' }}>Metas & Voz</p>
+                    </div>
                   </div>
-                  <ChevronRight size={14} style={{ color: C.textSub }} />
+                  <ChevronRight size={14} style={{ color: 'rgba(167,139,250,0.4)' }} />
                 </motion.button>
+              </div>
+
+              {/* ── CONFIGURAÇÕES ── */}
+              <p className="text-[8px] font-black uppercase tracking-[0.28em] mb-2 ml-1" style={{ color: C.textMute }}>Configurações</p>
+              <div className="space-y-2 flex-1">
 
                 {/* Modo Noturno */}
                 <motion.button
@@ -1422,20 +1499,24 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               </div>
 
               {/* ── FOOTER ── */}
-              <div className="shrink-0 pt-6 pb-10" style={{ borderTop: `1px solid ${C.border}`, marginTop: 24 }}>
+              <div className="shrink-0 pt-5 pb-10" style={{ borderTop: `1px solid ${C.border}`, marginTop: 20 }}>
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   onClick={onLogout}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[16px] transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}` }}
+                  style={{ background: 'rgba(255,59,48,0.05)', border: '1px solid rgba(255,59,48,0.14)' }}
                 >
-                  <LogOut size={13} style={{ color: C.textSub }} />
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Encerrar Sessão</span>
+                  <LogOut size={13} style={{ color: 'rgba(255,100,90,0.7)' }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,100,90,0.7)' }}>Encerrar Sessão</span>
                 </motion.button>
 
-                <p className="text-center mt-5 text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textMute }}>
-                  Zyron v4.0.0
-                </p>
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                  <div className="w-1 h-1 rounded-full" style={{ background: C.neon, opacity: 0.5 }} />
+                  <p className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textMute }}>
+                    Zyron v4.0.0
+                  </p>
+                  <div className="w-1 h-1 rounded-full" style={{ background: C.neon, opacity: 0.5 }} />
+                </div>
               </div>
             </motion.div>
           </>

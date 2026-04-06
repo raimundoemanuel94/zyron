@@ -202,213 +202,185 @@ export default function TabPerfil({
       </div>
 
       {perfilTab === 'geral' && (
-        <div className="space-y-4">
-          {/* Dados Editáveis */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'IDADE', value: profile?.bio?.age || 25, icon: Calendar, editable: true, field: 'age', type: 'number' },
-              { label: 'SEXO', value: profile?.bio?.gender === 'male' ? 'MASC' : 'FEM', icon: User, editable: true, field: 'gender', type: 'select', options: ['MASC', 'FEM'] },
-              { label: 'ALTURA', value: `${profile?.bio?.heightCm || 175}cm`, icon: Ruler, editable: true, field: 'height', type: 'number', suffix: 'cm' },
-              { label: 'PESO', value: `${profile?.bio?.weightKg || 75}kg`, icon: Weight, editable: true, field: 'weight', type: 'number', suffix: 'kg' },
-              { label: 'OBJETIVO', value: profile?.goals?.target || 'Hipertrofia', icon: Target, editable: true, field: 'target', type: 'select', options: ['Hipertrofia', 'Definição', 'Manutenção', 'Força'] },
-              { label: 'NÍVEL', value: profile?.goals?.level || 'Iniciante', icon: Award, editable: true, field: 'level', type: 'select', options: ['Iniciante', 'Intermediário', 'Avançado'] },
-            ].map(({ label, value, icon: Icon, editable, field, type, options, suffix }) => (
-              <motion.div 
-                key={label} 
-                whileTap={editable ? { scale: 0.95 } : {}}
-                onClick={editable ? () => openEditModal(field, type === 'select' ? value : type === 'number' ? (suffix ? value.replace(suffix, '') : value) : value) : undefined}
-                className="relative rounded-[16px] overflow-hidden transition-all"
-                style={{ 
-                  ...Card.style, 
-                  padding: '12px',
-                  cursor: editable ? 'pointer' : 'default',
-                  ...(editable && { '&:hover': { border: `1px solid ${C.neonBorder}` } })
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-[8px]"
-                    style={{ background: 'rgba(205,255,90,0.10)', border: `1px solid ${C.neonBorder}` }}>
-                    <Icon size={12} style={{ color: C.neon }} />
-                  </div>
-                  <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>{label}</span>
-                  {editable && (
-                    <Edit3 size={10} className="ml-auto" style={{ color: C.textSub }} />
-                  )}
-                </div>
-                <p className="text-[14px] font-black text-white leading-none">{value}</p>
-              </motion.div>
-            ))}
-          </div>
+        <div className="space-y-3">
 
+          {/* ── 1. DADOS PESSOAIS ─────────────────────────────────────────── */}
           <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)' }}>
-                <Target size={15} style={{ color: '#3B82F6' }} />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>METAS DO PLANO</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Nutrição</h3>
-              </div>
+            <div className="absolute top-0 left-[25%] right-[25%] h-px" style={{ background: `linear-gradient(90deg,transparent,${C.neonBorder},transparent)` }} />
+            {/* Header */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: C.neonDim }}>Dados Pessoais</p>
+              <span className="text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ background: C.neonBg, border: `1px solid ${C.neonBorder}`, color: C.neon }}>Editável</span>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center gap-3 px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <Droplet size={16} style={{ color: '#3B82F6' }} />
-                <div>
-                  <p className="text-[10px] font-medium text-neutral-400">Água</p>
-                  <p className="text-[14px] font-black text-white">{metrics?.waterGoalLiters || 3.5}L</p>
-                  <p className="text-[8px] text-neutral-500">Baseado no seu peso</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <Dumbbell size={16} style={{ color: '#10B981' }} />
-                <div>
-                  <p className="text-[10px] font-medium text-neutral-400">Proteína</p>
-                  <p className="text-[14px] font-black text-white">{metrics?.proteinGoalG || 150}g</p>
-                  <p className="text-[8px] text-neutral-500">Baseado no seu objetivo</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <Flame size={16} style={{ color: '#F59E0B' }} />
-                <div>
-                  <p className="text-[10px] font-medium text-neutral-400">Calorias</p>
-                  <p className="text-[14px] font-black text-white">{metrics?.caloriesGoalKcal || 2500}</p>
-                  <p className="text-[8px] text-neutral-500">Baseado no seu perfil</p>
-                </div>
-              </div>
-              <motion.div 
-                whileTap={{ scale: 0.95 }}
-                onClick={() => openEditModal('frequency', profile?.goals?.frequencyPerWeek || 3)}
-                className="flex items-center gap-3 px-3 py-3 rounded-[14px cursor-pointer"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-              >
-                <Calendar size={16} style={{ color: '#8B5CF6' }} />
-                <div className="flex-1">
-                  <p className="text-[10px] font-medium text-neutral-400">Frequência</p>
-                  <p className="text-[14px] font-black text-white">{profile?.goals?.frequencyPerWeek || 3}x/semana</p>
-                </div>
-                <Edit3 size={12} style={{ color: C.textSub }} />
-              </motion.div>
+            {/* Bio row: idade · sexo · altura */}
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {[
+                { label: 'Idade', value: profile?.bio?.age || 25, field: 'age', type: 'number', icon: Calendar },
+                { label: 'Sexo', value: profile?.bio?.gender === 'male' ? 'MASC' : profile?.bio?.gender === 'female' ? 'FEM' : 'N/D', field: 'gender', type: 'select', icon: User },
+                { label: 'Altura', value: `${profile?.bio?.heightCm || 175}cm`, field: 'height', type: 'number', suffix: 'cm', icon: Ruler },
+              ].map(({ label, value, field, type, suffix, icon: Icon }) => (
+                <motion.div key={label} whileTap={{ scale: 0.93 }}
+                  onClick={() => openEditModal(field, suffix ? String(value).replace(suffix, '') : value)}
+                  className="flex flex-col gap-1.5 px-3 py-3 rounded-[14px] cursor-pointer"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div className="flex items-center justify-between">
+                    <Icon size={11} style={{ color: C.neon }} />
+                    <Edit3 size={9} style={{ color: C.textMute }} />
+                  </div>
+                  <p className="text-[15px] font-black text-white leading-none">{value}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: C.textSub }}>{label}</p>
+                </motion.div>
+              ))}
+            </div>
+            {/* Training row: peso · objetivo · nível */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Peso', value: `${profile?.bio?.weightKg || 75}kg`, field: 'weight', type: 'number', suffix: 'kg', icon: Weight },
+                { label: 'Objetivo', value: profile?.goals?.target || 'Hipertrofia', field: 'target', type: 'select', icon: Target },
+                { label: 'Nível', value: profile?.goals?.level || 'Iniciante', field: 'level', type: 'select', icon: Award },
+              ].map(({ label, value, field, type, suffix, icon: Icon }) => (
+                <motion.div key={label} whileTap={{ scale: 0.93 }}
+                  onClick={() => openEditModal(field, suffix ? String(value).replace(suffix, '') : value)}
+                  className="flex flex-col gap-1.5 px-3 py-3 rounded-[14px] cursor-pointer"
+                  style={{ background: 'rgba(205,255,90,0.04)', border: `1px solid ${C.neonBorder}` }}>
+                  <div className="flex items-center justify-between">
+                    <Icon size={11} style={{ color: C.neon }} />
+                    <Edit3 size={9} style={{ color: C.neonDim }} />
+                  </div>
+                  <p className="text-[13px] font-black text-white leading-none truncate">{value}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wider" style={{ color: C.neonDim }}>{label}</p>
+                </motion.div>
+              ))}
             </div>
           </div>
 
+          {/* ── 2. METAS DIÁRIAS ──────────────────────────────────────────── */}
+          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: C.textSub }}>Metas Diárias</p>
+              <motion.div whileTap={{ scale: 0.93 }} onClick={() => openEditModal('frequency', profile?.goals?.frequencyPerWeek || 3)}
+                className="flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-full"
+                style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.18)' }}>
+                <Calendar size={10} style={{ color: C.purple }} />
+                <span className="text-[9px] font-black" style={{ color: C.purple }}>{profile?.goals?.frequencyPerWeek || 3}×/sem</span>
+                <Edit3 size={8} style={{ color: C.purple }} />
+              </motion.div>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Água', value: metrics?.waterGoalLiters || 3.5, unit: 'L', icon: Droplet, color: '#3B82F6', rgb: '59,130,246' },
+                { label: 'Proteína', value: metrics?.proteinGoalG || 150, unit: 'g', icon: Dumbbell, color: '#10B981', rgb: '16,185,129' },
+                { label: 'Calorias', value: metrics?.caloriesGoalKcal || 2500, unit: 'kcal', icon: Flame, color: '#F59E0B', rgb: '245,158,11' },
+              ].map(({ label, value, unit, icon: Icon, color, rgb }) => (
+                <div key={label} className="relative flex flex-col items-center justify-center py-4 rounded-[14px] overflow-hidden"
+                  style={{ background: `rgba(${rgb},0.06)`, border: `1px solid rgba(${rgb},0.16)` }}>
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at 50% 100%, rgba(${rgb},0.08), transparent 65%)` }} />
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full mb-2" style={{ background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.22)` }}>
+                    <Icon size={14} style={{ color }} />
+                  </div>
+                  <p className="text-[18px] font-black text-white leading-none">{value}</p>
+                  <p className="text-[8px] font-bold mt-0.5" style={{ color: `rgba(${rgb},0.7)` }}>{unit}</p>
+                  <p className="text-[7.5px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── 3. PROGRESSO CORPORAL ─────────────────────────────────────── */}
+          {(() => {
+            const cw = profile?.bio?.weightKg || 0;
+            const tw = profile?.goals?.targetWeightKg || 0;
+            const pct = (cw && tw && cw !== tw)
+              ? Math.max(0, Math.min(99, Math.round(100 - (Math.abs(cw - tw) / Math.max(cw, tw)) * 100)))
+              : (cw && tw && cw === tw) ? 100 : null;
+            return (
+              <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: C.textSub }}>Evolução Corporal</p>
+                  <TrendingUp size={13} style={{ color: '#10B981' }} />
+                </div>
+                {/* Stats row */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex-1 text-center">
+                    <p className="text-[22px] font-black text-white leading-none">{metrics?.bmi || '–'}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest mt-1" style={{ color: C.textSub }}>IMC</p>
+                  </div>
+                  <div className="w-px h-8" style={{ background: C.border }} />
+                  <div className="flex-1 text-center">
+                    <p className="text-[22px] font-black text-white leading-none">{cw || '–'}<span className="text-[11px] ml-0.5" style={{ color: C.textSub }}>kg</span></p>
+                    <p className="text-[8px] font-bold uppercase tracking-widest mt-1" style={{ color: C.textSub }}>Atual</p>
+                  </div>
+                  <div className="w-px h-8" style={{ background: C.border }} />
+                  <motion.div whileTap={{ scale: 0.95 }} onClick={() => openEditModal('targetWeight', tw || 78)}
+                    className="flex-1 text-center cursor-pointer">
+                    <p className="text-[22px] font-black leading-none" style={{ color: C.neon }}>{tw || '–'}<span className="text-[11px] ml-0.5" style={{ color: C.neonDim }}>kg</span></p>
+                    <div className="flex items-center justify-center gap-1 mt-1">
+                      <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: C.neonDim }}>Meta</p>
+                      <Edit3 size={8} style={{ color: C.neonDim }} />
+                    </div>
+                  </motion.div>
+                </div>
+                {/* Progress bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[8px] font-bold uppercase tracking-widest" style={{ color: C.textSub }}>Progresso até a meta</span>
+                    <span className="text-[10px] font-black" style={{ color: pct !== null ? C.neon : C.textMute }}>
+                      {pct !== null ? `${pct}%` : 'Configure meta'}
+                    </span>
+                  </div>
+                  <div className="h-[5px] w-full rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: pct !== null ? `${pct}%` : '3px' }}
+                      transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                      className="h-full rounded-full"
+                      style={{ background: `linear-gradient(90deg, ${C.neon}, #a8ff3e)`, boxShadow: `0 0 8px rgba(205,255,90,0.35)`, minWidth: '3px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── 4. ADERÊNCIA ─────────────────────────────────────────────── */}
           <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
             <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>RITMO DE TREINO</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Aderência</h3>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(251,146,60,0.10)', border: '1px solid rgba(251,146,60,0.20)' }}>
-                <Flame size={15} style={{ color: '#FB923C' }} />
-              </div>
+              <p className="text-[9px] font-black uppercase tracking-[0.22em]" style={{ color: C.textSub }}>Aderência Semanal</p>
+              <Flame size={13} style={{ color: '#FB923C' }} />
             </div>
-
+            {/* Week strip */}
             <div className="flex justify-between items-center mb-4">
               {['D','S','T','Q','Q','S','S'].map((day, idx) => {
                 const isActive = idx < (stats?.weeklyTrainedDays || 0);
                 return (
-                  <div key={idx} className="flex flex-col items-center gap-2">
+                  <div key={idx} className="flex flex-col items-center gap-1.5">
                     <span className="text-[8px] font-black uppercase" style={{ color: C.textSub }}>{day}</span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[10px] transition-all"
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px] transition-all"
                       style={isActive
-                        ? { background: C.neon, boxShadow: `0 0 12px rgba(205,255,90,0.25)` }
+                        ? { background: C.neon, boxShadow: `0 0 10px rgba(205,255,90,0.25)` }
                         : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
                       }>
                       {isActive
-                        ? <CheckCircle2 size={14} strokeWidth={2.5} style={{ color: '#000' }} />
-                        : <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+                        ? <CheckCircle2 size={13} strokeWidth={2.5} style={{ color: '#000' }} />
+                        : <div className="w-1 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.12)' }} />
                       }
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <p className="text-[16px] font-black text-white">{stats?.weeklyTrainedDays || 0}/{stats?.weeklyTargetDays || 0}</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">Dias/Semana</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[16px] font-black text-white">{stats?.currentStreak || 0}</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">Streak</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[16px] font-black text-white">{stats?.monthlyWorkouts || 0}</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">Treinos/Mês</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>EVOLUÇÃO CORPORAL</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Progresso</h3>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(16,185,129,0.10)', border: '1px solid rgba(16,185,129,0.20)' }}>
-                <TrendingUp size={15} style={{ color: '#10B981' }} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="text-center">
-                <p className="text-[16px] font-black text-white">{metrics?.bmi || 23.5}</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">IMC</p>
-                <p className="text-[7px] text-neutral-500">Calculado</p>
-              </div>
-              <motion.div 
-                whileTap={{ scale: 0.95 }}
-                onClick={() => openEditModal('targetWeight', profile?.goals?.targetWeightKg || 78)}
-                className="text-center cursor-pointer"
-              >
-                <p className="text-[16px] font-black text-white">{profile?.goals?.targetWeightKg || 78}kg</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">Peso Meta</p>
-                <Edit3 size={10} className="mx-auto mt-1" style={{ color: C.textSub }} />
-              </motion.div>
-              <div className="text-center">
-                <p className="text-[16px] font-black text-white">85%</p>
-                <p className="text-[8px] font-medium text-neutral-400 uppercase tracking-widest">Progresso</p>
-                <p className="text-[7px] text-neutral-500">Calculado</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>PRANCHA ISOMÉTRICA</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">ZYRON Voz Ativa</h3>
-              </div>
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.20)' }}>
-                <TimerIcon size={15} className={voiceTimerActive ? 'animate-pulse' : ''} style={{ color: C.purple }} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[42px] font-black text-white font-mono leading-none">
-                {formatPlankTime(plankTime)}
-              </span>
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={toggleVoiceTimer}
-                className="flex h-16 w-16 items-center justify-center rounded-full transition-all"
-                style={voiceTimerActive
-                  ? { background: C.redBg, border: `1px solid ${C.redBorder}`, boxShadow: `0 0 20px rgba(255,59,48,0.2)` }
-                  : { background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, boxShadow: `0 0 16px rgba(139,92,246,0.2)` }
-                }
-              >
-                {voiceTimerActive
-                  ? <div className="h-5 w-5 rounded-sm" style={{ background: C.red }} />
-                  : <Play size={22} fill={C.purple} style={{ color: C.purple, marginLeft: 2 }} />
-                }
-              </motion.button>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { val: `${stats?.weeklyTrainedDays || 0}/${stats?.weeklyTargetDays || 0}`, label: 'Dias/Sem' },
+                { val: stats?.currentStreak || 0, label: 'Streak 🔥' },
+                { val: stats?.monthlyWorkouts || 0, label: 'Mês' },
+              ].map(({ val, label }) => (
+                <div key={label} className="text-center py-2.5 rounded-[12px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <p className="text-[17px] font-black text-white leading-none">{val}</p>
+                  <p className="text-[7.5px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -514,23 +486,27 @@ export default function TabPerfil({
             </div>
 
             <div className="space-y-3">
-              <div className="px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>HISTÓRICO DE PESO</span>
-                <p className="text-[12px] font-medium text-neutral-400 mt-2">Em desenvolvimento...</p>
-              </div>
-
-              <div className="px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>MEDIDAS CORPORAIS</span>
-                <p className="text-[12px] font-medium text-neutral-400 mt-2">Em desenvolvimento...</p>
-              </div>
-
-              <div className="px-3 py-3 rounded-[14px]"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>BIOIMPEDÂNCIA/FOTOS</span>
-                <p className="text-[12px] font-medium text-neutral-400 mt-2">Em desenvolvimento...</p>
-              </div>
+              {[
+                { label: 'HISTÓRICO DE PESO', icon: '⚖️', desc: 'Gráfico de evolução do seu peso' },
+                { label: 'MEDIDAS CORPORAIS', icon: '📏', desc: 'Cintura, braços, pernas e mais' },
+                { label: 'BIOIMPEDÂNCIA / FOTOS', icon: '📸', desc: 'Comparativo de composição corporal' },
+              ].map(({ label, icon, desc }) => (
+                <div key={label} className="px-4 py-4 rounded-[14px] flex items-center gap-4"
+                  style={{ background: 'rgba(205,255,90,0.03)', border: '1px dashed rgba(205,255,90,0.15)' }}>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[12px] shrink-0 text-[18px]"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    {icon}
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>{label}</span>
+                    <p className="text-[11px] font-medium text-neutral-300 mt-0.5">{desc}</p>
+                  </div>
+                  <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shrink-0"
+                    style={{ background: 'rgba(205,255,90,0.10)', border: '1px solid rgba(205,255,90,0.18)', color: C.neon }}>
+                    Em breve
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -712,36 +688,59 @@ export default function TabPerfil({
 
                 {/* Input */}
                 <div className="mb-6">
-                  {(editingField === 'gender' || editingField === 'target' || editingField === 'level') ? (
-                    <select
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      className="w-full rounded-[12px] px-4 py-3 text-[14px] font-medium text-white bg-neutral-900 border border-neutral-700 outline-none focus:border-neon transition-colors"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      {editingField === 'gender' && (
-                        <>
-                          <option value="male">Masculino</option>
-                          <option value="female">Feminino</option>
-                        </>
-                      )}
-                      {editingField === 'target' && (
-                        <>
-                          <option value="Hipertrofia">Hipertrofia</option>
-                          <option value="Definição">Definição</option>
-                          <option value="Manutenção">Manutenção</option>
-                          <option value="Força">Força</option>
-                        </>
-                      )}
-                      {editingField === 'level' && (
-                        <>
-                          <option value="Iniciante">Iniciante</option>
-                          <option value="Intermediário">Intermediário</option>
-                          <option value="Avançado">Avançado</option>
-                        </>
-                      )}
-                    </select>
-                  ) : (editingField === 'observations' || editingField === 'medicalHistory' || editingField === 'injuries' || editingField === 'restrictions') ? (
+                  {(editingField === 'gender' || editingField === 'target' || editingField === 'level') ? (() => {
+                    const optionMap = {
+                      gender: [
+                        { value: 'male', label: 'Masculino', icon: '♂' },
+                        { value: 'female', label: 'Feminino', icon: '♀' },
+                      ],
+                      target: [
+                        { value: 'Hipertrofia', label: 'Hipertrofia', icon: '💪' },
+                        { value: 'Definição', label: 'Definição', icon: '🔥' },
+                        { value: 'Manutenção', label: 'Manutenção', icon: '⚖️' },
+                        { value: 'Força', label: 'Força', icon: '🏋️' },
+                      ],
+                      level: [
+                        { value: 'Iniciante', label: 'Iniciante', icon: '🌱' },
+                        { value: 'Intermediário', label: 'Intermediário', icon: '⚡' },
+                        { value: 'Avançado', label: 'Avançado', icon: '🔱' },
+                      ],
+                    };
+                    const opts = optionMap[editingField] || [];
+                    return (
+                      <div className="flex flex-col gap-2">
+                        {opts.map(opt => {
+                          const isSelected = editValue === opt.value;
+                          return (
+                            <motion.button
+                              key={opt.value}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={() => setEditValue(opt.value)}
+                              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[14px] text-left transition-all"
+                              style={isSelected
+                                ? { background: 'rgba(205,255,90,0.10)', border: `1px solid ${C.neonBorder}`, boxShadow: `0 0 14px rgba(205,255,90,0.08)` }
+                                : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }
+                              }
+                            >
+                              <span className="text-[18px] leading-none">{opt.icon}</span>
+                              <span className="text-[13px] font-black uppercase tracking-widest flex-1"
+                                style={{ color: isSelected ? C.neon : 'rgba(255,255,255,0.75)' }}>
+                                {opt.label}
+                              </span>
+                              <div className="w-4 h-4 rounded-full flex items-center justify-center"
+                                style={isSelected
+                                  ? { background: C.neon }
+                                  : { border: '1.5px solid rgba(255,255,255,0.15)' }
+                                }>
+                                {isSelected && <div className="w-2 h-2 rounded-full bg-black" />}
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                  : (editingField === 'observations' || editingField === 'medicalHistory' || editingField === 'injuries' || editingField === 'restrictions') ? (
                     <textarea
                       value={editValue}
                       onChange={(e) => setEditValue(e.target.value)}

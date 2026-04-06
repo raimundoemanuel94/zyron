@@ -33,10 +33,14 @@ export function useSyncWorkout(user) {
     const { data: workoutLog, error: workoutError } = await supabase
       .from('workout_logs')
       .insert({
-        user_id: userId,
-        workout_key: String(item.workout.workout_key),
+        user_id:          userId,
+        workout_key:      String(item.workout.workout_key),
         duration_seconds: item.workout.duration_seconds,
-        created_at: item.workout.created_at || new Date().toISOString()
+        created_at:       item.workout.created_at  || new Date().toISOString(),
+        workout_name:     item.workout.workout_name || null,
+        started_at:       item.workout.started_at   || null,
+        ended_at:         item.workout.ended_at     || null,
+        location:         item.workout.location     || null,
       })
       .select()
       .single();

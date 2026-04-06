@@ -31,14 +31,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-.vercel
-.env*.local
-
-.vercel
-.env*.local
-
-.vercel
-.env*.local
-
-.vercel
-.env*.local
+# backup files
+*.bak
+*_BACKUP.*

@@ -43,10 +43,15 @@ export const profileService = {
 
     try {
       const dbProfile = mapProfileToDB(profile);
-      
+
+      // Remove undefined fields to avoid overwriting with null
+      const cleanProfile = Object.fromEntries(
+        Object.entries(dbProfile).filter(([_, v]) => v !== undefined)
+      );
+
       const { error } = await supabase
         .from('profiles')
-        .update(dbProfile)
+        .update(cleanProfile)
         .eq('id', userId);
 
       if (error) {

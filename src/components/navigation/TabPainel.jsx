@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Droplets, Play, Zap, Activity, Heart, Moon, Plus, Beef, ChevronRight,
+  Droplets, Play, Zap, Activity, Dumbbell, Moon, Plus, Beef, ChevronRight, Flame, CheckCircle2,
+  X, Clock, MapPin, Image, BarChart3,
 } from 'lucide-react';
 
 import { supabase } from '../../lib/supabase';
@@ -41,17 +42,81 @@ const stagger = {
   },
 };
 
+// ─── Workout type icon helper ─────────────────────────────────────────────────
+const getWorkoutIcon = (title = '') => {
+  const t = (title || '').toLowerCase();
+  if (t.includes('corrida') || t.includes('cardio') || t.includes('caminhada')) return '🏃';
+  if (t.includes('peito') || t.includes('chest') || t.includes('superior')) return '💪';
+  if (t.includes('perna') || t.includes('leg') || t.includes('inferior')) return '🦵';
+  if (t.includes('costa') || t.includes('back') || t.includes('costas')) return '🏋️';
+  if (t.includes('ombro') || t.includes('shoulder')) return '🔝';
+  return '🏋️';
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TabPainel({
   user, today, currentWorkout, startSession,
   water, waterGoal, isHydrationAlert, handleWaterDrink,
-  protein, proteinGoal, setProtein,
-  fullHeight,
+  setWater, protein, proteinGoal, setProtein,
+  fullHeight, refreshKey, workoutData,
 }) {
   // ── State & Refs (todos intactos) ────────────────────────────────────────
   const [trainedDays, setTrainedDays] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
   const [toastMessage, setToastMessage] = useState(null);
+
+  // ── Edição inline de água e proteína ────────────────────────────────────
+  const [editingMetric, setEditingMetric] = useState(null); // 'water' | 'protein' | null
+  const [editMetricValue, setEditMetricValue] = useState('');
+  const editInputRef = useRef(null);
+
+  const openMetricEdit = (metric, currentVal) => {
+    setEditingMetric(metric);
+    setEditMetricValue(String(currentVal));
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  // ── Detalhe de treino (modal) ────────────────────────────────────────────
+  const [selectedLog, setSelectedLog]     = useState(null);
+  const [logDetail, setLogDetail]         = useState(null); // { sets, photo }
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const openLogDetail = async (log) => {
+    setSelectedLog(log);
+    setLoadingDetail(true);
+    setLogDetail(null);
+    try {
+      const [setsRes, photoRes] = await Promise.all([
+        supabase.from('set_logs').select('*').eq('workout_id', log.id).order('set_number', { ascending: true }),
+        supabase.from('workout_photos').select('storage_path').eq('workout_log_id', log.id).maybeSingle(),
+      ]);
+      setLogDetail({
+        sets:  setsRes.data  || [],
+        photo: photoRes.data?.storage_path || null,
+      });
+    } catch { setLogDetail({ sets: [], photo: null }); }
+    finally { setLoadingDetail(false); }
+  };
+
+  const formatHour = (iso) => {
+    if (!iso) return '--:--';
+    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const saveMetricEdit = () => {
+    const num = parseFloat(editMetricValue);
+    if (isNaN(num) || num < 0) { setEditingMetric(null); return; }
+    if (editingMetric === 'water') {
+      setWater?.(Math.min(num, 20)); // cap 20L
+      triggerToast(`💧 Água: ${num.toFixed(1)}L salvo`, '✓');
+    } else if (editingMetric === 'protein') {
+      setProtein?.(Math.min(Math.round(num), 500)); // cap 500g
+      triggerToast(`🥩 Proteína: ${Math.round(num)}g salvo`, '✓');
+    }
+    setEditingMetric(null);
+  };
 
   const triggerToast = (text, icon) => {
     if (window.navigator?.vibrate) window.navigator.vibrate(20);
@@ -60,9 +125,7 @@ export default function TabPainel({
   };
 
   // ── Effects (lógica intacta) ─────────────────────────────────────────────
-  useEffect(() => { if (user?.id) fetchWeekStreak(); }, [user]);
-
-
+  useEffect(() => { if (user?.id) { fetchWeekStreak(); fetchRecentActivity(); } }, [user, refreshKey]);
 
   const fetchWeekStreak = async () => {
     try {
@@ -81,18 +144,48 @@ export default function TabPainel({
     } catch (_) { /* silenced */ }
   };
 
+  // ── Fetch real recent activity ───────────────────────────────────────────
+  const fetchRecentActivity = async () => {
+    setLoadingActivity(true);
+    try {
+      const { data, error } = await supabase
+        .from('workout_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+      if (!error && data) setRecentActivity(data);
+    } catch (_) { /* silenced */ }
+    finally { setLoadingActivity(false); }
+  };
+
   // ── Derived (lógica intacta) ─────────────────────────────────────────────
-  const bioMetrics = { hrv: 68, sleep: 7.2, rhr: 52 };
-  
   const safeWaterGoal   = waterGoal;
   const safeProteinGoal = proteinGoal;
   const waterPct   = Math.min(100, (water   / safeWaterGoal)   * 100);
   const proteinPct = Math.min(100, (protein / safeProteinGoal) * 100);
 
+  // ── Real stats derived from available data ────────────────────────────────
+  const weekTrainCount  = trainedDays.length;
+  const exerciseCount   = currentWorkout?.exercises?.length ?? 0;
+  const totalSets       = currentWorkout?.exercises?.reduce(
+    (acc, ex) => acc + (ex.sets?.length ?? ex.defaultSets ?? 3), 0
+  ) ?? 0;
+
   // ── Week strip ──────────────────────────────────────────────────────────
   const WEEK_DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+  // ── Format relative date ────────────────────────────────────────────────
+  const formatRelativeDate = (isoDate) => {
+    const d = new Date(isoDate);
+    const now = new Date();
+    const diffDays = Math.floor((now - d) / 86400000);
+    if (diffDays === 0) return 'Hoje';
+    if (diffDays === 1) return 'Ontem';
+    return `${diffDays}d atrás`;
+  };
 
   // ────────────────────────────────────────────────────────────────────────
   return (
@@ -137,9 +230,9 @@ export default function TabPainel({
           whileTap={{ scale: 0.97 }}
           onClick={() => startSession(today)}
           className="relative overflow-hidden rounded-[22px] cursor-pointer shrink-0 border border-[#CDFF5A]/[0.15]"
-          style={{ 
-            background: 'linear-gradient(145deg, #0d1a0f 0%, #000000 100%)', 
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 10px 30px rgba(0,0,0,0.6)' 
+          style={{
+            background: 'linear-gradient(145deg, #0d1a0f 0%, #000000 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 10px 30px rgba(0,0,0,0.6)'
           }}
         >
           {/* Borda neon topo — sutil */}
@@ -215,19 +308,24 @@ export default function TabPainel({
 
                   {/* Chip do dia */}
                   <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
-                    isToday  ? 'bg-[#CDFF5A] shadow-[0_0_10px_rgba(205,255,90,0.25)]'
-                    : trained ? 'bg-white/[0.07] border border-[#CDFF5A]/30'
-                    : isPast  ? 'border border-white/[0.08]'
-                               : 'border border-white/[0.06]'
+                    isToday && trained ? 'bg-[#CDFF5A] shadow-[0_0_14px_rgba(205,255,90,0.45)]'
+                    : isToday          ? 'bg-[#CDFF5A] shadow-[0_0_10px_rgba(205,255,90,0.25)]'
+                    : trained          ? 'bg-white/[0.07] border border-[#CDFF5A]/30'
+                    : isPast           ? 'border border-white/[0.08]'
+                                       : 'border border-white/[0.06]'
                   }`} style={{ width: 'clamp(26px,6.5vw,30px)', height: 'clamp(26px,6.5vw,30px)' }}>
-                    <span className={`font-bold leading-none ${
-                      isToday  ? 'text-neutral-950'
-                      : trained ? 'text-[#CDFF5A]'
-                      : isPast  ? 'text-neutral-500'
-                                 : 'text-neutral-500'
-                    }`} style={{ fontSize: 'clamp(10px,2.6vw,12px)' }}>
-                      {dateNum}
-                    </span>
+                    {isToday && trained ? (
+                      <CheckCircle2 size={13} strokeWidth={2.5} className="text-neutral-950" />
+                    ) : (
+                      <span className={`font-bold leading-none ${
+                        isToday  ? 'text-neutral-950'
+                        : trained ? 'text-[#CDFF5A]'
+                        : isPast  ? 'text-neutral-500'
+                                   : 'text-neutral-500'
+                      }`} style={{ fontSize: 'clamp(10px,2.6vw,12px)' }}>
+                        {dateNum}
+                      </span>
+                    )}
                   </div>
 
                   {/* Dot de treino concluído */}
@@ -275,13 +373,13 @@ export default function TabPainel({
               done: proteinPct >= 100,
             },
           ].map((item) => (
-            <motion.div key={item.id} 
+            <motion.div key={item.id}
               whileHover={{ y: -3, scale: 1.01, boxShadow: '0 15px 40px rgba(0,0,0,0.4)' }}
               whileTap={{ scale: 0.98 }}
               className="relative flex flex-col justify-between overflow-hidden transition-all duration-300 group"
-              style={{ 
-                padding: '14px 14px 12px', 
-                gap: '12px', 
+              style={{
+                padding: '14px 14px 12px',
+                gap: '12px',
                 borderRadius: '18px',
                 background: item.cardBg,
                 boxShadow: item.cardShadow,
@@ -302,17 +400,33 @@ export default function TabPainel({
                 </span>
               </div>
 
-              {/* Valor Principal — sempre branco, mesmo em 0 */}
+              {/* Valor Principal — toque para editar */}
               <div className="flex items-baseline" style={{ marginTop: '2px', gap: '4px' }}>
-                <motion.span
-                  key={item.val}
-                  initial={{ scale: 1.08 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.25, ease: [0.22,1,0.36,1] }}
-                  style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, color: '#ffffff' }}
-                >
-                  {item.val}
-                </motion.span>
+                {editingMetric === item.id ? (
+                  <input
+                    ref={editInputRef}
+                    type="number"
+                    inputMode="decimal"
+                    value={editMetricValue}
+                    onChange={e => setEditMetricValue(e.target.value)}
+                    onBlur={saveMetricEdit}
+                    onKeyDown={e => { if (e.key === 'Enter') saveMetricEdit(); if (e.key === 'Escape') setEditingMetric(null); }}
+                    className="outline-none bg-transparent border-b text-white font-black leading-none"
+                    style={{ fontSize: '28px', fontWeight: 900, width: '80px', borderColor: item.accentRef, caretColor: item.accentRef }}
+                  />
+                ) : (
+                  <motion.button
+                    key={item.val}
+                    initial={{ scale: 1.08 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.25, ease: [0.22,1,0.36,1] }}
+                    onClick={() => openMetricEdit(item.id, item.id === 'water' ? water.toFixed(1) : Math.round(protein))}
+                    className="leading-none text-white font-black"
+                    style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, background: 'transparent', border: 'none', cursor: 'text' }}
+                  >
+                    {item.val}
+                  </motion.button>
+                )}
                 <div className="flex items-baseline gap-1">
                   <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{item.unit}</span>
                   <span style={{ fontSize: '10px', fontWeight: 500, color: 'rgba(255,255,255,0.22)' }}>/ {item.goal}</span>
@@ -369,74 +483,100 @@ export default function TabPainel({
         <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: 'clamp(10px,2dvh,14px)' }}>
           <div className="absolute top-0 left-[30%] right-[30%] h-[1px]
             bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
-            
+
           {/* Header */}
           <div className="flex items-center justify-between mb-2 flex-none px-1">
              <div>
                <h3 className="text-[12px] font-black uppercase italic tracking-[0.12em] text-white leading-none">Atividade Recente</h3>
-               <p className="text-[8px] text-neutral-500 font-bold tracking-[0.15em] uppercase mt-1">Sincronizado hoje</p>
+               <p className="text-[8px] text-neutral-500 font-bold tracking-[0.15em] uppercase mt-1">
+                 {loadingActivity ? 'Carregando…' : recentActivity.length > 0 ? 'Sincronizado' : 'Nenhum treino ainda'}
+               </p>
              </div>
              <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C] bg-[#B4FF3C]/10 px-2.5 py-1.5 rounded-full text-[8.5px] font-black tracking-widest uppercase border border-[#B4FF3C]/20 shadow-[0_0_10px_rgba(180,255,60,0.15)]">
                Histórico
              </motion.button>
           </div>
 
-          {/* List */}
+          {/* List — real data from Supabase */}
           <div className="flex flex-col gap-[5px] flex-none">
-            {[
-              {
-                icon: '🏃', title: 'Caminhada', sub: 'Ritmo moderado',
-                val: '7.890', unit: 'passos',
-                accent: '#CDFF5A', bgOpacity: 'rgba(205,255,90,0.06)', border: 'rgba(205,255,90,0.12)',
-              },
-              {
-                icon: '🏋️', title: currentWorkout?.title || 'Treino Resistência', sub: 'Força + hipertrofia',
-                val: '55', unit: 'min',
-                accent: 'rgba(255,255,255,0.75)', bgOpacity: 'rgba(255,255,255,0.025)', border: 'rgba(255,255,255,0.07)',
-              },
-            ].map((act, i) => (
-              <motion.div
-                whileTap={{ scale: 0.97 }}
-                key={i}
-                className="flex items-center justify-between cursor-pointer"
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '14px',
-                  background: act.bgOpacity,
-                  border: `1px solid ${act.border}`,
-                }}
-              >
-                {/* Ícone */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    {act.icon}
+            {loadingActivity ? (
+              /* Skeleton loader */
+              [0, 1].map((i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse"
+                  style={{ padding: '10px 12px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div className="w-9 h-9 rounded-[10px] bg-white/[0.06] shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-2.5 bg-white/[0.06] rounded-full w-2/3" />
+                    <div className="h-2 bg-white/[0.04] rounded-full w-1/2" />
                   </div>
-                  {/* Texto */}
-                  <div>
-                    <p className="text-[11px] font-bold text-white leading-none">{act.title}</p>
-                    <p className="text-[8.5px] text-neutral-500 font-medium mt-[3px] tracking-wide">{act.sub}</p>
-                  </div>
+                  <div className="h-4 w-10 bg-white/[0.06] rounded-full" />
                 </div>
-                {/* Valor — hierarquia clara: número grande + unidade */}
-                <div className="flex items-baseline gap-[3px] shrink-0">
-                  <span className="font-black leading-none"
-                    style={{ fontSize: '17px', color: act.accent }}>
-                    {act.val}
-                  </span>
-                  <span className="text-[8px] font-semibold text-neutral-500">{act.unit}</span>
+              ))
+            ) : recentActivity.length === 0 ? (
+              /* Empty state */
+              <div className="flex flex-col items-center justify-center py-5 gap-2">
+                <div className="w-10 h-10 rounded-[14px] flex items-center justify-center"
+                  style={{ background: 'rgba(205,255,90,0.06)', border: '1px solid rgba(205,255,90,0.12)' }}>
+                  <Dumbbell size={16} style={{ color: 'rgba(205,255,90,0.4)' }} />
                 </div>
-              </motion.div>
-            ))}
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-neutral-600">Complete um treino para ver aqui</p>
+              </div>
+            ) : (
+              /* Real activity rows */
+              recentActivity.map((log, i) => {
+                const accent = i === 0 ? '#CDFF5A' : 'rgba(255,255,255,0.75)';
+                const bgOpacity = i === 0 ? 'rgba(205,255,90,0.06)' : 'rgba(255,255,255,0.025)';
+                const border = i === 0 ? 'rgba(205,255,90,0.12)' : 'rgba(255,255,255,0.07)';
+                return (
+                  <motion.div
+                    whileTap={{ scale: 0.97 }}
+                    key={log.id}
+                    onClick={() => openLogDetail(log)}
+                    className="flex items-center justify-between cursor-pointer"
+                    style={{ padding: '10px 12px', borderRadius: '14px', background: bgOpacity, border: `1px solid ${border}` }}
+                  >
+                    {/* Ícone */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        {getWorkoutIcon(
+                          log.workout_name
+                          || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
+                        )}
+                      </div>
+                      {/* Texto */}
+                      <div>
+                        <p className="text-[11px] font-bold text-white leading-none">
+                          {log.workout_name
+                            || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
+                            || 'Treino'}
+                        </p>
+                        <p className="text-[8.5px] text-neutral-500 font-medium mt-[3px] tracking-wide">
+                          {formatRelativeDate(log.created_at)}
+                          {log.exercises_completed ? ` · ${log.exercises_completed} exerc.` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Valor */}
+                    <div className="flex items-baseline gap-[3px] shrink-0">
+                      <span className="font-black leading-none" style={{ fontSize: '17px', color: accent }}>
+                        {log.duration_minutes ?? (log.duration_seconds ? Math.round(log.duration_seconds / 60) : '–')}
+                      </span>
+                      <span className="text-[8px] font-semibold text-neutral-500">min</span>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </motion.div>
 
-        {/* ══ 5. BIOMÉTRICAS ══════════════════════════════════════════════ */}
+        {/* ══ 5. STATS DO TREINO ATUAL ════════════════════════════════════ */}
         <motion.div variants={stagger.item} className="grid grid-cols-3 gap-[clamp(6px,1.5vw,10px)] shrink-0">
           {[
-            { label: 'VFC',  value: bioMetrics.hrv,   unit: 'ms',  icon: Activity, accentColor: '#34D399', glowRgb: '52,211,153' },
-            { label: 'Sono', value: bioMetrics.sleep, unit: 'h',   icon: Moon,     accentColor: '#CDFF5A', glowRgb: '205,255,90', featured: true },
-            { label: 'RHR',  value: bioMetrics.rhr,   unit: 'bpm', icon: Heart,    accentColor: '#FB7185', glowRgb: '251,113,133' },
+            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#CDFF5A', glowRgb: '205,255,90', featured: true },
+            { label: 'Exercícios',  value: exerciseCount,   unit: 'hoje', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
+            { label: 'Séries',      value: totalSets,       unit: 'total', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
           ].map(({ label, value, unit, icon: Icon, accentColor, glowRgb, featured }) => (
             <motion.div
               key={label}
@@ -468,22 +608,200 @@ export default function TabPainel({
                 }}>
                 <Icon size={11} style={{ color: accentColor }} />
               </div>
-              {/* Label — melhor contraste */}
-              <span className="text-[8px] font-bold uppercase tracking-[0.18em] mb-[4px]"
+              {/* Label */}
+              <span className="text-[8px] font-bold uppercase tracking-[0.18em] mb-[4px] text-center px-1"
                 style={{ color: 'rgba(255,255,255,0.38)' }}>
                 {label}
               </span>
-              {/* Valor — sempre branco legível */}
-              <span className="font-black leading-none" style={{ fontSize: 'clamp(13px,3dvh,16px)', color: '#ffffff' }}>
+              {/* Valor */}
+              <motion.span
+                key={value}
+                initial={{ scale: 1.15, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, ease: [0.22,1,0.36,1] }}
+                className="font-black leading-none"
+                style={{ fontSize: 'clamp(13px,3dvh,16px)', color: '#ffffff' }}
+              >
                 {value}
                 <span className="font-medium ml-0.5"
                   style={{ fontSize: '7px', color: `rgba(${glowRgb},0.6)` }}>{unit}</span>
-              </span>
+              </motion.span>
             </motion.div>
           ))}
         </motion.div>
 
       </motion.div>
+
+      {/* ══ MODAL DETALHE DO TREINO ════════════════════════════════════════ */}
+      <AnimatePresence>
+        {selectedLog && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedLog(null)}
+              className="fixed inset-0 z-[80]"
+              style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+            />
+
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 30 }}
+              className="fixed bottom-0 left-0 right-0 z-[81] rounded-t-[28px] overflow-hidden"
+              style={{
+                background: 'rgba(12,12,16,0.99)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderBottom: 'none',
+                maxHeight: '88vh',
+                overflowY: 'auto',
+                paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)',
+              }}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.15)' }} />
+              </div>
+
+              <div className="px-5 pb-2">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4 pt-1">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] mb-1" style={{ color: NEON + '99' }}>
+                      Detalhe do Treino
+                    </p>
+                    <h3 className="text-[20px] font-black text-white leading-tight">
+                      {selectedLog.workout_name
+                        || (workoutData?.[selectedLog.workout_key]?.title)
+                        || 'Treino'}
+                    </h3>
+                  </div>
+                  <motion.button
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setSelectedLog(null)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full mt-1"
+                    style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  >
+                    <X size={15} style={{ color: 'rgba(255,255,255,0.5)' }} />
+                  </motion.button>
+                </div>
+
+                {/* Info row: horário + local */}
+                <div className="flex gap-2 mb-4">
+                  {(selectedLog.started_at || selectedLog.ended_at) && (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px]"
+                      style={{ background: 'rgba(205,255,90,0.06)', border: '1px solid rgba(205,255,90,0.14)' }}>
+                      <Clock size={11} style={{ color: NEON }} />
+                      <span className="text-[11px] font-bold" style={{ color: NEON }}>
+                        {formatHour(selectedLog.started_at)} — {formatHour(selectedLog.ended_at)}
+                      </span>
+                    </div>
+                  )}
+                  {selectedLog.location && (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px]"
+                      style={{ background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.16)' }}>
+                      <MapPin size={11} style={{ color: '#A78BFA' }} />
+                      <span className="text-[11px] font-bold" style={{ color: '#A78BFA' }}>{selectedLog.location}</span>
+                    </div>
+                  )}
+                  {/* Duração */}
+                  {selectedLog.duration_seconds > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px]"
+                      style={{ background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.14)' }}>
+                      <BarChart3 size={11} style={{ color: '#FB923C' }} />
+                      <span className="text-[11px] font-bold" style={{ color: '#FB923C' }}>
+                        {Math.round(selectedLog.duration_seconds / 60)}min
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {loadingDetail ? (
+                  <div className="space-y-2 py-4">
+                    {[1,2,3].map(i => (
+                      <div key={i} className="h-10 rounded-[12px] animate-pulse" style={{ background: 'rgba(255,255,255,0.05)' }} />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    {/* Foto do treino */}
+                    {logDetail?.photo && (
+                      <div className="mb-4">
+                        <p className="text-[8.5px] font-black uppercase tracking-[0.22em] mb-2 flex items-center gap-1.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          <Image size={9} /> Foto do Treino
+                        </p>
+                        <motion.img
+                          src={logDetail.photo}
+                          alt="Foto do treino"
+                          className="w-full rounded-[16px] object-cover"
+                          style={{ maxHeight: 220, border: '1px solid rgba(255,255,255,0.08)' }}
+                          initial={{ opacity: 0, scale: 0.97 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.4 }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Séries */}
+                    {logDetail?.sets?.length > 0 ? (
+                      <div>
+                        <p className="text-[8.5px] font-black uppercase tracking-[0.22em] mb-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          Séries Concluídas · {logDetail.sets.length} total
+                        </p>
+                        {/* Agrupar por exercício */}
+                        {Object.entries(
+                          logDetail.sets.reduce((acc, s) => {
+                            const key = s.exercise_id || 'ex';
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push(s);
+                            return acc;
+                          }, {})
+                        ).map(([exId, sets]) => (
+                          <div key={exId} className="mb-3">
+                            <p className="text-[9px] font-black uppercase tracking-wider mb-1.5 ml-1" style={{ color: 'rgba(205,255,90,0.7)' }}>
+                              {exId}
+                            </p>
+                            <div className="space-y-1">
+                              {sets.map((s, idx) => (
+                                <div key={idx} className="flex items-center justify-between px-3 py-2 rounded-[10px]"
+                                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[9px] font-black w-5 text-center rounded-full py-0.5"
+                                      style={{ background: 'rgba(205,255,90,0.10)', color: NEON }}>
+                                      {s.set_number || idx + 1}
+                                    </span>
+                                    <CheckCircle2 size={11} style={{ color: '#4ADE80' }} />
+                                    <span className="text-[10px] font-bold text-white">
+                                      {s.reps > 0 ? `${s.reps} reps` : '—'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-black" style={{ color: s.weight_kg > 0 ? NEON : 'rgba(255,255,255,0.3)' }}>
+                                    {s.weight_kg > 0 ? `${s.weight_kg}kg` : 'Peso corporal'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-6">
+                        <p className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                          Séries não registradas neste treino
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

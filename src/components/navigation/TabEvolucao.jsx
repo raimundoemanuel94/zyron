@@ -1,7 +1,7 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, Calendar, Zap, ArrowBigUp, ChevronRight } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import EvolutionTimeline from '../shared/EvolutionTimeline';
 import { C, Card, Badge } from '../../styles/ds';
@@ -41,19 +41,81 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
   // 1. useDailyMetrics.updateMetrics({ weightKg: newValue })
   // 2. Saves to daily_stats table in Supabase
   // 3. Also syncs to profile.bio.weightKg via persistenceService
-  //
-  // The duplicate useEffect that was here (insert + updateProfile) has been removed
-  // to avoid race conditions and conflicting database updates
 
   const [isSavingWeight, setIsSavingWeight] = React.useState(false);
+  const [weightHistory, setWeightHistory] = React.useState([]);
+  const [loadingHistory, setLoadingHistory] = React.useState(true);
+  const saveTimerRef = React.useRef(null);
 
-  const data = [
-    { date: '01/02', carga: 60, trend: 58 },
-    { date: '08/02', carga: 64, trend: 62 },
-    { date: '15/02', carga: 64, trend: 66 },
-    { date: '22/02', carga: 70, trend: 70 },
-    { date: '01/03', carga: 75, trend: 74 },
-  ];
+  // ── Fetch real weight history from daily_stats ──────────────────────────
+  React.useEffect(() => {
+    if (!user?.id) return;
+    const fetchWeightHistory = async () => {
+      setLoadingHistory(true);
+      try {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { data, error } = await supabase
+          .from('daily_stats')
+          .select('stat_date, date, weight_kg')
+          .eq('user_id', user.id)
+          .not('weight_kg', 'is', null)
+          .or(`stat_date.gte.${thirtyDaysAgo.toISOString().split('T')[0]},date.gte.${thirtyDaysAgo.toISOString().split('T')[0]}`)
+          .order('stat_date', { ascending: true, nullsFirst: false });
+        if (!error && data?.length > 0) {
+          setWeightHistory(data.map(row => {
+            const rawDate = row.stat_date || row.date;
+            return {
+              date: rawDate ? new Date(rawDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '–',
+              carga: row.weight_kg,
+            };
+          }));
+        }
+      } catch (_) { /* silenced */ }
+      finally { setLoadingHistory(false); }
+    };
+    fetchWeightHistory();
+  }, [user?.id]);
+
+  // ── Activate save indicator when weight slider changes ──────────────────
+  React.useEffect(() => {
+    clearTimeout(saveTimerRef.current);
+    setIsSavingWeight(true);
+    saveTimerRef.current = setTimeout(() => setIsSavingWeight(false), 1800);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [weight]);
+
+  // ── Build chart data: use real history or current weight as single point ─
+  const chartData = React.useMemo(() => {
+    if (weightHistory.length >= 2) {
+      // Add a trend line (7-day moving average)
+      return weightHistory.map((row, i) => {
+        const slice = weightHistory.slice(Math.max(0, i - 3), i + 1);
+        const avg = slice.reduce((a, b) => a + b.carga, 0) / slice.length;
+        return { ...row, trend: Math.round(avg * 10) / 10 };
+      });
+    }
+    // Fallback: show current weight + placeholder progression
+    const today = new Date();
+    return Array.from({ length: 5 }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (4 - i) * 7);
+      return {
+        date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        carga: weight,
+        trend: weight,
+      };
+    });
+  }, [weightHistory, weight]);
+
+  // ── Compute weight change badge ─────────────────────────────────────────
+  const weightChange = React.useMemo(() => {
+    if (weightHistory.length < 2) return null;
+    const first = weightHistory[0].carga;
+    const last = weightHistory[weightHistory.length - 1].carga;
+    const diff = last - first;
+    return { diff: Math.abs(diff).toFixed(1), dir: diff >= 0 ? '▲' : '▼', positive: diff >= 0 };
+  }, [weightHistory]);
 
   return (
     <motion.div
@@ -76,35 +138,51 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
         </div>
       </div>
 
-      {/* Gráfico */}
+      {/* Gráfico — real weight history */}
       <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
         <div className="absolute top-0 left-[25%] right-[25%] h-px"
           style={{ background: `linear-gradient(90deg, transparent, ${C.neonBorder}, transparent)` }} />
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[12px] font-black text-white uppercase tracking-tight">Evolução de Cargas</p>
-            <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] mt-0.5" style={{ color: C.textSub }}>Últimas 5 semanas</p>
+            <p className="text-[12px] font-black text-white uppercase tracking-tight">Evolução de Peso</p>
+            <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] mt-0.5" style={{ color: C.textSub }}>
+              {loadingHistory ? 'Carregando…' : weightHistory.length >= 2 ? 'Últimos 30 dias' : 'Peso atual'}
+            </p>
           </div>
-          <span className={Badge.neon}>+15% ▲</span>
+          {weightChange ? (
+            <span className={Badge.neon} style={{ color: weightChange.positive ? C.neon : '#FB7185', borderColor: weightChange.positive ? 'rgba(205,255,90,0.2)' : 'rgba(251,113,133,0.2)' }}>
+              {weightChange.dir} {weightChange.diff}kg
+            </span>
+          ) : (
+            <span className={Badge.neutral}>Sem dados</span>
+          )}
         </div>
         <div className="h-44 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-              <XAxis dataKey="date" stroke="transparent"
-                tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 600 }}
-                tickLine={false} axisLine={false} dy={8} />
-              <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
-              <RechartsTooltip content={<DSTooltip />} cursor={{ stroke: `${C.neon}20`, strokeWidth: 1 }} />
-              <Line type="monotone" dataKey="carga" stroke={C.neon} strokeWidth={2.5}
-                dot={{ r: 4, fill: C.neon, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: C.neon, stroke: '#000', strokeWidth: 1.5 }}
-                style={{ filter: `drop-shadow(0 0 6px ${C.neon}60)` }} />
-              <Line type="monotone" dataKey="trend"
-                stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="5 5"
-                dot={false} activeDot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+          {loadingHistory ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${C.neon}40`, borderTopColor: 'transparent' }} />
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="date" stroke="transparent"
+                  tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 600 }}
+                  tickLine={false} axisLine={false} dy={8} />
+                <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                <RechartsTooltip content={<DSTooltip />} cursor={{ stroke: `${C.neon}20`, strokeWidth: 1 }} />
+                <Line type="monotone" dataKey="carga" stroke={C.neon} strokeWidth={2.5}
+                  dot={{ r: 4, fill: C.neon, strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: C.neon, stroke: '#000', strokeWidth: 1.5 }}
+                  style={{ filter: `drop-shadow(0 0 6px ${C.neon}60)` }} />
+                {chartData.some(d => d.trend !== d.carga) && (
+                  <Line type="monotone" dataKey="trend"
+                    stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="5 5"
+                    dot={false} activeDot={false} />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -201,12 +279,28 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[28px] font-black text-white leading-none">
+            <motion.p
+              key={weight}
+              initial={{ scale: 1.1 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.2 }}
+              className="text-[28px] font-black text-white leading-none"
+            >
               {weight}<span className="text-[11px] font-semibold ml-1" style={{ color: C.textSub }}>kg</span>
-            </p>
-            {isSavingWeight && (
-              <p className="text-[8px] font-bold uppercase tracking-widest mt-0.5 animate-pulse" style={{ color: C.neon }}>Sincronizando…</p>
-            )}
+            </motion.p>
+            <AnimatePresence>
+              {isSavingWeight && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 4 }}
+                  className="text-[8px] font-bold uppercase tracking-widest mt-0.5"
+                  style={{ color: C.neon }}
+                >
+                  Sincronizando…
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
         </div>
         <input
@@ -219,6 +313,11 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
             accentColor: C.neon,
           }}
         />
+        {/* Min/Max labels */}
+        <div className="flex justify-between mt-2">
+          <span className="text-[8px] font-bold" style={{ color: C.textSub }}>50kg</span>
+          <span className="text-[8px] font-bold" style={{ color: C.textSub }}>150kg</span>
+        </div>
       </div>
     </motion.div>
   );

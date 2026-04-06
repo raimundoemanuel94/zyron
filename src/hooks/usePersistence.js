@@ -81,19 +81,26 @@ export function useDailyMetrics(userId) {
         isSyncingRef.current = true;
 
         // Use a Promise to ensure we have the latest metrics
-        Promise.resolve().then(() => {
+        Promise.resolve().then(async () => {
           const today = new Date().toISOString().split('T')[0];
+          const m = mergedMetrics;
 
-          // Build Supabase updates with merged values
-          // NOTE: weight_kg is saved separately to profiles, not daily_stats
+          // Build Supabase updates with all merged values
           const supabaseUpdates = {
-            water_amount: mergedMetrics?.waterMl ?? metrics.waterMl,
-            protein_amount: mergedMetrics?.proteinG ?? metrics.proteinG,
-            // weight_kg is handled by persistenceService.updateDailyStats
-            // which syncs to profiles.weight automatically
+            water_amount: m.waterMl ?? 0,
+            protein_amount: m.proteinG ?? 0,
+            ...(m.weightKg ? { weight_kg: m.weightKg } : {}),
           };
 
-          return dailyStats.updateDailyStats(userId, today, supabaseUpdates);
+          await dailyStats.updateDailyStats(userId, today, supabaseUpdates);
+
+          // If weight changed, also sync to profiles table
+          if (m.weightKg) {
+            const { supabase } = await import('../lib/supabase');
+            await supabase.from('profiles').update({ weight: m.weightKg }).eq('id', userId);
+          }
+
+          return supabaseUpdates;
         })
           .catch(err => {
             console.error('Failed to sync metrics to Supabase:', err);
