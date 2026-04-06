@@ -166,6 +166,11 @@ class ZYRONLogger {
 
   // Enviar log para servidor
   async sendToServer(entry) {
+    // Em desenvolvimento, não enviar para servidor (evita erros 404)
+    if (this.isDevelopment) {
+      return;
+    }
+
     try {
       await fetch(this.endpoint, {
         method: 'POST',

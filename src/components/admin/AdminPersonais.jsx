@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, X, Plus, Search, Dumbbell, ChevronRight, Trash2, UserPlus, Edit2, Lock, Loader2 } from 'lucide-react';
 import { workoutData } from '../../data/workoutData';
 import { supabase } from '../../lib/supabase';
+import { profileService } from '../../core/profile/profileService';
 
 const STORAGE_KEY = 'zyron-personais';
 
@@ -23,13 +24,8 @@ export default function AdminPersonais({ users = [] }) {
 
   const fetchTrainers = async () => {
     try {
-      // 1. Fetch profiles with role 'PERSONAL'
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'PERSONAL');
-
-      if (profileError) throw profileError;
+      // 1. Fetch profiles with role 'PERSONAL' via service
+      const profileData = await profileService.getProfilesByRole('PERSONAL');
 
       // 2. Fetch all student links for these trainers
       const { data: links, error: linksError } = await supabase
@@ -79,19 +75,16 @@ export default function AdminPersonais({ users = [] }) {
       const userId = authData.user?.id;
       if (!userId) throw new Error("Erro ao obter ID do usuário criado.");
 
-      // 2. Garantir que a Role seja 'PERSONAL' na tabela profiles
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({ 
-          id: userId,
-          role: 'PERSONAL', 
-          name: newTrainer.name,
-          email: newTrainer.email 
-        });
+      // 2. Garantir que a Role seja 'PERSONAL' na tabela profiles via service
+      const success = await profileService.patchProfile(userId, { 
+        role: 'PERSONAL', 
+        name: newTrainer.name,
+        email: newTrainer.email,
+        phone: newTrainer.phone
+      });
 
-      // Se der erro no update (ex: RLS), tentamos um upsert ou avisamos
-      if (profileError) {
-        console.warn('Erro ao atualizar role no perfil (pode ser RLS), mas a conta Auth foi criada:', profileError);
+      if (!success) {
+        console.warn('Erro ao atualizar role no perfil via service (pode ser RLS), mas a conta Auth foi criada.');
       }
 
       const trainer = {
@@ -121,12 +114,8 @@ export default function AdminPersonais({ users = [] }) {
     if (!confirm('Remover este personal? A conta dele será mantida, mas perderá o acesso de personal.')) return;
     
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: 'USER' })
-        .eq('id', trainerId);
-
-      if (error) throw error;
+      const success = await profileService.patchProfile(trainerId, { role: 'USER' });
+      if (!success) throw new Error("Falha ao rebaixar role.");
       fetchTrainers();
     } catch (err) {
       alert('Erro ao remover: ' + err.message);

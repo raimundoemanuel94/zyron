@@ -9,14 +9,13 @@
  *   ↑ SEM /images/ no meio
  */
 
-const RAW   = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
-const PAGES = 'https://yuhonas.github.io/free-exercise-db/exercises';
+import { getAnimationUrl } from '../config/animationConfig';
 
 export const gif = (dbId) => ({
-  frame0:   `${RAW}/${dbId}/0.jpg`,
-  frame1:   `${RAW}/${dbId}/1.jpg`,
-  frame0fb: `${PAGES}/${dbId}/0.jpg`,
-  frame1fb: `${PAGES}/${dbId}/1.jpg`,
+  frame0:   getAnimationUrl(dbId, 0),
+  frame1:   getAnimationUrl(dbId, 1),
+  frame0fb: getAnimationUrl(dbId, 0), // Simplificado: usa a mesma URL estável
+  frame1fb: getAnimationUrl(dbId, 1),
 });
 
 export const EXERCISE_ANIMATIONS = {
@@ -61,7 +60,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Segure as extremidades da corda com as palmas voltadas uma para a outra.','Pressione para baixo, separando as mãos na parte inferior.','Retorne lentamente até os antebraços ficarem paralelos ao chão.'],
   },
   't3': {
-    ...gif('Barbell_Lying_Triceps_Extension'),
+    ...gif('Lying_Triceps_Press'),
     muscles: ['Tríceps (cabeça longa)'],
     tip: 'Testa próxima ao chão, não deixe os cotovelos abrirem.',
     instructions: ['Deite no banco com a barra EZ acima do peito.','Mãos próximas, cotovelos apontados para cima.','Dobre os cotovelos abaixando a barra em direção à testa.','Estenda os braços de volta à posição inicial.'],

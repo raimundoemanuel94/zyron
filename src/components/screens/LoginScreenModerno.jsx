@@ -169,7 +169,7 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="relative z-20 w-full max-w-sm px-8 flex flex-col items-center mt-[-40px]"
+              className="relative z-20 w-full px-8 flex flex-col items-center mt-[-40px] pt-[env(safe-area-inset-top)]"
             >
               
               {/* LOGO ZYRON (SLIDE VIND DE CIMA) */}

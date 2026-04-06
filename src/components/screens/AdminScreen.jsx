@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Users, TrendingUp, DollarSign, LogOut, ArrowLeft, Search, Edit2, RotateCcw, Trash2, X, AlertTriangle, Bell, Send, FileCode, Activity, Trophy, Cake, Clock, Megaphone, ChevronRight, Calendar, LayoutDashboard, CreditCard, UserCheck, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { workoutData } from '../../data/workoutData';
-import { LineChart, Line, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { profileService } from '../../core/profile/profileService';
+import { LineChart, Line, AreaChart, Area, XAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import AdminFinanceiro from '../admin/AdminFinanceiro';
 import AdminPersonais from '../admin/AdminPersonais';
 import PersonalDashboard from '../admin/PersonalDashboard';
@@ -54,27 +55,14 @@ export default function AdminScreen({ user, onLogout, onBack }) {
 
   const fetchCurrentUserProfile = async () => {
     if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      if (data) setCurrentUserProfile(data);
-    } catch (e) {
-      console.error('Erro ao buscar perfil atual:', e);
-    }
+    const profile = await profileService.getProfile(user.id);
+    if (profile) setCurrentUserProfile(profile);
   };
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const allProfiles = await profileService.getAllProfiles();
+      setUsers(allProfiles);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
     } finally {
@@ -120,22 +108,18 @@ export default function AdminScreen({ user, onLogout, onBack }) {
   // ── TIER 1: Alunos em Risco (sem treinar 7+ dias) ──
   const fetchChurnRisk = async () => {
     try {
+      if (users.length === 0) return;
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const cutoff = sevenDaysAgo.toISOString().split('T')[0];
 
-      // Buscar todos os profiles
-      const { data: allProfiles } = await supabase.from('profiles').select('id, name, email');
-      if (!allProfiles) return;
-
-      // Buscar quem treinou nos últimos 7 dias
       const { data: recentStats } = await supabase
         .from('daily_stats')
         .select('user_id')
         .gte('date', cutoff);
 
       const activeIds = new Set((recentStats || []).map(s => s.user_id));
-      const atRisk = allProfiles.filter(p => !activeIds.has(p.id));
+      const atRisk = users.filter(u => !activeIds.has(u.id));
       setChurnRiskUsers(atRisk);
     } catch (err) {
       console.error('Erro churn risk:', err);
@@ -156,23 +140,13 @@ export default function AdminScreen({ user, onLogout, onBack }) {
 
       if (!data) return;
 
-      // Agrupar por user_id
       const counts = {};
       data.forEach(log => {
         counts[log.user_id] = (counts[log.user_id] || 0) + 1;
       });
 
-      // Buscar nomes
-      const userIds = Object.keys(counts);
-      if (userIds.length === 0) { setLeaderboard([]); return; }
-
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .in('id', userIds);
-
       const nameMap = {};
-      (profiles || []).forEach(p => { nameMap[p.id] = p.name || 'Sem Nome'; });
+      users.forEach(p => { nameMap[p.id] = p.name || 'Sem Nome'; });
 
       const ranked = Object.entries(counts)
         .map(([uid, count]) => ({ id: uid, name: nameMap[uid] || uid.substring(0, 8), workouts: count }))
@@ -189,16 +163,13 @@ export default function AdminScreen({ user, onLogout, onBack }) {
   const fetchBirthdays = async () => {
     try {
       const currentMonth = new Date().getMonth() + 1;
-      const { data } = await supabase.from('profiles').select('id, name, email, birth_date');
-      if (!data) return;
-
-      const bdays = data.filter(p => {
-        if (!p.birth_date) return false;
-        const month = new Date(p.birth_date).getMonth() + 1;
+      const bdays = users.filter(p => {
+        if (!p.bio?.birthDate) return false;
+        const month = new Date(p.bio.birthDate).getMonth() + 1;
         return month === currentMonth;
       }).map(p => ({
         ...p,
-        day: new Date(p.birth_date).getDate()
+        day: new Date(p.bio.birthDate).getDate()
       })).sort((a, b) => a.day - b.day);
 
       setBirthdays(bdays);
@@ -295,21 +266,13 @@ export default function AdminScreen({ user, onLogout, onBack }) {
   const handleSaveEdit = async () => {
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: editUser.name,
-          age: editUser.age,
-          height: editUser.height,
-          weight: editUser.weight,
-          goal: editUser.goal,
-          level: editUser.level
-        })
-        .eq('id', editUser.id);
-      
-      if (error) throw error;
-      setEditUser(null);
-      fetchUsers();
+      const success = await profileService.updateProfile(editUser.id, editUser);
+      if (success) {
+        setEditUser(null);
+        fetchUsers();
+      } else {
+        throw new Error("Falha ao atualizar perfil.");
+      }
     } catch (error) {
       alert("Erro ao atualizar: " + error.message);
     } finally {
@@ -337,12 +300,12 @@ export default function AdminScreen({ user, onLogout, onBack }) {
   const handleConfirmDelete = async () => {
     setIsProcessing(true);
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', deleteUser.id);
-      if (error) throw error;
+      const success = await profileService.deleteProfile(deleteUser.id);
+      if (!success) throw new Error("Falha ao excluir.");
       setDeleteUser(null);
       fetchUsers();
     } catch (error) {
-      alert("Erro ao excluir. O RLS de exclusão requer privilégios ou você só pode excluir registros vinculando API de admin.");
+      alert("Erro ao excluir. Verifique permissões de admin.");
       setDeleteUser(null);
     } finally {
       setIsProcessing(false);
@@ -420,28 +383,39 @@ export default function AdminScreen({ user, onLogout, onBack }) {
 
       <div className="max-w-6xl mx-auto relative z-10">
         
-        {/* Header */}
-        <header className="flex justify-between items-center mb-10 bg-neutral-900/40 backdrop-blur-md p-6 rounded-3xl border border-red-500/20 shadow-[0_0_30px_rgba(220,38,38,0.1)]">
-          <div className="flex items-center gap-4">
-            <button onClick={onBack} className="p-3 bg-neutral-800 rounded-xl hover:bg-neutral-700 transition-colors">
-              <ArrowLeft size={20} className="text-neutral-400" />
+        {/* ─── HERO HEADER ──────────────────────────────────────────────────── */}
+        <header className="relative flex justify-between items-center mb-10 overflow-hidden bg-[linear-gradient(135deg,rgba(12,5,5,1)_0%,rgba(8,4,4,1)_100%)] backdrop-blur-md p-6 rounded-3xl border border-red-500/25 shadow-[0_0_60px_rgba(220,38,38,0.12),inset_0_1px_0_rgba(255,255,255,0.04)]">
+          {/* Ambient glow */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_left,rgba(220,38,38,0.10),transparent_55%)]" />
+          {/* Linha neon top */}
+          <div className="absolute top-0 left-0 w-full h-[1.5px] bg-linear-to-r from-transparent via-red-500/60 to-transparent pointer-events-none" />
+
+          <div className="relative z-10 flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-3 bg-neutral-900/80 rounded-xl border border-white/6 hover:border-red-500/30 hover:text-red-400 text-neutral-400 transition-all active:scale-90 hover:scale-105"
+            >
+              <ArrowLeft size={20} />
             </button>
-            <div className="p-4 bg-red-500/10 rounded-2xl border border-red-500/30">
-              <ShieldAlert className="text-red-500" size={28} />
+            <div className="p-3.5 bg-red-500/12 rounded-2xl border border-red-500/30 shadow-[0_0_20px_rgba(220,38,38,0.2)]">
+              <ShieldAlert className="text-red-500 drop-shadow-[0_0_8px_rgba(220,38,38,0.8)]" size={26} />
             </div>
             <div>
-              <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">God Mode</h1>
-              <p className="text-[10px] font-bold text-red-500 uppercase tracking-[0.3em]">Painel de Controle Administrativo</p>
+              <p className="text-[9px] font-black text-red-500/70 uppercase tracking-[0.32em] mb-0.5">Painel de Controle</p>
+              <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white drop-shadow-[0_0_16px_rgba(255,255,255,0.12)]">God Mode</h1>
             </div>
           </div>
-          
-          <button onClick={onLogout} className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl font-black uppercase tracking-widest text-xs transition-colors border border-red-500/20">
+
+          <button
+            onClick={onLogout}
+            className="relative z-10 flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-200 border border-red-500/25 hover:border-red-500 hover:scale-105 hover:shadow-[0_0_24px_rgba(220,38,38,0.4)] active:scale-95"
+          >
             <LogOut size={16} /> Encerrar Sessão
           </button>
         </header>
 
         {/* Tab Navigation */}
-        <div className="flex bg-neutral-900/50 backdrop-blur-md rounded-2xl p-1.5 border border-white/5 mb-10 gap-1">
+        <div className="flex bg-neutral-950/80 backdrop-blur-md rounded-2xl p-1.5 border border-white/5 mb-10 gap-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           {[
             { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, public: true },
             { key: 'financeiro', label: 'Financeiro', icon: CreditCard, public: currentUserProfile?.role === 'ADMIN' },
@@ -454,13 +428,13 @@ export default function AdminScreen({ user, onLogout, onBack }) {
               <button
                 key={tab.key}
                 onClick={() => setAdminTab(tab.key)}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-200 ${
                   active
-                    ? 'bg-yellow-500 text-black shadow-[0_0_15px_rgba(234,179,8,0.2)]'
-                    : 'text-neutral-500 hover:text-white hover:bg-white/5'
+                    ? 'bg-yellow-400 text-black shadow-[0_0_24px_rgba(253,224,71,0.35)] scale-[1.02]'
+                    : 'text-neutral-500 hover:text-white hover:bg-white/5 hover:scale-[1.01]'
                 }`}
               >
-                <Icon size={16} />
+                <Icon size={15} />
                 {tab.label}
               </button>
             );
@@ -477,71 +451,109 @@ export default function AdminScreen({ user, onLogout, onBack }) {
         {adminTab === 'dashboard' && (
         <>
 
+        {/* ─── METRIC CARDS ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl group-hover:bg-yellow-500/10 transition-colors"></div>
+
+          {/* Card 1 — Total de Alunos (principal / glow forte) */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden bg-[linear-gradient(135deg,rgba(20,18,8,1)_0%,rgba(8,8,4,1)_100%)] p-6 rounded-3xl border border-yellow-400/30 shadow-[0_0_48px_rgba(253,224,71,0.10),inset_0_1px_0_rgba(255,255,255,0.05)] group hover:scale-[1.03] hover:shadow-[0_0_64px_rgba(253,224,71,0.18)] transition-all duration-300 cursor-default"
+          >
+            <div className="absolute top-0 left-0 w-full h-[1.5px] bg-linear-to-r from-transparent via-yellow-400/70 to-transparent pointer-events-none" />
+            <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-400/6 rounded-full blur-3xl group-hover:bg-yellow-400/12 transition-colors" />
             <div className="flex justify-between items-start relative z-10">
               <div>
-                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Total de Alunos</p>
-                <h3 className="text-4xl font-black italic text-white mt-2">{users.length}</h3>
+                <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.28em] mb-2">Total de Alunos</p>
+                <h3 className="text-5xl font-black italic text-white drop-shadow-[0_0_16px_rgba(253,224,71,0.3)]">{users.length}</h3>
               </div>
-              <div className="p-3 bg-yellow-500/10 rounded-xl">
-                <Users className="text-yellow-500" size={24} />
+              <div className="p-3.5 bg-yellow-400/10 rounded-2xl border border-yellow-400/20 shadow-[0_0_20px_rgba(253,224,71,0.15)]">
+                <Users className="text-yellow-400 drop-shadow-[0_0_8px_rgba(253,224,71,0.8)]" size={22} />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors"></div>
+          {/* Card 2 — Taxa de Retenção (glass) */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden bg-[linear-gradient(180deg,rgba(18,24,18,0.96)_0%,rgba(8,12,8,1)_100%)] p-6 rounded-3xl border border-white/6 shadow-[0_12px_40px_rgba(0,0,0,0.45)] group hover:scale-[1.03] hover:border-emerald-500/20 hover:shadow-[0_0_40px_rgba(16,185,129,0.08)] transition-all duration-300 cursor-default"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
             <div className="flex justify-between items-start relative z-10">
               <div>
-                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">Taxa de Retenção</p>
-                <h3 className="text-4xl font-black italic text-white mt-2">94<span className="text-xl text-neutral-500">%</span></h3>
+                <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.28em] mb-2">Taxa de Retenção</p>
+                <h3 className="text-5xl font-black italic text-white">94<span className="text-xl text-neutral-500 ml-0.5">%</span></h3>
               </div>
-              <div className="p-3 bg-emerald-500/10 rounded-xl">
-                <TrendingUp className="text-emerald-500" size={24} />
+              <div className="p-3.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/15">
+                <TrendingUp className="text-emerald-400" size={22} />
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors"></div>
+          {/* Card 3 — MRR (glass com badge) */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden bg-[linear-gradient(180deg,rgba(8,14,24,0.98)_0%,rgba(4,8,14,1)_100%)] p-6 rounded-3xl border border-white/6 shadow-[0_12px_40px_rgba(0,0,0,0.45)] group hover:scale-[1.03] hover:border-blue-500/20 hover:shadow-[0_0_40px_rgba(59,130,246,0.08)] transition-all duration-300 cursor-default"
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors" />
             <div className="flex justify-between items-start relative z-10">
               <div>
-                <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">MRR Estimado</p>
+                <p className="text-[9px] text-neutral-500 font-black uppercase tracking-[0.28em] mb-2">MRR Estimado</p>
                 <div className="flex items-end gap-3 mt-1">
-                  <h3 className="text-4xl font-black italic text-white flex items-end"><span className="text-xl text-neutral-500 mb-1 mr-1">R$</span> {(users.length * 159).toLocaleString('pt-BR')}</h3>
-                  <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg mb-1 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
-                    <TrendingUp size={12} className="text-emerald-400" />
+                  <h3 className="text-4xl font-black italic text-white flex items-end">
+                    <span className="text-lg text-neutral-500 mb-1 mr-1">R$</span>
+                    {(users.length * 159).toLocaleString('pt-BR')}
+                  </h3>
+                  <div className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-lg mb-1 shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+                    <TrendingUp size={11} className="text-emerald-400" />
                     <span className="text-xs font-black text-emerald-400">+12%</span>
                   </div>
                 </div>
               </div>
-              <div className="p-3 bg-blue-500/10 rounded-xl">
-                <DollarSign className="text-blue-500" size={24} />
+              <div className="p-3.5 bg-blue-500/10 rounded-2xl border border-blue-500/15">
+                <DollarSign className="text-blue-400" size={22} />
               </div>
             </div>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Chart Weekly Active Users */}
-        <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-3xl border border-white/5 mb-10 overflow-hidden relative">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-yellow-500/10 rounded-xl">
-              <Activity className="text-yellow-500" size={20} />
+        {/* ─── CHART — Pulso de Retenção ────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="relative overflow-hidden bg-[linear-gradient(180deg,rgba(16,16,14,0.98)_0%,rgba(6,6,5,1)_100%)] backdrop-blur-md p-6 rounded-3xl border border-white/6 mb-10 shadow-[0_12px_48px_rgba(0,0,0,0.5)] hover:border-yellow-400/12 transition-all duration-300"
+        >
+          {/* Ambient glow bottom */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,rgba(253,224,71,0.05),transparent_60%)]" />
+          <div className="absolute top-0 left-0 w-full h-px bg-linear-to-r from-transparent via-yellow-400/25 to-transparent pointer-events-none" />
+
+          <div className="flex items-center gap-3 mb-6 relative z-10">
+            <div className="p-2.5 bg-yellow-400/10 rounded-xl border border-yellow-400/15 shadow-[0_0_14px_rgba(253,224,71,0.1)]">
+              <Activity className="text-yellow-400 drop-shadow-[0_0_6px_rgba(253,224,71,0.7)]" size={18} />
             </div>
             <div>
               <h2 className="text-lg font-black italic uppercase tracking-tight text-white">Pulso de Retenção</h2>
-              <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Usuários Ativos (Últimos 7 Dias)</p>
+              <p className="text-[9px] text-neutral-500 uppercase tracking-[0.24em] font-black">Usuários Ativos · Últimos 7 Dias</p>
             </div>
           </div>
-          <div className="h-64 w-full">
+
+          <div className="h-64 w-full relative z-10">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={analyticsData}>
+              <AreaChart data={analyticsData}>
                 <defs>
-                  <filter id="neonGlowAdmin" x="-50%" y="-50%" width="200%" height="200%">
+                  <linearGradient id="adminChartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FDE047" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#FDE047" stopOpacity={0} />
+                  </linearGradient>
+                  <filter id="neonGlowAdminLine" x="-20%" y="-50%" width="140%" height="200%">
                     <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur1" />
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur2" />
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur2" />
                     <feMerge>
                       <feMergeNode in="blur2" />
                       <feMergeNode in="blur1" />
@@ -549,35 +561,39 @@ export default function AdminScreen({ user, onLogout, onBack }) {
                     </feMerge>
                   </filter>
                 </defs>
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#525252" 
-                  fontSize={10} 
-                  tickLine={false} 
-                  axisLine={false} 
-                  dy={10} 
-                  tick={{ fontWeight: 900, fontFamily: 'monospace' }}
+                <XAxis
+                  dataKey="name"
+                  stroke="#404040"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                  dy={10}
+                  tick={{ fontWeight: 900, fontFamily: 'monospace', fill: '#525252' }}
                 />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#333', borderRadius: '12px', padding: '12px', color: '#fff' }}
-                  itemStyle={{ color: '#eab308', fontWeight: 900, fontSize: '14px' }}
-                  labelStyle={{ color: '#737373', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 900, marginBottom: '4px' }}
-                  cursor={{ stroke: '#262626', strokeWidth: 2, strokeDasharray: '4 4' }}
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(253,224,71,0.2)', borderRadius: '14px', padding: '12px', color: '#fff', backdropFilter: 'blur(12px)' }}
+                  itemStyle={{ color: '#FDE047', fontWeight: 900, fontSize: '14px' }}
+                  labelStyle={{ color: '#737373', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 900, marginBottom: '6px' }}
+                  cursor={{ stroke: 'rgba(253,224,71,0.15)', strokeWidth: 1, strokeDasharray: '4 4' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="activeUsers" 
+                <Area
+                  type="monotone"
+                  dataKey="activeUsers"
                   name="Alunos Ativos"
-                  stroke="#eab308" 
-                  strokeWidth={4}
-                  dot={{ r: 4, fill: '#0a0a0a', stroke: '#eab308', strokeWidth: 2 }}
-                  activeDot={{ r: 6, fill: '#eab308', stroke: '#0a0a0a', strokeWidth: 2 }}
-                  filter="url(#neonGlowAdmin)"
+                  stroke="#FDE047"
+                  strokeWidth={3.5}
+                  fill="url(#adminChartGradient)"
+                  dot={{ r: 4, fill: '#0a0a0a', stroke: '#FDE047', strokeWidth: 2 }}
+                  activeDot={{ r: 7, fill: '#FDE047', stroke: '#0a0a0a', strokeWidth: 2, filter: 'url(#neonGlowAdminLine)' }}
+                  isAnimationActive={true}
+                  animationDuration={1600}
+                  animationEasing="ease-out"
+                  style={{ filter: 'drop-shadow(0 0 8px rgba(253,224,71,0.5))' }}
                 />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* ═══════════════ TIER 1 SECTIONS ═══════════════ */}
 
@@ -777,7 +793,7 @@ export default function AdminScreen({ user, onLogout, onBack }) {
                               {u.name || 'Sem Nome'}
                             </p>
                             <span className="text-[9px] text-neutral-500 font-black tracking-widest uppercase">
-                              ID: {u.id.substring(0, 8)}
+                              ID: {u.id?.substring(0, 8)}
                             </span>
                           </div>
                         </div>
@@ -796,13 +812,13 @@ export default function AdminScreen({ user, onLogout, onBack }) {
                       </td>
                       <td className="p-4 text-center">
                         <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest bg-neutral-800 px-3 py-1 rounded-lg">
-                          {u.goal || 'Geral'}
+                          {u.goals?.target || 'Geral'}
                         </span>
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[11px] font-bold text-neutral-300 uppercase"><span className="text-yellow-500">{u.weight || '--'}</span> KG</span>
-                          <span className="text-[9px] font-black text-neutral-500 tracking-widest uppercase">{u.level || 'Não def.'}</span>
+                          <span className="text-[11px] font-bold text-neutral-300 uppercase"><span className="text-yellow-500">{u.bio?.weightKg || '--'}</span> KG</span>
+                          <span className="text-[9px] font-black text-neutral-500 tracking-widest uppercase">{u.goals?.level || 'Não def.'}</span>
                         </div>
                       </td>
                       <td className="p-4">
@@ -859,29 +875,30 @@ export default function AdminScreen({ user, onLogout, onBack }) {
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Idade</label>
-                  <input type="number" value={editUser.age || ''} onChange={(e) => setEditUser({...editUser, age: parseInt(e.target.value)})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
+                  <input type="number" value={editUser.bio?.age || ''} onChange={(e) => setEditUser({...editUser, bio: { ...editUser.bio, age: parseInt(e.target.value) }})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Peso (kg)</label>
-                  <input type="number" step="0.1" value={editUser.weight || ''} onChange={(e) => setEditUser({...editUser, weight: parseFloat(e.target.value)})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
+                  <input type="number" step="0.1" value={editUser.bio?.weightKg || ''} onChange={(e) => setEditUser({...editUser, bio: { ...editUser.bio, weightKg: parseFloat(e.target.value) }})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Altura (cm)</label>
-                  <input type="number" value={editUser.height || ''} onChange={(e) => setEditUser({...editUser, height: parseInt(e.target.value)})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
+                  <input type="number" value={editUser.bio?.heightCm || ''} onChange={(e) => setEditUser({...editUser, bio: { ...editUser.bio, heightCm: parseInt(e.target.value) }})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Foco</label>
-                  <select value={editUser.goal || ''} onChange={(e) => setEditUser({...editUser, goal: e.target.value})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none">
+                  <select value={editUser.goals?.target || ''} onChange={(e) => setEditUser({...editUser, goals: { ...editUser.goals, target: e.target.value }})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none">
                     <option value="hipertrofia">Hipertrofia</option>
                     <option value="definicao">Definição</option>
                     <option value="forca">Força Bruta</option>
+                    <option value="manutencao">Manutenção</option>
                   </select>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Nível</label>
-                  <select value={editUser.level || ''} onChange={(e) => setEditUser({...editUser, level: e.target.value})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none">
+                  <select value={editUser.goals?.level || ''} onChange={(e) => setEditUser({...editUser, goals: { ...editUser.goals, level: e.target.value }})} className="w-full bg-black/50 border border-white/10 focus:border-yellow-500 rounded-xl p-3 text-white mt-1 outline-none">
                     <option value="iniciante">Iniciante</option>
                     <option value="intermediario">Intermediário</option>
                     <option value="avancado">Avançado</option>

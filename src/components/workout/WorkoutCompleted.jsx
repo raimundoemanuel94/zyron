@@ -30,7 +30,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
 
         const { data, error } = await supabase
           .from('workout_logs')
-          .select('created_at')
+          .select('*')
           .eq('user_id', session.user.id)
           .gte('created_at', startOfWeek.toISOString());
         

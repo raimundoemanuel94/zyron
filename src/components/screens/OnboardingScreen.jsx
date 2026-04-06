@@ -5,6 +5,8 @@ import {
   Activity, Droplets, Target, Dumbbell, Zap, ShieldCheck, CheckCircle2
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { calculateMetrics } from '../../core/fitness/fitnessEngine';
+import { profileService } from '../../core/profile/profileService';
 
 export default function OnboardingScreen({ onComplete, onCancel }) {
   const [step, setStep] = useState(1);
@@ -38,15 +40,15 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const calculateIMC = () => {
-    if (!formData.height || !formData.weight) return 0;
-    const h = formData.height / 100;
-    return (formData.weight / (h * h)).toFixed(1);
-  };
-
-  const calculateWater = () => {
-    return (formData.weight * 35 / 1000).toFixed(1); // in Liters
-  };
+  // Derived Metrics from Core Engine
+  const metrics = calculateMetrics({
+    bio: { 
+      weightKg: formData.weight, 
+      heightCm: formData.height, 
+      age: formData.age, 
+      gender: 'male' // Default gender for now (UI doesn't collect it yet)
+    }
+  });
 
   const getPasswordStrength = () => {
     const p = formData.password;
@@ -75,24 +77,28 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
       const userId = authData.user?.id;
 
       if (userId) {
-        // 2. Salvar o Profile do usuário
-        const { error: profileError } = await supabase.from('profiles').insert([
-          {
-            id: userId,
-            name: formData.name,
-            email: formData.email,
+        // 2. Salvar o Profile do usuário via service
+        const profileToCreate = {
+          id: userId,
+          name: formData.name,
+          email: formData.email,
+          bio: {
             age: formData.age,
-            height: formData.height,
-            weight: formData.weight,
-            goal: formData.goal,
+            heightCm: formData.height,
+            weightKg: formData.weight,
+            gender: 'male' // Default
+          },
+          goals: {
+            target: formData.goal,
             level: formData.level,
-            water_goal: Number(calculateWater()),
-            protein_goal: Math.floor(formData.weight * 2)
+            frequencyPerWeek: 4 // Default suggestion
           }
-        ]);
+        };
+
+        const success = await profileService.updateProfile(userId, profileToCreate);
         
-        if (profileError) {
-          console.error("Erro ao salvar perfil:", profileError);
+        if (!success) {
+          console.error("Erro ao salvar perfil via service.");
         }
       }
 
@@ -142,10 +148,10 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
   ];
 
   return (
-    <div className="fixed inset-0 min-h-screen bg-[#050505] flex flex-col p-6 font-sans selection:bg-yellow-400 selection:text-black overflow-hidden z-50">
+    <div className="fixed inset-0 min-h-screen bg-[#050505] flex flex-col p-6 pt-[calc(12px+env(safe-area-inset-top))] font-sans selection:bg-yellow-400 selection:text-black overflow-hidden z-50">
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-yellow-500/10 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="w-full max-w-md mx-auto relative z-10 flex flex-col h-full">
+      <div className="w-full relative z-10 flex flex-col h-full">
         {/* Header */}
         {!isProcessing && (
           <div className="flex items-center justify-between mt-4 mb-8 shrink-0">
@@ -256,12 +262,12 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
                     <div className="bg-zinc-900/30 border border-white/5 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                       <Activity size={20} className="text-yellow-400 mb-2" />
                       <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Seu IMC</span>
-                      <span className="text-2xl font-bold font-mono text-white mt-1">{calculateIMC()}</span>
+                      <span className="text-2xl font-bold font-mono text-white mt-1">{metrics.bmi || 0}</span>
                     </div>
                     <div className="bg-zinc-900/30 border border-white/5 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
                       <Droplets size={20} className="text-blue-400 mb-2" />
                       <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Hidratação</span>
-                      <span className="text-2xl font-bold font-mono text-white mt-1">{calculateWater()} <span className="text-[10px] text-zinc-500">L/dia</span></span>
+                      <span className="text-2xl font-bold font-mono text-white mt-1">{metrics.waterGoalLiters} <span className="text-[10px] text-zinc-500">L/dia</span></span>
                     </div>
                   </div>
                 </div>
@@ -339,6 +345,11 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
                 {isProcessing ? (
                   <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center text-center">
                     <div className="relative w-32 h-32 flex items-center justify-center mb-8">
+                      <motion.div
+                        className="absolute top-0 left-0 h-full w-24 bg-linear-to-r from-transparent via-yellow-400 to-transparent blur-[1px]"
+                        animate={{ x: [-100, 250] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                      />
                       <div className="absolute inset-0 border-4 border-yellow-400/20 rounded-full"></div>
                       <div className="absolute inset-0 border-4 border-t-yellow-400 rounded-full animate-spin shadow-[0_0_30px_rgba(253,224,71,0.5)]"></div>
                       <Zap size={40} className="text-yellow-400 animate-pulse" fill="currentColor" />
@@ -370,11 +381,11 @@ export default function OnboardingScreen({ onComplete, onCancel }) {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <span className="block text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">IMC Inicial</span>
-                          <span className="text-xl font-mono text-white font-bold">{calculateIMC()}</span>
+                          <span className="text-xl font-mono text-white font-bold">{metrics.bmi || 0}</span>
                         </div>
                         <div>
                           <span className="block text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Hidratação / Dia</span>
-                          <span className="text-xl font-mono text-blue-400 font-bold">{calculateWater()} L</span>
+                          <span className="text-xl font-mono text-blue-400 font-bold">{metrics.waterGoalLiters} L</span>
                         </div>
                         <div>
                           <span className="block text-[9px] text-zinc-500 font-black uppercase tracking-widest mb-1">Meta Principal</span>

@@ -152,8 +152,9 @@ export default function GlobalPlayer({ constraintsRef }) {
         }
         bg-black/70 backdrop-blur-xl border border-yellow-400/80 shadow-[0_10px_40px_rgba(253,224,71,0.25)]
         flex items-center gap-2 overflow-hidden transition-[width,height,border-radius] duration-400 ease-[cubic-bezier(0.25,1,0.5,1)]
+        left-1/2 -translate-x-1/2
       `}
-      style={{ bottom: '100px', left: '20px' }}
+      style={{ bottom: 'calc(100px + env(safe-area-inset-bottom))', maxWidth: 'calc(100% - 40px)' }}
       onClick={handleTap}
     >
       <AnimatePresence mode="wait">

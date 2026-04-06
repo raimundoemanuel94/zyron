@@ -12,7 +12,7 @@
  *   - tryLoadImage com fetch      → desnecessário, <img> carrega direto
  */
 
-const BASE = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises';
+const BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
 
 /**
  * Retorna a URL de um frame de exercício pelo ID do repositório.
@@ -20,7 +20,7 @@ const BASE = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercise
  * @param {number} frameNumber   0 ou 1
  */
 export const getAnimationUrl = (exerciseDbId, frameNumber = 0) =>
-  `${BASE}/${exerciseDbId}/images/${frameNumber}.jpg`;
+  `${BASE}/${exerciseDbId}/${frameNumber}.jpg`;
 
 export const BASE_URL = BASE;
 

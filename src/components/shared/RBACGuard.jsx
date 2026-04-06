@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { profileService } from '../../core/profile/profileService';
 import { supabase } from '../../lib/supabase';
 import { ShieldAlert, Cpu, Dumbbell } from 'lucide-react';
 
@@ -16,33 +17,27 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
       if (!user) return;
       
       try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+        const profile = await profileService.getProfile(user.id);
 
-        if (profileError) {
-          if (profileError.code === 'PGRST116') {
-            console.warn('[RBACGuard] Perfil não encontrado. Criando perfil padrão...');
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert({ id: user.id, email: user.email, role: 'USER' });
-            
-            if (insertError) throw insertError;
-            onRoleVerified('USER');
-          } else {
-            throw profileError;
-          }
+        if (!profile) {
+          console.warn('[RBACGuard] Perfil não encontrado. Criando perfil padrão...');
+          const success = await profileService.createProfile(user.id, {
+            email: user.email,
+            role: 'USER',
+            name: user.user_metadata?.name || 'ATLETA'
+          });
+
+          if (!success) throw new Error("Falha ao criar perfil inicial.");
+          onRoleVerified('USER');
         } else {
-          console.log('[RBACGuard] Role fetched from Supabase:', profile?.role);
+          console.log('[RBACGuard] Role fetched via service:', profile?.role);
           onRoleVerified(profile?.role || 'USER');
         }
       } catch (err) {
         console.error('[RBACGuard] Erro na verificação:', err);
-        setError(`Erro: ${err.message || 'Falha na validação de privilégios'}. Código: ${err.code || 'N/A'}`);
+        setError(`Erro: ${err.message || 'Falha na validação de privilégios'}`);
       } finally {
-        setTimeout(() => setVerifying(false), 4000);
+        setTimeout(() => setVerifying(false), 2000); // Reduzido para 2s para melhor UX
       }
     }
 

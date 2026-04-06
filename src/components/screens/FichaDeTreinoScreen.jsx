@@ -1,45 +1,31 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  LayoutDashboard, 
-  Dumbbell, 
-  User, 
-  LogOut, 
-  ArrowRight, 
-  PlayCircle, 
-  PauseCircle, 
-  ChevronLeft, 
-  ChevronRight, 
-  Share2, 
-  CheckCircle, 
-  Zap, 
-  Droplets, 
-  Beef, 
-  MessageSquare, 
-  Camera, 
-  Scale, 
-  TrendingUp, 
-  DollarSign, 
-  Users, 
-  Award, 
-  Trophy, 
-  Target, 
-  History, 
-  Settings, 
-  Bell, 
-  ChevronDown, 
-  Check, 
-  X, 
-  Search, 
-  Filter, 
-  Shield, 
-  Activity,
+import {
+  LayoutDashboard,
+  Dumbbell,
+  User,
+  Target,
   Calendar,
+  Clock,
+  TrendingUp,
+  Award,
+  Trophy,
+  History,
+  Settings,
+  Bell,
+  ChevronDown,
+  Check,
+  X,
+  Search,
+  Filter,
+  Shield,
+  Activity,
   Play,
   CheckCircle2,
   Timer as TimerIcon,
   Plus,
   Minus,
   ArrowBigUp,
+  ArrowRight,
   ShieldAlert,
   Moon,
   Sun,
@@ -51,7 +37,15 @@ import {
   Download,
   QrCode,
   MoreVertical,
-  Menu
+  Menu,
+  Zap,
+  Droplets,
+  Beef,
+  Camera,
+  Scale,
+  MessageSquare,
+  ChevronRight,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -73,6 +67,11 @@ import TabCoach from '../navigation/TabCoach';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import haptics from '../../utils/haptics';
+import { C } from '../../styles/ds';
+import { useProfile } from '../../core/profile/useProfile';
+import { useExerciseCompletion, useDailyMetrics } from '../../hooks/usePersistence';
+import { usePreferences } from '../../hooks/usePreferences';
+import NotificationSheet from '../NotificationSheet';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -153,118 +152,93 @@ const QUICK_ICON_MAP = {
 };
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
-  // Debug: Log do objeto user
-  console.log('🔍 DEBUG - User object:', user);
-  console.log('🔍 DEBUG - User name:', user?.name);
-  console.log('🔍 DEBUG - User role:', user?.role);
-  console.log('🔍 DEBUG - User email:', user?.email);
-  console.log('🔍 DEBUG - User id:', user?.id);
-  
-  const [userProfile, setUserProfile] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  const mergedUser = React.useMemo(() => ({
-    ...user,
-    ...userProfile,
-    name: userProfile?.name || user?.user_metadata?.name || user?.name || user?.email?.split('@')[0] || 'Atleta'
-  }), [user, userProfile]);
+  // USE PROFILE: Centralized hook for profile and metrics
+  const { profile, metrics, stats, isLoading: profileLoading, updateProfile } = useProfile(user?.id);
 
-  // Buscar perfil completo do usuário
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!user?.id) return;
-      
-      console.log('🔍 Buscando perfil para user ID:', user.id);
-      console.log('🔍 User email:', user.email);
-      
-      // Cinematic Arrival Haptics
-      const t = setTimeout(() => {
-        if (window.navigator?.vibrate) window.navigator.vibrate([30, 50, 30]);
-      }, 4500); 
-
-      try {
-        // Tentar buscar por ID primeiro
-        let { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (error) {
-          console.warn('⚠️ Erro ao buscar perfil por ID:', error);
-          
-          // Fallback: buscar por email
-          console.log('🔄 Tentando buscar por email...');
-          const { data: emailData, error: emailError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('email', user.email)
-            .maybeSingle();
-            
-          if (emailError) {
-            console.error('❌ Erro ao buscar perfil por email:', emailError);
-            console.log('🔍 Criando perfil padrão...');
-            
-            // Criar perfil padrão se não existir
-            const { data: newProfile, error: createError } = await supabase
-              .from('profiles')
-              .insert({
-                id: user.id,
-                email: user.email,
-                name: user.email?.split('@')[0] || 'Usuário',
-                role: user.user_metadata?.role || 
-                      (['raiiimundoemanuel2018@gmail.com', 'raimundoemanuel2018@gmail.com', 'raimundoemanuel1@gmail.com'].includes(user.email?.toLowerCase()) ? 'ADMIN' : 'USER'),
-                created_at: new Date().toISOString()
-              })
-              .select('*')
-              .single();
-              
-            if (createError) {
-              console.error('❌ Erro ao criar perfil:', createError);
-              return;
-            }
-            
-            console.log('✅ Perfil criado:', newProfile);
-            setUserProfile(newProfile);
-          } else {
-            console.log('✅ Perfil encontrado por email:', emailData);
-            setUserProfile(emailData);
-          }
-        } else {
-          console.log('✅ Perfil encontrado por ID:', data);
-          setUserProfile(data);
-        }
-      } catch (error) {
-        console.error('❌ Erro geral ao buscar perfil:', error);
-      }
+  const mergedUser = React.useMemo(() => {
+    if (!profile) return { ...user, name: 'Atleta' };
+    return {
+      ...user,
+      name: profile.name || 'ATLETA',
+      email: profile.email || '',
+      avatarUrl: profile.avatarUrl || user?.user_metadata?.avatar_url || null,
+      role: profile.role || 'USER',
     };
-    
-    fetchUserProfile();
-  }, [user?.id, user?.email]);
+  }, [user, profile]);
+
+  // Sync avatar updates from core to local if needed
+  const handleAvatarUpdate = (newUrl) => updateProfile({ avatarUrl: newUrl });
+
+  // DECLARE STATE FIRST — Before any hooks that depend on these values
+  const [selectedWorkoutKey, setSelectedWorkoutKey] = useState(null);
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
   const [isTraining, setIsTraining] = useState(false);
   const [sessionTime, setSessionTime] = useState(0);
   const [videoModal, setVideoModal] = useState(null); // Keep for painel preview
   const [expandedVideo, setExpandedVideo] = useState(null); // For inline workout videos
-  const [water, setWater] = useState(0);
-  const [protein, setProtein] = useState(0);
   const [loads, setLoads] = useState({});
   const [prHistory, setPrHistory] = useState({});
-  const [completedExercises, setCompletedExercises] = useState([]);
   const [sessionSets, setSessionSets] = useState([]); // Advanced Sync: Track all sets
   const [restTimer, setRestTimer] = useState(0);
-  const [weight, setWeight] = useState(80);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationSheetOpen, setNotificationSheetOpen] = useState(false);
   const [lastWaterTime, setLastWaterTime] = useState(Date.now()); // Para alerta de 2 horas
-  const [nightMode, setNightMode] = useState(false); // Low blue light filter
   const [showPR, setShowPR] = useState(null); // Animation trigger for PR
-  const [selectedWorkoutKey, setSelectedWorkoutKey] = useState(null);
   const [availableWorkouts, setAvailableWorkouts] = useState(workoutData);
   const [isLoaded, setIsLoaded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
   const [showCompletedScreen, setShowCompletedScreen] = useState(false);
   const [lastWorkoutSummary, setLastWorkoutSummary] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState(null);
   const [activeNotification, setActiveNotification] = useState(null);
+  const avatarInputRef = useRef(null);
+
+  // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
+  const { metrics: dailyMetrics, updateMetrics } = useDailyMetrics(user?.id);
+  const water = dailyMetrics.waterMl;
+  const setWater = (newWater) => updateMetrics({ waterMl: typeof newWater === 'function' ? newWater(water) : newWater });
+  const protein = dailyMetrics.proteinG;
+  const setProtein = (newProtein) => updateMetrics({ proteinG: typeof newProtein === 'function' ? newProtein(protein) : newProtein });
+  const weight = dailyMetrics.weightKg || 80;
+  const setWeight = (newWeight) => updateMetrics({ weightKg: typeof newWeight === 'function' ? newWeight(weight) : newWeight });
+
+  // Exercise completion with BD persistence (NOW selectedWorkoutKey is defined)
+  const { completedExercises, toggleExercise: toggleExerciseCompletion, sessionId } = useExerciseCompletion(user?.id, selectedWorkoutKey ?? 0);
+
+  // Night mode preference
+  const { nightMode, setNightMode } = usePreferences(user?.id);
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    setUploading(true);
+    try {
+      // Upload to Supabase Storage
+      const ext = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      // Get public URL with cache-busting
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
+      const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+
+      // Single official path: update profile in Supabase
+      await updateProfile({ avatarUrl: publicUrl });
+
+      // Update local state
+      if (onAvatarUpdate) onAvatarUpdate(publicUrl);
+      setLocalAvatarUrl(publicUrl);
+    } catch (err) {
+      console.error('Erro no upload:', err);
+      alert('Erro ao enviar foto.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Global Notification Logic
   useEffect(() => {
@@ -308,15 +282,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const isAnyAdmin = useMemo(() => {
     const adminEmails = ['raiiimundoemanuel2018@gmail.com', 'raimundoemanuel2018@gmail.com', 'raimundoemanuel1@gmail.com'];
     return (
-      userProfile?.role === 'ADMIN' || 
+      profile?.role === 'ADMIN' || 
       user?.role === 'ADMIN' || 
       user?.user_metadata?.role === 'ADMIN' || 
       adminEmails.includes(user?.email?.toLowerCase()) ||
-      userProfile?.role === 'PERSONAL' || 
+      profile?.role === 'PERSONAL' || 
       user?.role === 'PERSONAL' || 
       user?.user_metadata?.role === 'PERSONAL'
     );
-  }, [user, userProfile]);
+  }, [user, profile]);
 
   // Auto-day detection (Default)
   const today = new Date().getDay();
@@ -355,19 +329,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       }
     }
 
+    // ✅ NOTA: Water, Protein, Weight agora são carregados por useDailyMetrics (Supabase)
+    // Removido carregamento de localStorage para evitar sobrescrita de dados do Supabase
+    // Se necessário fallback offline, o useDailyMetrics já possui cache local
     try {
       if (savedLogs) setLoads(JSON.parse(savedLogs) || {});
       if (savedPRs) setPrHistory(JSON.parse(savedPRs) || {});
-      if (savedWeight) setWeight(parseFloat(savedWeight) || 80);
-
-      if (savedDaily) {
-        const daily = JSON.parse(savedDaily);
-        if (daily && daily.date === todayStr) {
-          setWater(Number(daily.water) || 0);
-          setProtein(Number(daily.protein) || 0);
-          if (daily.lastWaterTime) setLastWaterTime(Number(daily.lastWaterTime));
-        }
-      }
+      // Weight: comentado porque useDailyMetrics já carrega. Uncomment se precisar legacy fallback
+      // if (savedWeight) setWeight(parseFloat(savedWeight) || 80);
     } catch (e) {
       console.error("Erro ao carregar dados do LocalStorage:", e);
     }
@@ -413,40 +382,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   }, [user, isLoaded]);
 
-  // Save Daily Stats & Weight
-  useEffect(() => {
-    const todayStr = new Date().toDateString();
-    try {
-      // Higienização rigorosa para evitar estruturas circulares (ex: eventos React/SVG)
-      const safeWater = typeof water === 'number' ? water : (parseFloat(water) || 0);
-      const safeProtein = typeof protein === 'number' ? protein : (parseFloat(protein) || 0);
-      const safeWeight = typeof weight === 'number' ? weight : (parseFloat(weight) || 80);
-      const safeWaterTime = typeof lastWaterTime === 'number' ? lastWaterTime : Date.now();
-
-      localStorage.setItem('gym_daily', JSON.stringify({
-        date: String(todayStr),
-        water: safeWater,
-        protein: safeProtein,
-        lastWaterTime: safeWaterTime
-      }));
-      localStorage.setItem('gym_weight', String(safeWeight));
-    } catch (e) {
-      console.error("Falha ao persistir dados diários no localStorage:", e);
-    }
-
-    // Sync com Supabase (Fire and forget, Offline-First)
-    if (user?.id) {
-      const todayIso = new Date().toISOString().split('T')[0];
-      supabase.from('daily_stats').upsert({
-        user_id: user.id,
-        date: todayIso,
-        water_amount: Number(water) || 0,
-        protein_amount: Number(protein) || 0
-      }, { onConflict: 'user_id, date' });
-
-      supabase.from('profiles').update({ weight: Number(weight) || 0 }).eq('id', user.id);
-    }
-  }, [water, protein, weight, lastWaterTime, isLoaded, user]);
+  // ✅ NOTE: Persistence is now handled by useDailyMetrics hook
+  // which handles both Supabase sync and localStorage cache automatically
+  // This useEffect was removed to avoid duplicate sync calls and race conditions
+  // useDailyMetrics.updateMetrics() is the single source of truth for water/protein/weight persistence
 
   // Save Session Persistence
   useEffect(() => {
@@ -517,7 +456,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setCompletedExercises([]);
   };
 
-  const handleExerciseComplete = (id, isFinal = true, setData = null) => {
+  const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
     if (setData) {
       setSessionSets(prev => [...prev, {
         exercise_id: id,
@@ -527,11 +466,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
 
     if (isFinal) {
-      if (!completedExercises.includes(id)) {
-        setCompletedExercises(prev => [...prev, id]);
-      }
+      // Get exercise name from current workout
+      const currentEx = currentWorkout?.exercises?.find(ex => ex.id === id);
+      const exerciseName = currentEx?.name || `Exercise ${id}`;
+
+      // Persist to Supabase via hook
+      await toggleExerciseCompletion(id, exerciseName, { reps: setData?.reps, sets: setData?.sets });
     }
-    setRestTimer(60); 
+    setRestTimer(60);
   };
 
   const handleFinishSession = async () => {
@@ -663,59 +605,59 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   };
 
-  const waterGoal = (weight * 35) / 1000;
-  const proteinGoal = Math.floor(weight * 2);
+  const waterGoal = metrics?.waterGoalLiters || 3.5;
+  const proteinGoal = metrics?.proteinGoalG || 160;
   const isHydrationAlert = (Date.now() - lastWaterTime) > 7200000; // 2 hours in ms
   const remainingProtein = Math.max(0, proteinGoal - protein);
 
-  // UI Components
+  // ── NavButton — minimalista, layoutId deslizante ──────────────────────────
   const NavButton = ({ id, icon: Icon, label }) => {
+    const isActive = activeTab === id;
     return (
-      <button
+      <motion.button
+        whileTap={{ scale: 0.88 }}
         onClick={() => {
-          if (id === 'sidebar') {
-            haptics.light();
-            setSidebarOpen(true);
-            return;
-          }
-          if (id) {
-            haptics.light();
-            setActiveTab(String(id));
-          }
+          if (id === 'sidebar') { haptics.light(); setSidebarOpen(true); return; }
+          if (id) { haptics.light(); setActiveTab(String(id)); }
         }}
-        className={`flex flex-col items-center justify-center py-2 px-1 transition-all duration-300 group ${
-          activeTab === id ? 'scale-110' : ''
-        }`}
+        className="relative flex flex-col items-center justify-center gap-1 px-3 py-2 select-none"
+        style={{ minWidth: 56 }}
       >
-        <div className="relative mb-1">
-          <Icon 
-            strokeWidth={activeTab === id ? 2.5 : 2} 
-            size={22} 
-            className={`transition-all duration-300 ${
-              activeTab === id 
-                ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]' 
-                : 'text-neutral-500 group-hover:text-neutral-300'
-            }`} 
+        {/* Ícone */}
+        <div className="relative flex items-center justify-center w-6 h-6">
+          <Icon
+            size={20}
+            strokeWidth={isActive ? 2.2 : 1.6}
+            className={`transition-all duration-200 ${
+              isActive ? 'text-[#B4FF3C]' : 'text-neutral-500'
+            }`}
           />
         </div>
-        <span className={`text-[9px] uppercase font-black tracking-widest transition-colors duration-300 ${
-          activeTab === id ? 'text-yellow-400' : 'text-neutral-500 group-hover:text-neutral-300'
-        }`}>{label}</span>
-        {activeTab === id && (
-          <motion.div 
-            layoutId="nav-dot" 
-            className="h-1 w-1 bg-yellow-400 rounded-full mt-1" 
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+
+        {/* Label */}
+        <span className={`text-[8.5px] font-medium leading-none tracking-wide transition-colors duration-200 ${
+          isActive ? 'text-[#B4FF3C]' : 'text-neutral-600'
+        }`}>
+          {label}
+        </span>
+
+        {/* Dot deslizante via layoutId */}
+        {isActive && (
+          <motion.div
+            layoutId="nav-dot-indicator"
+            className="absolute -bottom-0.5 h-[3px] w-[3px] rounded-full bg-[#B4FF3C]"
+            style={{ boxShadow: '0 0 6px rgba(180,255,60,0.9)' }}
+            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
           />
         )}
-      </button>
+      </motion.button>
     );
   };
 
   const GlassCard = ({ children, className = "", gradient = false }) => (
-    <div className={`relative overflow-hidden bg-neutral-900/50 backdrop-blur-md border border-neutral-800 rounded-2xl p-6 shadow-[0_0_20px_rgba(37,99,235,0.05)] hover:border-yellow-500/30 transition-all duration-500 ${className}`}>
+    <div className={`relative overflow-hidden bg-[linear-gradient(180deg,rgba(22,22,22,0.94)_0%,rgba(10,10,10,0.98)_100%)] backdrop-blur-md border border-white/7 rounded-[24px] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.4)] hover:border-yellow-500/20 hover:scale-[1.015] transition-all duration-300 ${className}`}>
       {gradient && (
-        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-yellow-500 via-indigo-500 to-yellow-500 animate-gradient-x"></div>
+        <div className="absolute top-0 left-0 w-full h-[1.5px] bg-gradient-to-r from-transparent via-yellow-400/70 to-transparent animate-gradient-x pointer-events-none" />
       )}
       {children}
     </div>
@@ -727,7 +669,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
       animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-      className={`min-h-screen bg-black text-slate-100 font-sans pb-32 transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}
+      className={`min-h-[100dvh] flex flex-col bg-black text-slate-100 font-sans transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}
     >
       
       {/* Background Decor */}
@@ -774,48 +716,134 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         {/* Neon Green "Série Liberada" popup when timer hits 0 (managed briefly via state or just implicit) */}
       </AnimatePresence>
 
-      {/* Global Unified Header */}
-      <motion.header 
-        initial={{ y: -50, opacity: 0 }}
+      {/* ── HEADER PREMIUM ─────────────────────────────────────────────────── */}
+      <motion.header
+        initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.8, type: "spring", stiffness: 100 }}
-        className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 p-4"
+        transition={{ delay: 0.15, duration: 0.7, type: "spring", stiffness: 120, damping: 18 }}
+        className="shrink-0 z-40 relative"
+        style={{
+          paddingTop: 'max(22px, env(safe-area-inset-top))',
+          paddingBottom: '28px',
+          paddingLeft: '20px',
+          paddingRight: '20px',
+          background: 'linear-gradient(180deg, rgba(14,26,12,1) 0%, rgba(8,14,8,0.97) 55%, rgba(0,0,0,0) 100%)',
+          borderBottomLeftRadius: '32px',
+          borderBottomRightRadius: '32px',
+        }}
       >
-        <div className="max-w-xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-neutral-800 border-2 border-yellow-500/50 overflow-hidden relative shrink-0 shadow-[0_0_15px_rgba(253,224,71,0.2)]">
-              <img src="/images/zyron-logo.png" alt="ZYRON" className="w-full h-full object-contain mix-blend-screen" />
+        {/* Glow radial atmosférico — atrás do avatar, sutil */}
+        <div className="pointer-events-none absolute top-0 left-0 w-[55%] h-full"
+          style={{ background: 'radial-gradient(ellipse 80% 90% at 10% 40%, rgba(100,200,60,0.07), transparent 70%)' }} />
+        {/* Linha de separação base — integra ao conteúdo */}
+        <div className="pointer-events-none absolute bottom-0 left-[12%] right-[12%] h-[1px]"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)' }} />
+
+        <div className="relative w-full flex items-center justify-between gap-3">
+
+          {/* ── Avatar + Greeting ── */}
+          <div className="flex items-center gap-3 min-w-0">
+
+            {/* Avatar — clicável para editar foto */}
+            <div className="relative shrink-0">
+              {/* Anel de brilho sutil */}
+              <div className="absolute -inset-1 rounded-full opacity-60"
+                style={{
+                  background: 'radial-gradient(circle, rgba(180,255,60,0.15) 0%, transparent 70%)',
+                  borderRadius: '9999px',
+                  filter: 'blur(2px)',
+                }} />
+              {/* Anel interno */}
+              <div className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ boxShadow: '0 0 0 1.5px rgba(180,255,60,0.25), 0 4px 16px rgba(0,0,0,0.5)' }} />
+              <input 
+                type="file" 
+                ref={avatarInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleAvatarUpload} 
+              />
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => avatarInputRef.current?.click()}
+                className="relative h-[52px] w-[52px] rounded-full overflow-hidden group"
+                style={{ background: 'rgba(20,20,20,0.8)' }}
+              >
+                {mergedUser.avatar_url || profile?.avatarUrl ? (
+                  <img src={mergedUser.avatar_url || profile?.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <img
+                    src="/images/zyron-logo.png"
+                    alt="ZYRON"
+                    className="w-full h-full object-contain mix-blend-screen"
+                  />
+                )}
+                {/* Overlay camera no hover */}
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                  <Camera size={16} style={{ color: '#B4FF3C' }} />
+                </div>
+              </motion.button>
             </div>
-            <div>
-              <span className="text-[8px] font-black text-neutral-500 uppercase tracking-[0.2em] leading-none block mb-0.5">Operativo</span>
-              <h1 className="text-sm font-black text-white uppercase tracking-tighter italic leading-none">
-                {mergedUser.name.toUpperCase()}
-              </h1>
+
+            {/* Texto — minimalista na aba Perfil, completo nas outras */}
+            <div className="min-w-0 flex flex-col justify-center gap-[3px]">
+              <p className="text-[18px] font-black text-white leading-none tracking-tight">
+                {activeTab === 'perfil' ? 'ZYRON' : mergedUser.name.split(' ')[0]}
+              </p>
+              <p className="text-[10.5px] font-semibold leading-none tracking-[0.08em]"
+                style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {activeTab === 'perfil' ? 'Perfil' : 'Pronto para treinar?'}
+              </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => activeNotification && markAsRead()}
-              className="p-2.5 bg-neutral-800/50 rounded-xl border border-white/5 text-neutral-400 relative transition-all active:scale-95"
+
+          {/* ── Cápsula de ações — fundo premium, blur, borda sutil ── */}
+          <div className="flex items-center gap-[2px] shrink-0"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '999px',
+              padding: '5px 6px',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)',
+            }}>
+            <motion.button
+              whileTap={{ scale: 0.88 }}
+              onClick={() => {
+                if (activeNotification) markAsRead();
+                setNotificationSheetOpen(true);
+              }}
+              className="relative h-8 w-8 flex items-center justify-center rounded-full transition-colors cursor-pointer"
+              style={{ color: activeNotification ? '#ffffff' : 'rgba(255,255,255,0.45)' }}
             >
-              <Bell size={18} />
+              <Bell size={16} strokeWidth={2} />
               {activeNotification && (
-                <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-neutral-900 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-pulse"></div>
+                <span className="absolute top-[6px] right-[6px] h-[7px] w-[7px] rounded-full"
+                  style={{
+                    background: '#FF3B30',
+                    boxShadow: '0 0 6px rgba(255,59,48,0.7)',
+                    border: '1.5px solid rgba(14,26,12,0.9)',
+                  }} />
               )}
-            </button>
-            <button 
+            </motion.button>
+            {/* Divider vertical sutil */}
+            <div className="w-[1px] h-4 mx-[2px]"
+              style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <motion.button
+              whileTap={{ scale: 0.88 }}
               onClick={() => setSidebarOpen(true)}
-              className="p-2.5 bg-neutral-800/50 rounded-xl border border-white/5 text-neutral-400 transition-all active:scale-95"
+              className="h-8 w-8 flex items-center justify-center rounded-full transition-colors"
+              style={{ color: 'rgba(255,255,255,0.45)' }}
             >
-              <MoreVertical size={18} />
-            </button>
+              <Flame size={16} strokeWidth={2} />
+            </motion.button>
           </div>
+
         </div>
       </motion.header>
 
       {isTraining && (
-        <div className="max-w-xl mx-auto mt-3 px-4">
+        <div className="w-full mt-3 px-4">
            <motion.div 
              initial={{ scale: 0.8, opacity: 0 }}
              animate={{ scale: 1, opacity: 1 }}
@@ -827,21 +855,24 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         </div>
       )}
 
-      <motion.main 
+      <motion.main
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
-        className="max-w-xl mx-auto p-6 relative z-10"
+        className="flex-1 w-full px-4 pt-2 relative z-10 overflow-y-auto"
+        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
-          
+
           {/* PAINEL SCREEN */}
           {activeTab === 'painel' && (
-            <TabPainel 
-              user={mergedUser} today={today} currentWorkout={currentWorkout} 
-              startSession={startSession} water={water} waterGoal={waterGoal} 
-              isHydrationAlert={isHydrationAlert} handleWaterDrink={handleWaterDrink} 
-              protein={protein} proteinGoal={proteinGoal} setProtein={setProtein} 
+            <TabPainel
+              user={mergedUser}
+              today={today} currentWorkout={currentWorkout}
+              startSession={startSession} water={water} waterGoal={waterGoal}
+              isHydrationAlert={isHydrationAlert} handleWaterDrink={handleWaterDrink}
+              protein={protein} proteinGoal={proteinGoal} setProtein={setProtein}
+              fullHeight={true}
             />
           )}
 
@@ -868,6 +899,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 currentExerciseId={null}
                 activePrimaryMuscles={[]}
                 activeMuscles={[]}
+                userId={user?.id}
               />
             </MusclePumpWrapper>
           )}
@@ -876,6 +908,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           {activeTab === 'progress' && (
             <TabEvolucao 
               user={mergedUser}
+              profile={profile}
+              updateProfile={updateProfile}
               currentWorkout={currentWorkout} 
               prHistory={prHistory} 
               weight={weight} 
@@ -886,10 +920,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
           {/* PERFIL SCREEN */}
           {activeTab === 'perfil' && (
-            <TabPerfil 
-              user={mergedUser} today={today} voiceTimerActive={voiceTimerActive} 
-              toggleVoiceTimer={toggleVoiceTimer} formatPlankTime={formatPlankTime} 
-              plankTime={plankTime} onLogout={onLogout} 
+            <TabPerfil
+              user={mergedUser} profile={profile} updateProfile={updateProfile}
+              today={today} voiceTimerActive={voiceTimerActive}
+              toggleVoiceTimer={toggleVoiceTimer} formatPlankTime={formatPlankTime}
+              plankTime={plankTime} onLogout={onLogout}
+              onAvatarUpdate={handleAvatarUpdate}
+              stats={stats} metrics={metrics}
             />
           )}
 
@@ -897,6 +934,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           {activeTab === 'coach' && (
             <TabCoach
               user={mergedUser}
+              profile={profile}
+              metrics={metrics}
               prHistory={prHistory}
               workoutData={availableWorkouts}
             />
@@ -950,106 +989,278 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         </AnimatePresence>
       </motion.main>
 
-      {/* FAB Backdrop Overlay */}
+      {/* ── Toast global ─────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {fabOpen && (
+        {toastMessage && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-neutral-950/80 backdrop-blur-md z-40"
-            onClick={() => setFabOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* FAB Quick Actions Menu */}
-      <AnimatePresence>
-        {fabOpen && (
-          <motion.div
-            initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: '100%', opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-            className="fixed bottom-0 left-0 w-full bg-neutral-900/95 backdrop-blur-xl border-t border-white/10 rounded-t-3xl shadow-[0_-20px_50px_rgba(0,0,0,0.8)] z-45 px-6 pt-4 pb-36"
+            initial={{ opacity: 0, y: -32, scale: 0.93 }}
+            animate={{ opacity: 1, y: 20, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.93 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+            className="fixed top-0 left-1/2 -translate-x-1/2 z-[200]"
           >
-            <div className="flex justify-center mb-6">
-              <div className="w-12 h-1.5 bg-neutral-800 rounded-full"></div>
-            </div>
-            <h3 className="font-black text-xs mb-4 tracking-widest uppercase text-center text-neutral-500">
-              Ação Rápida
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {QUICK_ACTIONS.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={(e) => {
-                    if (e && e.preventDefault) e.preventDefault();
-                    if (e && e.stopPropagation) e.stopPropagation();
-                    setFabOpen(false);
-                    if (window.navigator?.vibrate) window.navigator.vibrate(30);
-                    
-                    const actionId = item.id;
-                    if (actionId === 'session') {
-                      startSession(Number(today)); 
-                    } else if (actionId === 'water') {
-                      handleWaterDrink(0.25);
-                    } else if (actionId === 'protein') {
-                      setProtein(prev => prev + 30);
-                    } else if (actionId === 'photo') {
-                      setActiveTab('progress');
-                    } else if (actionId === 'weight') {
-                      setActiveTab('perfil');
-                    }
-                  }}
-                  className="flex flex-col items-center justify-center gap-3 p-4 bg-neutral-800/40 hover:bg-neutral-800/80 border border-white/5 hover:border-yellow-400/30 rounded-2xl transition-all group active:scale-95"
-                >
-                  <div className="h-12 w-12 rounded-full bg-neutral-900 border border-white/5 flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)] group-hover:shadow-[0_0_20px_rgba(253,224,71,0.2)] transition-all">
-                    <item.icon size={22} className="text-yellow-400" />
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-neutral-400 group-hover:text-white transition-colors">
-                    {item.label}
-                  </span>
-                </button>
-              ))}
+            <div className="bg-[rgba(14,14,14,0.97)] border border-white/10 shadow-[0_12px_32px_rgba(0,0,0,0.8)] px-5 py-2.5 rounded-full flex items-center gap-2.5 backdrop-blur-2xl">
+              <span className="text-base">{toastMessage.icon}</span>
+              <span className="text-white text-[10px] font-bold tracking-widest uppercase">{toastMessage.text}</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Navigation moved below Player in App.jsx or kept here if it's tab-specific */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          PREMIUM FLOATING DOCK — SVG côncavo + FAB neon + pop menu orgânico
+      ══════════════════════════════════════════════════════════════════════ */}
 
-      {/* FIXED NAVIGATION */}
-      <motion.nav 
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        transition={{ delay: 0.6, type: "spring", stiffness: 120, damping: 20 }}
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-neutral-900/90 backdrop-blur-3xl border-t border-white/5 px-6 pt-2 pb-5 flex justify-between items-center shadow-[0_-10px_40px_rgba(0,0,0,0.8)] z-50"
-      >
-        <NavButton id="painel" icon={LayoutDashboard} label="Painel" />
-        <NavButton id="workout" icon={Dumbbell} label="Treino" />
-        
-        <button 
-          onClick={() => {
-            if (window.navigator?.vibrate) window.navigator.vibrate(fabOpen ? 20 : 40);
-            setFabOpen(!fabOpen);
-          }}
-          className={`relative h-16 w-16 rounded-full -mt-16 border-[6px] border-neutral-950 shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group overflow-hidden ${
-            fabOpen 
-              ? 'bg-neutral-800' 
-              : 'bg-yellow-400 shadow-[0_0_30px_rgba(253,224,71,0.4)]'
-          }`}
-        >
-          <div className="absolute inset-0 bg-linear-to-tr from-white/10 to-transparent"></div>
+      {/* Backdrop escurecido quando FAB aberto */}
+      <AnimatePresence>
+        {fabOpen && (
+          <motion.div
+            key="fab-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[45] bg-black/60 backdrop-blur-sm"
+            onClick={() => setFabOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Menu de ações — pop orgânico acima da nav ─────────────────── */}
+      <AnimatePresence>
+        {fabOpen && (
           <div
-            className={`relative z-10 pointer-events-none flex items-center justify-center transition-transform duration-300 ${fabOpen ? 'rotate-45' : ''}`}
+            key="fab-menu-wrapper"
+            className="fixed z-[48] w-[92%] max-w-[420px]"
+            style={{
+              bottom: 'calc(env(safe-area-inset-bottom) + 90px)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
           >
-            <span className={`text-3xl transition-colors duration-300 font-black ${fabOpen ? 'text-yellow-400' : 'text-neutral-950'}`} style={{ marginTop: '-4px' }}>+</span>
-          </div>
-        </button>
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.92 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+          >
+            <div className="bg-[rgba(16,16,18,0.98)] border border-white/[0.08] rounded-[28px] overflow-hidden shadow-[0_24px_60px_rgba(0,0,0,0.9),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-3xl">
 
-        <NavButton id="coach" icon={MessageSquare} label="Coach" />
-        <NavButton id="sidebar" icon={MoreHorizontal} label="Menu" />
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-8 h-[3px] rounded-full bg-white/10" />
+              </div>
+
+              <div className="px-4 pb-5 pt-2 space-y-2">
+
+                {/* Iniciar Treino — CTA principal */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.03, type: 'spring', stiffness: 340, damping: 28 }}
+                  onClick={() => {
+                    setFabOpen(false);
+                    if (window.navigator?.vibrate) window.navigator.vibrate(40);
+                    setTimeout(() => startSession(Number(today)), 120);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[18px] bg-[#B4FF3C] group"
+                  style={{ boxShadow: '0 0 20px rgba(180,255,60,0.3), 0 6px 16px rgba(0,0,0,0.4)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-black/15 flex items-center justify-center">
+                      <Zap size={16} className="text-neutral-950" />
+                    </div>
+                    <div className="text-left">
+                      <span className="block text-neutral-950 text-[12px] font-black uppercase tracking-widest leading-tight">Iniciar Treino</span>
+                      <span className="block text-neutral-950/60 text-[9px] font-semibold uppercase tracking-widest mt-0.5">Sugestão do dia</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-neutral-950/50 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
+                </motion.button>
+
+                {/* Água & Proteína — grid */}
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      icon: Droplets, label: 'Beber 250ml', sub: 'Registrar copo',
+                      color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-400/15',
+                      delay: 0.07,
+                      action: () => {
+                        setFabOpen(false);
+                        if (window.navigator?.vibrate) window.navigator.vibrate(20);
+                        handleWaterDrink(0.25);
+                        setToastMessage({ icon: '💧', text: '+250ml registrados' });
+                        setTimeout(() => setToastMessage(null), 2500);
+                      },
+                    },
+                    {
+                      icon: Beef, label: 'Adicionar 30g', sub: 'Scoop proteína',
+                      color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-400/15',
+                      delay: 0.1,
+                      action: () => {
+                        setFabOpen(false);
+                        if (window.navigator?.vibrate) window.navigator.vibrate(20);
+                        setProtein(prev => prev + 30);
+                        setToastMessage({ icon: '🥩', text: '+30g adicionados' });
+                        setTimeout(() => setToastMessage(null), 2500);
+                      },
+                    },
+                  ].map(({ icon: Ic, label, sub, color, bg, delay, action }) => (
+                    <motion.button
+                      key={label}
+                      whileTap={{ scale: 0.94 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
+                      onClick={action}
+                      className={`flex flex-col items-start p-3.5 rounded-[16px] border ${bg} transition-all`}
+                    >
+                      <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center mb-2.5`}>
+                        <Ic size={15} className={color} />
+                      </div>
+                      <span className="text-white text-[10.5px] font-bold leading-tight">{label}</span>
+                      <span className={`text-[8.5px] font-medium mt-0.5 ${color} opacity-70`}>{sub}</span>
+                    </motion.button>
+                  ))}
+                </div>
+
+                {/* Atalhos secundários */}
+                {[
+                  {
+                    icon: Camera, label: 'Nova Foto de Progresso', delay: 0.13,
+                    action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('progress'), 100); },
+                  },
+                  {
+                    icon: Scale, label: 'Atualizar Peso Corporal', delay: 0.16,
+                    action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('perfil'), 100); },
+                  },
+                ].map(({ icon: Ic, label, delay, action }) => (
+                  <motion.button
+                    key={label}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
+                    onClick={action}
+                    className="w-full flex items-center justify-between px-3.5 py-3 rounded-[14px] bg-white/[0.04] border border-white/[0.06] group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-white/5 flex items-center justify-center border border-white/8">
+                        <Ic size={13} className="text-neutral-400" />
+                      </div>
+                      <span className="text-neutral-300 text-[10.5px] font-medium">{label}</span>
+                    </div>
+                    <ArrowRight size={13} className="text-neutral-700 group-hover:text-[#B4FF3C] transition-colors" />
+                  </motion.button>
+                ))}
+
+              </div>
+            </div>
+          </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── PREMIUM FLOATING DOCK ─────────────────────────────────────────── */}
+      <motion.nav
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.45, type: 'spring', stiffness: 160, damping: 26 }}
+        className="fixed bottom-0 left-0 w-full z-[50] flex justify-center pointer-events-none"
+        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+      >
+        {/* Gradiente de fundo que conecta a nav ao app */}
+        <div className="absolute bottom-0 left-0 w-full h-[140px] bg-linear-to-t from-black via-black/85 to-transparent pointer-events-none" />
+
+        <div className="pointer-events-auto relative w-[94%] max-w-[430px]">
+
+          {/* ── FAB — encaixado no topo da concha ── */}
+          <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-28px' }}>
+            {/* Sombra circular no fundo persistente */}
+            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-20 blur-xl animate-pulse" style={{ width: 60, height: 60, top: -5, left: -5 }} />
+            <motion.button
+              animate={{ rotate: fabOpen ? 45 : 0 }}
+              whileTap={{ scale: 0.87 }}
+              transition={{ type: 'spring', stiffness: 340, damping: 22 }}
+              onClick={() => {
+                if (window.navigator?.vibrate) window.navigator.vibrate(fabOpen ? 15 : 30);
+                setFabOpen(f => !f);
+              }}
+              className={`relative flex h-[56px] w-[56px] items-center justify-center rounded-full border-4 border-black transition-colors duration-200 ${
+                fabOpen ? 'bg-[rgba(28,28,30,1)]' : 'bg-[#B4FF3C]'
+              }`}
+              style={fabOpen
+                ? { boxShadow: '0 4px 20px rgba(0,0,0,0.9)' }
+                : { boxShadow: '0 0 35px rgba(180,255,60,0.5), 0 8px 24px rgba(0,0,0,0.7)' }
+              }
+            >
+              <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+              <Plus
+                size={24}
+                strokeWidth={2.8}
+                className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-[#B4FF3C]' : 'text-neutral-950'}`}
+              />
+            </motion.button>
+          </div>
+
+          {/* ── A CONCHA — barra com recorte côncavo no centro ── */}
+          <div className="relative" style={{ filter: 'drop-shadow(0 -4px 20px rgba(0,0,0,0.5))' }}>
+            {/* SVG da forma côncava — mais fechada e orgânica */}
+            <svg
+              viewBox="0 0 420 68"
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-full block"
+              style={{ overflow: 'visible' }}
+            >
+              {/* Fundo da concha — curva côncava mais pronunciada e suave */}
+              <path
+                d={`
+                  M20,0
+                  L162,0
+                  C166,0 168,0 170,4
+                  C174,12 178,32 210,34
+                  C242,32 246,12 250,4
+                  C252,0 254,0 258,0
+                  L400,0
+                  C410.5,0 420,8 420,18
+                  L420,68 L0,68
+                  L0,18
+                  C0,8 9.5,0 20,0 Z
+                `}
+                fill="rgba(18,18,20,0.97)"
+              />
+
+              {/* Linha de borda topo — 2 metades, respeitando o vazio do FAB */}
+              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.09)" strokeWidth="1" fill="none" />
+              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.09)" strokeWidth="1" fill="none" />
+
+              {/* Brilho neon sutil nas duas metades */}
+              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.18)" strokeWidth="0.8" fill="none" />
+              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.18)" strokeWidth="0.8" fill="none" />
+
+              {/* Curva do recorte — suave highlight */}
+              <path
+                d="M170,4 C174,12 178,32 210,34 C242,32 246,12 250,4"
+                stroke="rgba(255,255,255,0.05)" strokeWidth="1.2" fill="none"
+              />
+            </svg>
+
+            {/* Backdrop blur aplicado na forma */}
+            <div className="absolute inset-0 -z-10 pointer-events-none backdrop-blur-2xl" />
+
+            {/* ── 4 NavButtons posicionados sobre o SVG ── */}
+            <div className="absolute inset-0 flex items-center justify-between px-4" style={{ paddingBottom: '2px' }}>
+              <NavButton id="painel"  icon={LayoutDashboard} label="Home"    />
+              <NavButton id="workout" icon={Dumbbell}        label="Workout" />
+              {/* Espaço central — coincide exatamente com o recorte SVG */}
+              <div className="w-[50px] shrink-0" />
+              <NavButton id="coach"   icon={MessageSquare}   label="Coach"   />
+              <NavButton id="sidebar" icon={MoreHorizontal}  label="Menu"    />
+            </div>
+          </div>
+
+        </div>
       </motion.nav>
 
       {/* PREMIUM SIDEBAR (Gaveta Lateral) */}
@@ -1062,84 +1273,181 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60"
+              className="fixed inset-0 z-60"
+              style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
             />
+
             {/* Sidebar Container */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="fixed top-0 right-0 w-80 max-w-[85vw] h-full bg-neutral-900 border-l border-white/10 shadow-[-10px_0_30px_rgba(0,0,0,0.8)] z-70 flex flex-col p-6 overflow-y-auto"
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="fixed top-0 right-0 h-full z-70 flex flex-col overflow-y-auto"
+              style={{
+                width: '82vw',
+                maxWidth: 320,
+                background: 'rgba(10,10,13,0.98)',
+                borderLeft: '1px solid rgba(255,255,255,0.07)',
+                boxShadow: '-16px 0 48px rgba(0,0,0,0.9)',
+                padding: '0 20px',
+              }}
             >
-              <div className="flex justify-between items-center mb-10">
+              {/* Top glow accent */}
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, transparent, ${C.neon}40, transparent)` }} />
+
+              {/* ── PROFILE HEADER ── */}
+              <div className="flex items-center justify-between pt-12 pb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center font-black text-xl text-neutral-950 uppercase shadow-[0_0_15px_rgba(253,224,71,0.3)]">
-                    {mergedUser.name?.charAt(0) || 'A'}
+                  {/* Avatar with neon halo */}
+                  <div className="relative shrink-0">
+                    <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(${C.neon}50, transparent 60%)`, transform: 'scale(1.15)', borderRadius: '50%' }} />
+                    <div className="relative w-[52px] h-[52px] rounded-full overflow-hidden flex items-center justify-center"
+                      style={{ border: `2px solid ${C.neonBorder}`, background: '#1a1a1e', boxShadow: `0 0 14px rgba(205,255,90,0.12)` }}>
+                      {mergedUser.avatar_url ? (
+                        <img src={mergedUser.avatar_url} alt={mergedUser.name} className="w-full h-full object-cover"
+                          onError={e => { e.target.style.display = 'none'; }} />
+                      ) : (
+                        <span className="font-black text-[20px] uppercase" style={{ color: C.neon }}>
+                          {mergedUser.name?.charAt(0) || 'A'}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
                   <div>
-                    <h2 className="text-sm font-black text-white uppercase tracking-wider">{mergedUser.name}</h2>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                      <span className="text-[9px] font-bold text-neutral-400 tracking-widest uppercase">Online</span>
+                    <h2 className="font-black uppercase tracking-wider text-white text-[13px] leading-none">
+                      {mergedUser.name}
+                    </h2>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#4ADE80' }} />
+                      <span className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: 'rgba(74,222,128,0.7)' }}>Online</span>
                     </div>
                   </div>
                 </div>
-                <button onClick={() => setSidebarOpen(false)} className="w-10 h-10 bg-neutral-800 rounded-full flex items-center justify-center text-neutral-400 hover:text-white transition-colors">
-                  <X size={20} />
+
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  <X size={16} style={{ color: C.textSub }} />
                 </button>
               </div>
 
-              <div className="space-y-2 mb-auto flex-1">
-                <button onClick={() => { setSidebarOpen(false); setActiveTab('progress'); }} className="w-full flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl border border-white/5 hover:bg-neutral-800 hover:border-yellow-400/30 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <Trophy size={18} className="text-yellow-400" />
-                    <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Evolução & Fotos</span>
-                  </div>
-                  <ChevronRight size={16} className="text-neutral-600 group-hover:text-yellow-400 transition-colors" />
-                </button>
+              {/* Divider */}
+              <div className="mb-4" style={{ height: 1, background: C.border }} />
 
-                <button onClick={() => { setSidebarOpen(false); setActiveTab('perfil'); }} className="w-full flex items-center justify-between p-4 bg-neutral-800/50 rounded-2xl border border-white/5 hover:bg-neutral-800 hover:border-yellow-400/30 transition-all group">
-                  <div className="flex items-center gap-3">
-                    <Target size={18} className="text-yellow-400" />
-                    <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider">Perfil & Voz</span>
-                  </div>
-                  <ChevronRight size={16} className="text-neutral-600 group-hover:text-yellow-400 transition-colors" />
-                </button>
+              {/* ── NAV ITEMS ── */}
+              <div className="space-y-2 flex-1">
 
-                <button onClick={() => { setNightMode(!nightMode); if(window.navigator?.vibrate) window.navigator.vibrate(20); }} className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all group ${nightMode ? 'bg-amber-500/10 border-amber-500/30' : 'bg-neutral-800/50 border-white/5'}`}>
+                {/* Evolução & Fotos */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setSidebarOpen(false); setActiveTab('progress'); }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
+                  style={{ background: 'rgba(205,255,90,0.04)', border: `1px solid ${C.neonBorder}` }}
+                >
                   <div className="flex items-center gap-3">
-                    {nightMode ? <Sun size={18} className="text-amber-500" /> : <Moon size={18} className="text-neutral-400" />}
-                    <span className={`text-xs font-bold uppercase tracking-wider ${nightMode ? 'text-amber-500' : 'text-neutral-300'}`}>Modo Noturno</span>
-                  </div>
-                  <div className={`w-10 h-5 rounded-full relative transition-colors ${nightMode ? 'bg-amber-500' : 'bg-neutral-700'}`}>
-                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${nightMode ? 'left-6' : 'left-1'}`}></div>
-                  </div>
-                </button>
-
-                {isAnyAdmin && (
-                  <button onClick={() => { setSidebarOpen(false); if(onOpenAdmin) onOpenAdmin(); }} className="w-full flex items-center justify-between p-4 bg-red-950/30 rounded-2xl border border-red-500/20 hover:bg-red-950/50 transition-all group">
-                    <div className="flex items-center gap-3">
-                      <ShieldAlert size={18} className="text-red-500" />
-                      <span className="text-xs font-bold text-red-500 uppercase tracking-wider">Painel Master Admin</span>
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: C.neonBg }}>
+                      <Trophy size={14} style={{ color: C.neon }} />
                     </div>
-                  </button>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-white">Evolução & Fotos</span>
+                  </div>
+                  <ChevronRight size={14} style={{ color: C.textSub }} />
+                </motion.button>
+
+                {/* Perfil & Voz */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setSidebarOpen(false); setActiveTab('perfil'); }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${C.border}` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                      <Target size={14} style={{ color: C.textSub }} />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Perfil & Voz</span>
+                  </div>
+                  <ChevronRight size={14} style={{ color: C.textSub }} />
+                </motion.button>
+
+                {/* Modo Noturno */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setNightMode(!nightMode); if(window.navigator?.vibrate) window.navigator.vibrate(20); }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
+                  style={{
+                    background: nightMode ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.025)',
+                    border: nightMode ? '1px solid rgba(245,158,11,0.25)' : `1px solid ${C.border}`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]"
+                      style={{ background: nightMode ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.05)' }}>
+                      {nightMode
+                        ? <Sun size={14} style={{ color: '#F59E0B' }} />
+                        : <Moon size={14} style={{ color: C.textSub }} />}
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest"
+                      style={{ color: nightMode ? '#F59E0B' : 'rgba(255,255,255,0.75)' }}>Modo Noturno</span>
+                  </div>
+                  {/* Toggle pill */}
+                  <div className="relative w-10 h-[22px] rounded-full transition-colors"
+                    style={{ background: nightMode ? '#F59E0B' : 'rgba(255,255,255,0.10)' }}>
+                    <motion.div
+                      layout
+                      className="absolute top-[3px] w-[16px] h-[16px] bg-white rounded-full shadow"
+                      style={{ left: nightMode ? '21px' : '3px' }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    />
+                  </div>
+                </motion.button>
+
+                {/* Admin Panel */}
+                {isAnyAdmin && (
+                  <motion.button
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => { setSidebarOpen(false); if(onOpenAdmin) onOpenAdmin(); }}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[16px] transition-colors"
+                    style={{ background: 'rgba(255,59,48,0.06)', border: '1px solid rgba(255,59,48,0.20)' }}
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: 'rgba(255,59,48,0.10)' }}>
+                      <ShieldAlert size={14} style={{ color: C.red }} />
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: C.red }}>Painel Master Admin</span>
+                  </motion.button>
                 )}
               </div>
 
-              <div className="mt-8 pt-8 border-t border-white/10 shrink-0">
-                <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 p-4 bg-neutral-800 rounded-2xl text-neutral-400 hover:text-white hover:bg-neutral-700 transition-all">
-                  <LogOut size={16} />
-                  <span className="text-xs font-black uppercase tracking-widest">Encerrar Sessão</span>
-                </button>
-                <div className="text-center mt-6">
-                  <span className="text-[9px] font-bold text-neutral-600 tracking-widest uppercase">ZYRON v4.0.0</span>
-                </div>
+              {/* ── FOOTER ── */}
+              <div className="shrink-0 pt-6 pb-10" style={{ borderTop: `1px solid ${C.border}`, marginTop: 24 }}>
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onLogout}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[16px] transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}` }}
+                >
+                  <LogOut size={13} style={{ color: C.textSub }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Encerrar Sessão</span>
+                </motion.button>
+
+                <p className="text-center mt-5 text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textMute }}>
+                  Zyron v4.0.0
+                </p>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
+
+      {/* Notification Sheet */}
+      <NotificationSheet
+        userId={user?.id}
+        isOpen={notificationSheetOpen}
+        onClose={() => setNotificationSheetOpen(false)}
+      />
 
       {/* Global Style Inject for Animations */}
       <style>{`

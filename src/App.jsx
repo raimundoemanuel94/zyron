@@ -14,16 +14,15 @@ import RBACGuard from './components/shared/RBACGuard';
 import PersonalDashboard from './components/admin/PersonalDashboard';
 import audioUnlocker from './utils/audioUnlock.js';
 
-
-
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authLoading, setAuthLoading]         = useState(true);
-  const [user, setUser]                       = useState(null);
-  const [userRole, setUserRole]               = useState(null);
-  const [showOnboarding, setShowOnboarding]   = useState(false);
-  const [viewManager, setViewManager]         = useState('app');
-  const globalConstraintsRef                  = useRef(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [viewManager, setViewManager] = useState('app'); // app | admin | personal
+
+  const globalConstraintsRef = useRef(null);
 
   useEffect(() => {
     logger.systemEvent('App inicializado', {
@@ -32,44 +31,56 @@ function App() {
       timestamp: new Date().toISOString(),
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    const loadSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user) {
         logger.userAction('Login automático via sessão', {
           userId: session.user.id,
           email: session.user.email,
         });
+
         setIsAuthenticated(true);
         setUser(session.user);
       }
-      setAuthLoading(false);
-    });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
+      setAuthLoading(false);
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
         logger.userAction('Usuário autenticado', {
           userId: session.user.id,
           email: session.user.email,
-          event: _event,
+          event,
         });
+
         setIsAuthenticated(true);
         setUser(session.user);
       } else {
-        logger.userAction('Usuário deslogado', { event: _event });
+        logger.userAction('Usuário deslogado', { event });
+
         setIsAuthenticated(false);
         setUser(null);
+        setUserRole(null);
+        setViewManager('app');
       }
+
       setAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Initialize Audio Context on first interaction
   useEffect(() => {
     const handleInteraction = async () => {
       await audioUnlocker.init();
       await audioUnlocker.unlock();
-      // Once unlocked, we can remove the global listener
+
       window.removeEventListener('click', handleInteraction);
       window.removeEventListener('touchstart', handleInteraction);
     };
@@ -87,28 +98,104 @@ function App() {
     setUser(sessionUser);
     setIsAuthenticated(true);
     setShowOnboarding(false);
+    setViewManager('app');
+  };
+
+  const handleOpenAdminArea = () => {
+    if (userRole === 'ADMIN') {
+      setViewManager('admin');
+      return;
+    }
+
+    if (userRole === 'PERSONAL') {
+      setViewManager('personal');
+    }
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setUser(null);
+    setUserRole(null);
+    setShowOnboarding(false);
     setViewManager('app');
+  };
+
+  const renderUnauthenticatedArea = () => {
+    if (showOnboarding) {
+      return (
+        <motion.div
+          key="onboarding"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="w-full"
+        >
+          <OnboardingScreen
+            onComplete={handleLogin}
+            onCancel={() => setShowOnboarding(false)}
+          />
+        </motion.div>
+      );
+    }
+
+    return (
+      <motion.div
+        key="login"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="w-full"
+      >
+        <LoginScreenModerno
+          onLogin={handleLogin}
+          onRegisterClick={() => setShowOnboarding(true)}
+        />
+      </motion.div>
+    );
+  };
+
+  const renderAuthenticatedArea = () => {
+    if (viewManager === 'admin') {
+      return (
+        <AdminScreen
+          user={user}
+          onLogout={handleLogout}
+          onBack={() => setViewManager('app')}
+        />
+      );
+    }
+
+    if (viewManager === 'personal') {
+      return (
+        <PersonalDashboard
+          user={user}
+          onLogout={handleLogout}
+          onBack={() => setViewManager('app')}
+        />
+      );
+    }
+
+    return (
+      <FichaDeTreinoScreen
+        user={user}
+        onLogout={handleLogout}
+        onOpenAdmin={handleOpenAdminArea}
+      />
+    );
   };
 
   return (
     <MusicProvider>
       <div
         ref={globalConstraintsRef}
-        className="relative min-h-screen w-full bg-black overflow-x-hidden selection:bg-yellow-400 selection:text-black"
+        className="relative min-h-screen w-full overflow-x-hidden bg-black selection:bg-yellow-400 selection:text-black"
       >
-        {/* ── Global Media Layer — persiste entre todas as views ── */}
         {isAuthenticated && (
           <GlobalPlayer constraintsRef={globalConstraintsRef} />
         )}
 
-        {/* ── App Shell — fundo preto puro, sem purple ── */}
-        <div className="min-h-screen bg-black text-white overflow-hidden">
+        <div className="min-h-screen bg-black text-white">
           <SpeedInsights />
 
           {authLoading ? (
@@ -116,33 +203,7 @@ function App() {
           ) : (
             <AnimatePresence mode="wait">
               {!isAuthenticated ? (
-                showOnboarding ? (
-                  <motion.div
-                    key="onboarding"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full"
-                  >
-                    <OnboardingScreen
-                      onComplete={handleLogin}
-                      onCancel={() => setShowOnboarding(false)}
-                    />
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="login"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="w-full"
-                  >
-                    <LoginScreenModerno
-                      onLogin={handleLogin}
-                      onRegisterClick={() => setShowOnboarding(true)}
-                    />
-                  </motion.div>
-                )
+                renderUnauthenticatedArea()
               ) : (
                 <RBACGuard
                   user={user}
@@ -158,28 +219,7 @@ function App() {
                     transition={{ duration: 0.4 }}
                     className="w-full"
                   >
-                    {viewManager === 'admin' ? (
-                      <AdminScreen
-                        user={user}
-                        onLogout={handleLogout}
-                        onBack={() => setViewManager('app')}
-                      />
-                    ) : viewManager === 'personal' ? (
-                      <PersonalDashboard
-                        user={user}
-                        onLogout={handleLogout}
-                        onBack={() => setViewManager('app')}
-                      />
-                    ) : (
-                      <FichaDeTreinoScreen
-                        user={user}
-                        onLogout={handleLogout}
-                        onOpenAdmin={() => {
-                          if (userRole === 'ADMIN') setViewManager('admin');
-                          else if (userRole === 'PERSONAL') setViewManager('personal');
-                        }}
-                      />
-                    )}
+                    {renderAuthenticatedArea()}
                   </motion.div>
                 </RBACGuard>
               )}
@@ -192,3 +232,4 @@ function App() {
 }
 
 export default App;
+

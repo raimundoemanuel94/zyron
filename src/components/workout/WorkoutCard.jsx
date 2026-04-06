@@ -4,6 +4,7 @@ import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History, Play, Squa
 import haptics from '../../utils/haptics';
 import ExerciseAnimation from './ExerciseAnimation';
 import { EXERCISE_ANIMATIONS, DEFAULT_ANIMATION } from '../../data/exerciseAnimations';
+import { useExerciseLoads } from '../../hooks/usePersistence';
 
 // Cores por grupo muscular - visual hierarchy
 const MUSCLE_COLORS = {
@@ -29,10 +30,14 @@ export default function WorkoutCard({
   showPR,
   videoQuery,
   onActivateMuscle,
-  isPremiumUser
+  isPremiumUser,
+  userId
 }) {
   // Resolve animation data for this exercise
   const animData = EXERCISE_ANIMATIONS[ex.id] || DEFAULT_ANIMATION;
+
+  // Load persistence with BD sync
+  const { updateLoad: persistLoad } = useExerciseLoads(userId);
   const [isExpanded, setIsExpanded] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSet, setActiveSet] = useState(1);
@@ -84,6 +89,10 @@ export default function WorkoutCard({
       
       // Feature request: "Ao clicar em finalizar, dispare automaticamente o temporizador de descanso no topo e REGISTRE A CARGA"
       onUpdateLoad(ex.id, load || '0');
+      // Persist load to Supabase
+      if (userId && load) {
+        persistLoad(ex.id, ex.name, parseFloat(load), null).catch(err => console.error('Failed to persist load:', err));
+      }
 
       const setData = {
         set_number: activeSet,
@@ -135,6 +144,10 @@ export default function WorkoutCard({
     const currentLoad = parseFloat(load) || 0;
     const newLoad = Math.max(0, currentLoad + delta);
     onUpdateLoad(ex.id, newLoad.toString());
+    // Persist load to Supabase
+    if (userId) {
+      persistLoad(ex.id, ex.name, newLoad, null).catch(err => console.error('Failed to persist load:', err));
+    }
   };
 
   const isNewPR = parseFloat(load) > (prHistoryLoad || 0);
@@ -398,7 +411,13 @@ export default function WorkoutCard({
                     type="number"
                     value={load || ''}
                     onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => onUpdateLoad(ex.id, e.target.value)}
+                    onChange={(e) => {
+                      onUpdateLoad(ex.id, e.target.value);
+                      // Persist load to Supabase
+                      if (userId && e.target.value) {
+                        persistLoad(ex.id, ex.name, parseFloat(e.target.value), null).catch(err => console.error('Failed to persist load:', err));
+                      }
+                    }}
                     placeholder="0"
                     className={`w-16 bg-transparent text-center font-black text-2xl italic tracking-tighter outline-none ${isNewPR ? 'text-emerald-400' : 'text-white'}`}
                   />

@@ -17,7 +17,7 @@ const MODELS = [
 /**
  * Build the system prompt with the user's live context.
  */
-export function buildSystemPrompt(user, prHistory, workoutData) {
+export function buildSystemPrompt(profile, metrics, prHistory, workoutData) {
   const today = new Date().getDay();
   const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const todayWorkout = workoutData?.[today];
@@ -34,10 +34,19 @@ Idioma: português brasileiro. Use emojis esportivos com moderação (⚡💪�
 Respostas curtas e objetivas. Máximo 3 parágrafos, salvo quando o atleta pedir detalhes.
 
 ## Perfil do Atleta
-- Nome: ${user?.name || 'Atleta'}
-- Peso: ${user?.weight || '?'}kg
-- Objetivo: ${user?.goal || 'Hipertrofia'}
-- Nível: ${user?.level || 'Intermediário'}
+- Nome: ${profile?.name || 'Atleta'}
+- Peso: ${profile?.bio?.weightKg || '?'}kg
+- Altura: ${profile?.bio?.heightCm || '?'}cm
+- Objetivo: ${profile?.goals?.target || 'Hipertrofia'}
+- Nível: ${profile?.goals?.level || 'Intermediário'}
+
+## Metas Oficiais ZYRON (Calculadas pelo Sistema)
+- Água: ${metrics?.waterGoalLiters || '?'} Litros (${metrics?.waterGoalMl || '?'}ml)
+- Proteína: ${metrics?.proteinGoalG || '?'}g
+- Calorias (Meta Diária): ${metrics?.caloriesGoalKcal || '?'} kcal
+- IMC Atual: ${metrics?.bmi || '?'}
+
+⚠️ IMPORTANTE: Siga RIGOROSAMENTE as metas acima. Se o atleta perguntar sobre água, proteína ou calorias, use EXATAMENTE os números oficiais calculados.
 
 ## Sessão de Hoje (${dayNames[today]})
 - Treino: ${todayWorkout?.title || 'Descanso'}

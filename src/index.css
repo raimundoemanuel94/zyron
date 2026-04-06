@@ -24,16 +24,33 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
+  background: #050505;
+}
+
+body {
+  width: 100%;
   min-width: 320px;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
-  background-color: #000000;
+  background: #050505;
 }
 
 #root {
   width: 100%;
+  min-height: 100dvh;
+  background: #050505;
+}
+
+/* 📱 MOBILE NATIVO / 💻 DESKTOP CENTRALIZADO */
+@media (min-width: 1024px) {
+  #root {
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
 }
 
 /* ─── Scrollbar Industrial ─── */

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import logger from '../utils/logger';
 import { db as zyronDB } from '../utils/db';
 import { sanitizeWorkoutState } from '../utils/sanitizer';
+import { profileService } from '../core/profile/profileService';
 
 /**
  * useSyncWorkout Hook - ZYRON Advanced Sync v2 (Photos + IndexedDB Queue)
@@ -100,8 +101,8 @@ export function useSyncWorkout(user) {
       if (setsError) throw new Error(setsError.message);
     }
 
-    // 4. Update Profile
-    await supabase.from('profiles').update({ last_synced_at: new Date().toISOString() }).eq('id', userId);
+    // 4. Update Profile metadata
+    await profileService.updateLastSynced(userId);
   };
 
   const performSync = useCallback(async () => {

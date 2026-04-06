@@ -1,70 +1,52 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Award, Target, ChevronRight, History, ArrowBigUp, Camera, Plus, Zap, Calendar } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, Calendar, Zap, ArrowBigUp, ChevronRight } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import EvolutionTimeline from '../shared/EvolutionTimeline';
+import { C, Card, Badge } from '../../styles/ds';
 
-// Componente para animar a contagem percentual
 const AnimatedCounter = ({ to }) => {
   const [count, setCount] = React.useState(0);
   React.useEffect(() => {
     let start = 0;
     const end = parseInt(to);
     if (start === end) return;
-    let totalMilSecDur = 1500;
-    let incrementTime = (totalMilSecDur / end);
-    let timer = setInterval(() => {
-      start += 1;
+    const inc = Math.max(1, Math.floor(end / 40));
+    const timer = setInterval(() => {
+      start = Math.min(start + inc, end);
       setCount(start);
-      if (start === end) clearInterval(timer);
-    }, incrementTime);
+      if (start >= end) clearInterval(timer);
+    }, 35);
     return () => clearInterval(timer);
   }, [to]);
   return <>{count}</>;
 };
 
-export default function TabEvolucao({
-  user,
-  prHistory,
-  weight,
-  setWeight,
-  workoutData
-}) {
+const DSTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div style={{ background: 'rgba(14,14,18,0.97)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '8px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}>
+      <p style={{ fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.18em', color: C.textSub, marginBottom: 2 }}>{label}</p>
+      <p style={{ fontSize: '13px', fontWeight: 900, color: C.neon }}>
+        {payload[0].value}<span style={{ fontSize: '9px', color: C.textSub, marginLeft: 2 }}>kg</span>
+      </p>
+    </div>
+  );
+};
+
+export default function TabEvolucao({ user, profile, updateProfile, currentWorkout, prHistory, weight, setWeight, workoutData }) {
+  // ✅ FIXED: Weight persistence is now handled by useDailyMetrics hook
+  // When setWeight is called from here, it automatically triggers:
+  // 1. useDailyMetrics.updateMetrics({ weightKg: newValue })
+  // 2. Saves to daily_stats table in Supabase
+  // 3. Also syncs to profile.bio.weightKg via persistenceService
+  //
+  // The duplicate useEffect that was here (insert + updateProfile) has been removed
+  // to avoid race conditions and conflicting database updates
+
   const [isSavingWeight, setIsSavingWeight] = React.useState(false);
-  
-  // Auto-sync weight to Supabase when it changes (debounced)
-  React.useEffect(() => {
-    const saveWeight = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) return;
-        
-        setIsSavingWeight(true);
-        const { error } = await supabase
-          .from('body_measurements')
-          .insert({
-            user_id: session.user.id,
-            weight: weight
-          });
-          
-        if (error) console.error("Error saving weight:", error);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsSavingWeight(false);
-      }
-    };
 
-    const debounceTimer = setTimeout(() => {
-      // Avoid saving on initial load if we had a way to track it, but for now we debounce saving
-      saveWeight();
-    }, 2000); // Wait 2s after user stops dragging slider
-
-    return () => clearTimeout(debounceTimer);
-  }, [weight]);
-
-  // Mock de dados para visualização imediata do Gráfico Neon (Sistematizado com Black Gold)
   const data = [
     { date: '01/02', carga: 60, trend: 58 },
     { date: '08/02', carga: 64, trend: 62 },
@@ -73,179 +55,171 @@ export default function TabEvolucao({
     { date: '01/03', carga: 75, trend: 74 },
   ];
 
-  const totalPrs = Object.keys(prHistory || {}).length;
-
   return (
     <motion.div
       key="evolucao"
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="space-y-8"
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-4 pb-4"
     >
-      {/* Header Premium */}
-      <header className="flex justify-between items-end px-1">
+      {/* Header */}
+      <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-yellow-400 text-xs font-black uppercase tracking-widest">Performance</p>
-          <h2 className="text-3xl font-black italic text-white leading-none tracking-tighter">EVOLUÇÃO</h2>
+          <p className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.neonDim }}>Performance</p>
+          <h2 className="text-[20px] font-black uppercase tracking-tight text-white leading-none mt-0.5">Evolução</h2>
         </div>
-        <div className="bg-yellow-400/10 p-2 rounded-2xl border border-yellow-400/20 shadow-[0_0_15px_rgba(253,224,71,0.15)]">
-          <TrendingUp className="text-yellow-400" size={24} />
-        </div>
-      </header>
-
-      {/* Card de Gráfico Neon */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-[0px_10px_30px_rgba(0,0,0,0.8)]"
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-white font-bold uppercase text-sm italic tracking-tight">Evolução de Cargas</h3>
-          <span className="text-yellow-400 font-black text-xl italic tracking-tighter">15% ▲</span>
-        </div>
-        
-        <div className="h-48 w-full mt-2">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-              <XAxis 
-                dataKey="date" 
-                stroke="#52525b" 
-                fontSize={10} 
-                tickLine={false} 
-                axisLine={false} 
-                dy={10}
-              />
-              <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
-              <RechartsTooltip 
-                contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
-                itemStyle={{ color: '#FDE047', fontWeight: 'bold' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="carga" 
-                name="Carga Real"
-                stroke="#FDE047" 
-                strokeWidth={4} 
-                dot={{ r: 6, fill: '#FDE047', strokeWidth: 0 }}
-                activeDot={{ r: 8, stroke: '#FDE047', strokeWidth: 4, fill: '#000' }}
-                style={{ filter: 'drop-shadow(0px 0px 8px rgba(253, 224, 71, 0.5))' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="trend" 
-                name="Tendência Projetada"
-                stroke="#737373" 
-                strokeWidth={2} 
-                strokeDasharray="5 5"
-                dot={false}
-                activeDot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </motion.div>
-
-      {/* Grid de Gamificação (Substitui Métricas Técnicas por Motivacionais) */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-neutral-900/50 border border-white/5 p-5 rounded-3xl shadow-xl flex flex-col justify-between group hover:border-yellow-500/30 transition-colors">
-          <Zap className="text-yellow-500 mb-2 drop-shadow-[0_0_8px_rgba(253,224,71,0.5)]" size={24} />
-          <div>
-            <p className="text-neutral-500 text-[10px] font-black tracking-widest uppercase">Ganho de Força</p>
-            <p className="text-white font-black text-4xl italic tracking-tighter flex items-start">
-              <AnimatedCounter to="18" /><span className="text-lg text-yellow-500 ml-1 mt-1">%</span>
-            </p>
-          </div>
-        </div>
-        <div className="bg-neutral-900/50 border border-white/5 p-5 rounded-3xl shadow-xl flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
-          <Calendar className="text-emerald-500 mb-2 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]" size={24} />
-          <div>
-            <p className="text-neutral-500 text-[10px] font-black tracking-widest uppercase">Frequência Mês</p>
-            <p className="text-white font-black text-4xl italic tracking-tighter">15<span className="text-lg text-neutral-500 ml-1">/20</span></p>
-            <div className="w-full bg-black/50 h-1.5 rounded-full mt-2 overflow-hidden border border-white/5">
-              <div className="bg-emerald-500 h-full rounded-full w-[75%] shadow-[0_0_10px_rgba(16,185,129,0.6)]"></div>
-            </div>
-          </div>
+        <div className="flex h-10 w-10 items-center justify-center rounded-[14px]"
+          style={{ background: C.neonBg, border: `1px solid ${C.neonBorder}` }}>
+          <TrendingUp size={17} style={{ color: C.neon }} />
         </div>
       </div>
 
-      {/* Histórico de Recordes Humano */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-2 pt-2">
-          <h3 className="text-lg font-black uppercase italic tracking-tight text-white flex items-center gap-2">
-            Minhas Superações <span className="text-yellow-500">🏆</span>
-          </h3>
+      {/* Gráfico */}
+      <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+        <div className="absolute top-0 left-[25%] right-[25%] h-px"
+          style={{ background: `linear-gradient(90deg, transparent, ${C.neonBorder}, transparent)` }} />
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[12px] font-black text-white uppercase tracking-tight">Evolução de Cargas</p>
+            <p className="text-[8.5px] font-semibold uppercase tracking-[0.18em] mt-0.5" style={{ color: C.textSub }}>Últimas 5 semanas</p>
+          </div>
+          <span className={Badge.neon}>+15% ▲</span>
         </div>
-        
+        <div className="h-44 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+              <XAxis dataKey="date" stroke="transparent"
+                tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 600 }}
+                tickLine={false} axisLine={false} dy={8} />
+              <YAxis hide domain={['dataMin - 5', 'dataMax + 5']} />
+              <RechartsTooltip content={<DSTooltip />} cursor={{ stroke: `${C.neon}20`, strokeWidth: 1 }} />
+              <Line type="monotone" dataKey="carga" stroke={C.neon} strokeWidth={2.5}
+                dot={{ r: 4, fill: C.neon, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: C.neon, stroke: '#000', strokeWidth: 1.5 }}
+                style={{ filter: `drop-shadow(0 0 6px ${C.neon}60)` }} />
+              <Line type="monotone" dataKey="trend"
+                stroke="rgba(255,255,255,0.2)" strokeWidth={1.5} strokeDasharray="5 5"
+                dot={false} activeDot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Grid gamificação */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { icon: Zap,      label: 'Ganho de Força', val: '18', unit: '%',  accentColor: C.neon,     glowRgb: '205,255,90', custom: false },
+          { icon: Calendar, label: 'Frequência Mês',  val: null, unit: null, accentColor: '#4ADE80',  glowRgb: '74,222,128', custom: true  },
+        ].map(({ icon: Icon, label, val, unit, accentColor, glowRgb, custom }) => (
+          <div key={label} className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+            <div className="absolute inset-0 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse at 10% 100%, rgba(${glowRgb},0.07), transparent 65%)` }} />
+            <div className="flex h-8 w-8 items-center justify-center rounded-[10px] mb-3"
+              style={{ background: `rgba(${glowRgb},0.10)`, border: `1px solid rgba(${glowRgb},0.18)` }}>
+              <Icon size={15} style={{ color: accentColor }} />
+            </div>
+            <p className="text-[8.5px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: C.textSub }}>{label}</p>
+            {custom ? (
+              <>
+                <p className="text-[28px] font-black text-white leading-none">15<span className="text-[13px] font-semibold ml-1" style={{ color: C.textSub }}>/20</span></p>
+                <div className="mt-2 h-[4px] w-full rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                  <div className="h-full rounded-full" style={{ width: '75%', background: accentColor, boxShadow: `0 0 8px rgba(${glowRgb},0.45)` }} />
+                </div>
+              </>
+            ) : (
+              <p className="text-[28px] font-black text-white leading-none">
+                <AnimatedCounter to={val} /><span className="text-[14px] ml-0.5" style={{ color: accentColor }}>{unit}</span>
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Recordes */}
+      <div className="space-y-2">
+        <h3 className="text-[13px] font-black uppercase tracking-[0.12em] text-white px-1">
+          Minhas Superações <span style={{ color: C.neon }}>🏆</span>
+        </h3>
         {Object.entries(prHistory).length === 0 ? (
-          <div className="text-center py-10 bg-neutral-900/30 rounded-3xl border border-dashed border-neutral-800">
-            <p className="font-black uppercase tracking-widest text-[10px] text-neutral-700">Aguardando superações</p>
+          <div className="flex flex-col items-center justify-center py-10 rounded-[20px]"
+            style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.07)' }}>
+            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Aguardando superações</p>
           </div>
         ) : (
           Object.entries(prHistory).map(([id, weightVal]) => {
             const ex = Object.values(workoutData).flatMap(w => w.exercises || []).find(e => e.id === id);
-            // Mock um peso anterior para mostrar a evolução
             const oldWeight = Math.max(0, Math.floor(weightVal * 0.85));
             const diff = weightVal - oldWeight;
-            
             return (
-              <div key={id} className="group flex flex-col p-4 bg-neutral-900/50 backdrop-blur-md rounded-2xl border border-white/5 shadow-xl transition-all cursor-default hover:border-yellow-500/30">
-                <div className="flex justify-between items-start mb-3">
+              <motion.div key={id} whileTap={{ scale: 0.98 }}
+                className="relative rounded-[18px] overflow-hidden cursor-default"
+                style={{ ...Card.style, padding: '14px' }}>
+                <div className="flex items-center justify-between mb-3">
                   <div>
-                    <span className="text-[9px] font-black text-yellow-500 uppercase tracking-widest block mb-0.5">{ex?.group || "Músculo"}</span>
-                    <h4 className="text-sm font-black text-slate-200 uppercase">{ex?.name || id}</h4>
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] block mb-0.5" style={{ color: C.neonDim }}>{ex?.group || 'Músculo'}</span>
+                    <h4 className="text-[12px] font-black text-white uppercase">{ex?.name || id}</h4>
                   </div>
-                  <div className="flex items-center gap-1 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
-                    <span className="text-xs font-black text-emerald-400">+{diff}kg</span>
+                  <span className={Badge.neon}>+{diff}kg</span>
+                </div>
+                <div className="flex items-center justify-between px-3 py-2.5 rounded-[12px]"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                  <div>
+                    <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: C.textSub }}>Antes</p>
+                    <p className="text-[18px] font-black text-neutral-400 leading-none">{oldWeight}<span className="text-[9px] ml-0.5">kg</span></p>
+                  </div>
+                  <ChevronRight size={13} style={{ color: C.textSub }} />
+                  <div className="text-right">
+                    <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: C.neonDim }}>Agora</p>
+                    <p className="text-[20px] font-black text-white leading-none" style={{ textShadow: `0 0 10px ${C.neon}35` }}>
+                      {weightVal}<span className="text-[9px] ml-0.5" style={{ color: C.neonDim }}>kg</span>
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between bg-black/40 rounded-xl p-3 border border-white/5">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">Antes</span>
-                    <span className="text-lg font-black italic text-neutral-400">{oldWeight}<span className="text-[10px]">KG</span></span>
-                  </div>
-                  <ChevronRight className="text-neutral-700" size={16} />
-                  <div className="flex flex-col items-end">
-                    <span className="text-[9px] font-black text-yellow-500/70 uppercase tracking-widest">Agora</span>
-                    <span className="text-xl font-black italic text-white drop-shadow-[0_0_8px_rgba(253,224,71,0.3)]">{weightVal}<span className="text-[10px] text-yellow-500/50 ml-1">KG</span></span>
-                  </div>
-                </div>
-              </div>
+              </motion.div>
             );
           })
         )}
       </div>
 
-      {/* Linha do Tempo de Evolução (Histórico Real do Supabase) */}
+      {/* Timeline */}
       <EvolutionTimeline user={user} />
 
-      {/* Peso Corporal Control - Integrado para consistência */}
-      <div className="bg-neutral-900/50 backdrop-blur-md border border-white/5 p-6 rounded-3xl shadow-xl">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-600/10 rounded-2xl border border-emerald-600/20">
-              <ArrowBigUp className="text-emerald-500" size={24} />
+      {/* Peso corporal */}
+      <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
+              style={{ background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.16)' }}>
+              <ArrowBigUp size={15} style={{ color: '#4ADE80' }} />
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Peso Corporal</span>
-              <h3 className="text-lg font-black uppercase tracking-tight italic text-slate-200">Atualizar Peso</h3>
+            <div>
+              <p className="text-[8.5px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Peso Corporal</p>
+              <p className="text-[13px] font-black text-white uppercase leading-none mt-0.5">Atualizar Peso</p>
             </div>
           </div>
-          <div className="flex flex-col items-end">
-            <div className="text-4xl font-black text-white italic tracking-tighter">{weight}<span className="text-sm ml-1 text-neutral-500">KG</span></div>
-            {isSavingWeight && <span className="text-[8px] text-yellow-500 animate-pulse uppercase tracking-widest mt-1">Sincronizando...</span>}
+          <div className="text-right">
+            <p className="text-[28px] font-black text-white leading-none">
+              {weight}<span className="text-[11px] font-semibold ml-1" style={{ color: C.textSub }}>kg</span>
+            </p>
+            {isSavingWeight && (
+              <p className="text-[8px] font-bold uppercase tracking-widest mt-0.5 animate-pulse" style={{ color: C.neon }}>Sincronizando…</p>
+            )}
           </div>
         </div>
-        <input 
-          type="range" 
-          min="50" max="150" step="0.5"
-          value={weight} 
+        <input
+          type="range" min="50" max="150" step="0.5"
+          value={weight}
           onChange={(e) => setWeight(parseFloat(e.target.value))}
-          className="w-full h-2 bg-neutral-950/80 rounded-lg appearance-none cursor-pointer accent-yellow-500 border border-white/5"
+          className="w-full h-[5px] rounded-full appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, ${C.neon} ${((weight - 50) / 100) * 100}%, rgba(255,255,255,0.10) ${((weight - 50) / 100) * 100}%)`,
+            accentColor: C.neon,
+          }}
         />
       </div>
-      
     </motion.div>
   );
 }
