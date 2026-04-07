@@ -13,6 +13,20 @@ export function useSyncWorkout(user) {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncPending, setSyncPending] = useState(0);
 
+  const getLocalDayBounds = (isoDate) => {
+    const day = isoDate ? new Date(isoDate) : new Date();
+    const start = new Date(day);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+
+    return {
+      startIso: start.toISOString(),
+      endIso: end.toISOString(),
+    };
+  };
+
   // Initialize queue length from IndexedDB
   useEffect(() => {
     const initQueue = async () => {
@@ -29,23 +43,81 @@ export function useSyncWorkout(user) {
   const processItem = async (item, session) => {
     const userId = session.user.id;
     
-    // 1. Insert Workout Log
-    const { data: workoutLog, error: workoutError } = await supabase
+    const workoutKey = String(item.workout.workout_key);
+    const workoutDate = item.workout.ended_at || item.workout.created_at || new Date().toISOString();
+    const { startIso, endIso } = getLocalDayBounds(workoutDate);
+
+    const logPayload = {
+      user_id:          userId,
+      workout_key:      workoutKey,
+      duration_seconds: item.workout.duration_seconds,
+      created_at:       item.workout.created_at  || workoutDate,
+      workout_name:     item.workout.workout_name || null,
+      started_at:       item.workout.started_at   || null,
+      ended_at:         item.workout.ended_at     || null,
+      location:         item.workout.location     || null,
+    };
+
+    const { data: existingLogs, error: lookupError } = await supabase
       .from('workout_logs')
-      .insert({
-        user_id:          userId,
-        workout_key:      String(item.workout.workout_key),
-        duration_seconds: item.workout.duration_seconds,
-        created_at:       item.workout.created_at  || new Date().toISOString(),
-        workout_name:     item.workout.workout_name || null,
-        started_at:       item.workout.started_at   || null,
-        ended_at:         item.workout.ended_at     || null,
-        location:         item.workout.location     || null,
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('user_id', userId)
+      .eq('workout_key', workoutKey)
+      .gte('created_at', startIso)
+      .lt('created_at', endIso)
+      .order('created_at', { ascending: false });
+
+    if (lookupError) throw new Error(lookupError.message);
+
+    const existingLog = existingLogs?.[0] || null;
+    const duplicateLogIds = existingLogs?.slice(1).map(log => log.id) || [];
+
+    // 1. Upsert Workout Log by user + workout + local day
+    const workoutLogRequest = existingLog
+      ? supabase
+        .from('workout_logs')
+        .update(logPayload)
+        .eq('id', existingLog.id)
+        .select()
+        .single()
+      : supabase
+        .from('workout_logs')
+        .insert(logPayload)
+        .select()
+        .single();
+
+    const { data: workoutLog, error: workoutError } = await workoutLogRequest;
 
     if (workoutError) throw new Error(workoutError.message);
+
+    if (existingLog) {
+      const { error: setsDeleteError } = await supabase
+        .from('set_logs')
+        .delete()
+        .eq('workout_id', workoutLog.id);
+
+      if (setsDeleteError) throw new Error(setsDeleteError.message);
+
+      const { error: photosDeleteError } = await supabase
+        .from('workout_photos')
+        .delete()
+        .eq('workout_log_id', workoutLog.id);
+
+      if (photosDeleteError) {
+        logger.warn('Falha ao limpar foto anterior do treino atualizado', { workoutLogId: workoutLog.id }, photosDeleteError);
+      }
+    }
+
+    if (duplicateLogIds.length > 0) {
+      const { error: duplicateDeleteError } = await supabase
+        .from('workout_logs')
+        .delete()
+        .in('id', duplicateLogIds);
+
+      if (duplicateDeleteError) {
+        logger.warn('Falha ao remover logs duplicados do mesmo dia', { duplicateLogIds }, duplicateDeleteError);
+      }
+    }
 
     // 2. Handle Photo Upload
     if (item.workout.photo_payload) {

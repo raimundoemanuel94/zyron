@@ -721,12 +721,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       {/* Background Decor */}
       <motion.div 
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.2 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.5, duration: 2 }}
         className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0"
       >
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-yellow-500 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute top-1/2 -right-24 w-64 h-64 bg-indigo-600 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_45%_at_50%_-10%,rgba(205,255,90,0.08),transparent_62%),linear-gradient(180deg,#020302_0%,#050605_42%,#000_100%)]"></div>
+        <div className="absolute -top-32 -left-28 w-96 h-96 bg-[#CDFF5A]/[0.055] rounded-full blur-[130px]"></div>
       </motion.div>
 
       {/* Rest Timer Top Bar */}
@@ -770,17 +770,17 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         className="shrink-0 z-40 relative"
         style={{
           paddingTop: 'max(22px, env(safe-area-inset-top))',
-          paddingBottom: '28px',
+          paddingBottom: '24px',
           paddingLeft: '20px',
           paddingRight: '20px',
-          background: 'linear-gradient(180deg, rgba(14,26,12,1) 0%, rgba(8,14,8,0.97) 55%, rgba(0,0,0,0) 100%)',
-          borderBottomLeftRadius: '32px',
-          borderBottomRightRadius: '32px',
+          background: 'linear-gradient(180deg, rgba(8,15,8,0.98) 0%, rgba(4,8,5,0.94) 64%, rgba(0,0,0,0) 100%)',
+          borderBottomLeftRadius: '26px',
+          borderBottomRightRadius: '26px',
         }}
       >
         {/* Glow radial atmosférico — atrás do avatar, sutil */}
         <div className="pointer-events-none absolute top-0 left-0 w-[55%] h-full"
-          style={{ background: 'radial-gradient(ellipse 80% 90% at 10% 40%, rgba(100,200,60,0.07), transparent 70%)' }} />
+          style={{ background: 'radial-gradient(ellipse 80% 90% at 10% 40%, rgba(205,255,90,0.055), transparent 70%)' }} />
         {/* Linha de separação base — integra ao conteúdo */}
         <div className="pointer-events-none absolute bottom-0 left-[12%] right-[12%] h-[1px]"
           style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)' }} />
@@ -795,13 +795,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               {/* Anel de brilho sutil */}
               <div className="absolute -inset-1 rounded-full opacity-60"
                 style={{
-                  background: 'radial-gradient(circle, rgba(180,255,60,0.15) 0%, transparent 70%)',
+                  background: 'radial-gradient(circle, rgba(205,255,90,0.12) 0%, transparent 70%)',
                   borderRadius: '9999px',
                   filter: 'blur(2px)',
                 }} />
               {/* Anel interno */}
               <div className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ boxShadow: '0 0 0 1.5px rgba(180,255,60,0.25), 0 4px 16px rgba(0,0,0,0.5)' }} />
+                style={{ boxShadow: '0 0 0 1px rgba(205,255,90,0.24), 0 8px 22px rgba(0,0,0,0.5)' }} />
               <input 
                 type="file" 
                 ref={avatarInputRef} 
@@ -833,11 +833,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
             {/* Texto — minimalista na aba Perfil, completo nas outras */}
             <div className="min-w-0 flex flex-col justify-center gap-[3px]">
-              <p className="text-[18px] font-black text-white leading-none tracking-tight">
+              <p className="text-[18px] font-black text-white leading-none tracking-tight truncate max-w-[180px]">
                 {activeTab === 'perfil' ? 'ZYRON' : mergedUser.name.split(' ')[0]}
               </p>
               <p className="text-[10.5px] font-semibold leading-none tracking-[0.08em]"
-                style={{ color: 'rgba(255,255,255,0.35)' }}>
+                style={{ color: 'rgba(255,255,255,0.42)' }}>
                 {activeTab === 'perfil' ? 'Perfil' : 'Pronto para treinar?'}
               </p>
             </div>
@@ -846,8 +846,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           {/* ── Cápsula de ações — fundo premium, blur, borda sutil ── */}
           <div className="flex items-center gap-[2px] shrink-0"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(255,255,255,0.045)',
+              border: '1px solid rgba(255,255,255,0.09)',
               borderRadius: '999px',
               padding: '5px 6px',
               backdropFilter: 'blur(12px)',
@@ -905,7 +905,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
-        className="flex-1 w-full px-4 pt-2 relative z-10 overflow-y-auto"
+        className="flex-1 w-full px-4 pt-1 relative z-10 overflow-y-auto"
         style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
@@ -1220,14 +1220,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
       >
         {/* Gradiente de fundo que conecta a nav ao app */}
-        <div className="absolute bottom-0 left-0 w-full h-[140px] bg-linear-to-t from-black via-black/85 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-[140px] bg-linear-to-t from-black via-black/88 to-transparent pointer-events-none" />
 
         <div className="pointer-events-auto relative w-[94%] max-w-[430px]">
 
           {/* ── FAB — encaixado no topo da concha ── */}
           <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-28px' }}>
             {/* Sombra circular no fundo persistente */}
-            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-20 blur-xl animate-pulse" style={{ width: 60, height: 60, top: -5, left: -5 }} />
+            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-14 blur-xl" style={{ width: 60, height: 60, top: -5, left: -5 }} />
             <motion.button
               animate={{ rotate: fabOpen ? 45 : 0 }}
               whileTap={{ scale: 0.87 }}
@@ -1241,7 +1241,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               }`}
               style={fabOpen
                 ? { boxShadow: '0 4px 20px rgba(0,0,0,0.9)' }
-                : { boxShadow: '0 0 35px rgba(180,255,60,0.5), 0 8px 24px rgba(0,0,0,0.7)' }
+                : { boxShadow: '0 0 22px rgba(180,255,60,0.32), 0 10px 26px rgba(0,0,0,0.72)' }
               }
             >
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
@@ -1254,7 +1254,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           </div>
 
           {/* ── A CONCHA — barra com recorte côncavo no centro ── */}
-          <div className="relative" style={{ filter: 'drop-shadow(0 -4px 20px rgba(0,0,0,0.5))' }}>
+          <div className="relative" style={{ filter: 'drop-shadow(0 -8px 24px rgba(0,0,0,0.55))' }}>
             {/* SVG da forma côncava — mais fechada e orgânica */}
             <svg
               viewBox="0 0 420 68"
@@ -1277,16 +1277,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   L0,18
                   C0,8 9.5,0 20,0 Z
                 `}
-                fill="rgba(18,18,20,0.97)"
+                fill="rgba(14,15,17,0.985)"
               />
 
               {/* Linha de borda topo — 2 metades, respeitando o vazio do FAB */}
-              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.09)" strokeWidth="1" fill="none" />
-              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.09)" strokeWidth="1" fill="none" />
+              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.075)" strokeWidth="1" fill="none" />
+              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.075)" strokeWidth="1" fill="none" />
 
               {/* Brilho neon sutil nas duas metades */}
-              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.18)" strokeWidth="0.8" fill="none" />
-              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.18)" strokeWidth="0.8" fill="none" />
+              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.12)" strokeWidth="0.8" fill="none" />
+              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.12)" strokeWidth="0.8" fill="none" />
 
               {/* Curva do recorte — suave highlight */}
               <path

@@ -30,7 +30,7 @@ function useCountUp(target, duration = 900) {
 
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-const CARD = 'relative overflow-hidden rounded-[20px] bg-[rgba(18,18,20,0.95)] border border-white/[0.07] shadow-[0_6px_24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)]';
+const CARD = 'relative overflow-hidden rounded-[18px] bg-[rgba(13,14,16,0.96)] border border-white/[0.065] shadow-[0_10px_34px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)]';
 const NEON = '#CDFF5A';
 
 // ─── Stagger ──────────────────────────────────────────────────────────────────
@@ -105,6 +105,11 @@ export default function TabPainel({
     return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getWorkoutDayKey = (log) => {
+    const date = new Date(log.ended_at || log.created_at || log.completed_at);
+    return `${date.toDateString()}::${String(log.workout_key || log.workout_name || 'treino')}`;
+  };
+
   const saveMetricEdit = () => {
     const num = parseFloat(editMetricValue);
     if (isNaN(num) || num < 0) { setEditingMetric(null); return; }
@@ -136,6 +141,7 @@ export default function TabPainel({
       const { data, error } = await supabase
         .from('workout_logs').select('*')
         .eq('user_id', user.id)
+        .gt('duration_seconds', 0)
         .gte('created_at', startOfWeek.toISOString())
         .order('created_at', { ascending: true });
       if (error) return;
@@ -152,9 +158,23 @@ export default function TabPainel({
         .from('workout_logs')
         .select('*')
         .eq('user_id', user.id)
+        .gt('duration_seconds', 0)
         .order('created_at', { ascending: false })
-        .limit(3);
-      if (!error && data) setRecentActivity(data);
+        .limit(12);
+      if (!error && data) {
+        const uniqueByWorkoutDay = [];
+        const seen = new Set();
+
+        for (const log of data) {
+          const key = getWorkoutDayKey(log);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          uniqueByWorkoutDay.push(log);
+          if (uniqueByWorkoutDay.length === 3) break;
+        }
+
+        setRecentActivity(uniqueByWorkoutDay);
+      }
     } catch (_) { /* silenced */ }
     finally { setLoadingActivity(false); }
   };
@@ -221,7 +241,7 @@ export default function TabPainel({
         initial="initial"
         animate="animate"
         exit={{ opacity: 0, scale: 1.01 }}
-        className={`flex flex-col gap-[clamp(4px,1dvh,8px)] ${fullHeight ? 'h-full' : ''}`}
+        className={`flex flex-col gap-[clamp(8px,1.3dvh,12px)] ${fullHeight ? 'h-full' : ''}`}
       >
 
         {/* ══ 1. HERO — card horizontal estilo referência ══════════════════ */}
@@ -229,34 +249,35 @@ export default function TabPainel({
           variants={stagger.item}
           whileTap={{ scale: 0.97 }}
           onClick={() => startSession(today)}
-          className="relative overflow-hidden rounded-[22px] cursor-pointer shrink-0 border border-[#CDFF5A]/[0.15]"
+          className="relative overflow-hidden rounded-[18px] cursor-pointer shrink-0 border border-[#CDFF5A]/[0.14]"
           style={{
-            background: 'linear-gradient(145deg, #0d1a0f 0%, #000000 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 10px 30px rgba(0,0,0,0.6)'
+            background: 'linear-gradient(145deg, rgba(13,24,14,0.98) 0%, rgba(5,7,6,0.98) 58%, rgba(0,0,0,0.98) 100%)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.09), 0 14px 36px rgba(0,0,0,0.58), 0 0 0 1px rgba(205,255,90,0.035)'
           }}
         >
           {/* Borda neon topo — sutil */}
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#CDFF5A]/35 to-transparent" />
           {/* Atmosfera de luz verde — reduzida */}
           <div className="pointer-events-none absolute inset-0
-            bg-[radial-gradient(ellipse_55%_80%_at_110%_50%,rgba(80,170,20,0.18),transparent_65%)]" />
+            bg-[radial-gradient(ellipse_55%_80%_at_108%_45%,rgba(205,255,90,0.14),transparent_64%)]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent" />
 
           {/* Layout horizontal: ícone | texto | botão */}
-          <div className="relative z-10 flex items-center gap-3 px-4 py-3.5">
+          <div className="relative z-10 flex items-center gap-3.5 px-4 py-4">
 
             {/* Ícone — círculo verde sutil */}
             <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full
-              bg-[rgba(180,255,60,0.10)] border border-[#CDFF5A]/20
-              shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+              bg-[rgba(205,255,90,0.09)] border border-[#CDFF5A]/20
+              shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_22px_rgba(0,0,0,0.35)]">
               <Zap size={16} className="text-[#CDFF5A]" strokeWidth={2} />
             </div>
 
             {/* Texto central */}
             <div className="flex-1 min-w-0">
-              <h2 className="text-[15px] font-black text-white leading-tight tracking-tight">
+              <h2 className="text-[15px] font-black text-white leading-tight tracking-tight truncate">
                 {currentWorkout?.title || 'Treino do Dia'}
               </h2>
-              <p className="text-[9px] font-semibold text-[#CDFF5A]/70 mt-0.5 tracking-wide uppercase">
+              <p className="text-[9px] font-semibold text-[#CDFF5A]/62 mt-1 tracking-[0.12em] uppercase">
                 Fase de hipertrofia
               </p>
             </div>
@@ -264,9 +285,9 @@ export default function TabPainel({
             {/* Botão INICIAR — pulse sutil */}
             <motion.div
               whileTap={{ scale: 0.92 }}
-              animate={{ boxShadow: ['0 0 0px rgba(205,255,90,0.0)', '0 0 12px rgba(205,255,90,0.28)', '0 0 0px rgba(205,255,90,0.0)'] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              className="shrink-0 flex items-center justify-center rounded-full bg-[#CDFF5A] px-4 py-2 text-neutral-950 font-black uppercase tracking-[0.14em] text-[11px]"
+              animate={{ boxShadow: ['0 8px 22px rgba(205,255,90,0.18)', '0 8px 28px rgba(205,255,90,0.32)', '0 8px 22px rgba(205,255,90,0.18)'] }}
+              transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
+              className="shrink-0 flex items-center justify-center rounded-full bg-[#CDFF5A] px-4 py-2 text-neutral-950 font-black uppercase tracking-[0.14em] text-[10px]"
             >
               INICIAR
             </motion.div>
@@ -276,14 +297,14 @@ export default function TabPainel({
 
         {/* ══ 2. WEEK STRIP ════════════════════════════════════════════════ */}
         <motion.div variants={stagger.item}
-          className={`${CARD} px-3 shrink-0`}
-          style={{ paddingTop: 'clamp(8px,1.4dvh,12px)', paddingBottom: 'clamp(8px,1.4dvh,12px)' }}>
+          className={`${CARD} px-3.5 shrink-0`}
+          style={{ paddingTop: 'clamp(10px,1.5dvh,13px)', paddingBottom: 'clamp(10px,1.5dvh,13px)' }}>
           <div className="absolute top-0 left-[20%] right-[20%] h-[1px]
             bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
           {/* Label mês sutil */}
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-neutral-600">Esta semana</span>
-            <span className="text-[8px] font-bold text-[#CDFF5A]/60">{trainedDays.length} treinos</span>
+            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Esta semana</span>
+            <span className="text-[8px] font-bold text-[#CDFF5A]/58">{trainedDays.length} treinos</span>
           </div>
           <div className="flex items-center justify-between">
             {WEEK_DAYS.map((label, i) => {
@@ -308,8 +329,8 @@ export default function TabPainel({
 
                   {/* Chip do dia */}
                   <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
-                    isToday && trained ? 'bg-[#CDFF5A] shadow-[0_0_14px_rgba(205,255,90,0.45)]'
-                    : isToday          ? 'bg-[#CDFF5A] shadow-[0_0_10px_rgba(205,255,90,0.25)]'
+                    isToday && trained ? 'bg-[#CDFF5A] shadow-[0_0_12px_rgba(205,255,90,0.34)]'
+                    : isToday          ? 'bg-[#CDFF5A] shadow-[0_0_8px_rgba(205,255,90,0.22)]'
                     : trained          ? 'bg-white/[0.07] border border-[#CDFF5A]/30'
                     : isPast           ? 'border border-white/[0.08]'
                                        : 'border border-white/[0.06]'
@@ -347,29 +368,29 @@ export default function TabPainel({
             {
               id: 'water',
               label: 'Água', icon: Droplets, accentRef: '#7da1ff',
-              cardBg: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), linear-gradient(135deg, rgba(50,100,255,0.12) 0%, transparent 50%), #090a10',
-              cardShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
-              iconStyle: { background: 'rgba(92, 124, 255, 0.15)', boxShadow: '0 0 15px rgba(92, 124, 255, 0.2)' },
+              cardBg: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.012) 100%), linear-gradient(135deg, rgba(92,124,255,0.10) 0%, transparent 52%), #080a10',
+              cardShadow: '0 12px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.045)',
+              iconStyle: { background: 'rgba(92, 124, 255, 0.12)', boxShadow: '0 8px 20px rgba(0, 0, 0, 0.25)' },
               pct: waterPct, val: water.toFixed(1), unit: 'L', goal: `${safeWaterGoal.toFixed(1)}L`,
-              btnStyle: { background: 'rgba(92, 124, 255, 0.1)', border: '1px solid rgba(92, 124, 255, 0.25)', color: '#9fb9ff' },
+              btnStyle: { background: 'rgba(92, 124, 255, 0.09)', border: '1px solid rgba(92, 124, 255, 0.20)', color: '#9fb9ff' },
               btnText: '+ 250ml',
               onClick: (e) => { e.stopPropagation(); handleWaterDrink(0.25); triggerToast('+250ml registrados','💧'); },
               fillBg: 'linear-gradient(90deg, #3b82f6, #60a5fa)',
-              fillShadow: '0 0 12px rgba(59,130,246,0.4)',
+              fillShadow: '0 0 10px rgba(59,130,246,0.32)',
               done: waterPct >= 100,
             },
             {
               id: 'protein',
               label: 'Proteína', icon: Beef, accentRef: '#ff9a57',
-              cardBg: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), linear-gradient(135deg, rgba(255,100,0,0.12) 0%, transparent 50%), #0b0908',
-              cardShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)',
-              iconStyle: { background: 'rgba(255, 120, 0, 0.15)', boxShadow: '0 0 15px rgba(255, 120, 0, 0.2)' },
+              cardBg: 'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.012) 100%), linear-gradient(135deg, rgba(255,120,0,0.10) 0%, transparent 52%), #0c0907',
+              cardShadow: '0 12px 34px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.045)',
+              iconStyle: { background: 'rgba(255, 120, 0, 0.12)', boxShadow: '0 8px 20px rgba(0, 0, 0, 0.25)' },
               pct: proteinPct, val: Math.round(protein), unit: 'g', goal: `${safeProteinGoal}g`,
-              btnStyle: { background: 'rgba(255, 120, 0, 0.1)', border: '1px solid rgba(255, 120, 0, 0.25)', color: '#ffb38a' },
+              btnStyle: { background: 'rgba(255, 120, 0, 0.09)', border: '1px solid rgba(255, 120, 0, 0.20)', color: '#ffb38a' },
               btnText: '+ 30g',
               onClick: (e) => { e.stopPropagation(); setProtein(prev => prev + 30); triggerToast('+30g adicionados','🥩'); },
               fillBg: 'linear-gradient(90deg, #f97316, #fb923c)',
-              fillShadow: '0 0 12px rgba(249,115,22,0.4)',
+              fillShadow: '0 0 10px rgba(249,115,22,0.32)',
               done: proteinPct >= 100,
             },
           ].map((item) => (
@@ -380,20 +401,20 @@ export default function TabPainel({
               style={{
                 padding: '14px 14px 12px',
                 gap: '12px',
-                borderRadius: '18px',
+                borderRadius: '16px',
                 background: item.cardBg,
                 boxShadow: item.cardShadow,
-                border: '1px solid rgba(255,255,255,0.08)'
+                border: '1px solid rgba(255,255,255,0.075)'
               }}
             >
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[10px]">
                   <div className="flex items-center justify-center rounded-full"
-                    style={{ width: '32px', height: '32px', ...item.iconStyle }}>
+                    style={{ width: '34px', height: '34px', ...item.iconStyle }}>
                     <item.icon size={17} style={{ color: item.accentRef }} />
                   </div>
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: '0.02em' }}>{item.label}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 800, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.04em' }}>{item.label}</span>
                 </div>
                 <span style={{ fontSize: '12px', fontWeight: 800, color: item.done ? '#4ade80' : item.accentRef, textShadow: item.done ? '0 0 10px rgba(74,222,128,0.3)' : 'none' }}>
                   {Math.round(item.pct)}%
@@ -436,8 +457,8 @@ export default function TabPainel({
               {/* Barra — track visível mesmo em 0% */}
               <div style={{ marginTop: '2px' }}>
                 <div style={{
-                  height: '5px', width: '100%', borderRadius: '999px',
-                  background: 'rgba(255,255,255,0.10)',
+                  height: '6px', width: '100%', borderRadius: '999px',
+                  background: 'rgba(255,255,255,0.085)',
                   border: '1px solid rgba(255,255,255,0.06)',
                   overflow: 'hidden'
                 }}>
@@ -480,25 +501,25 @@ export default function TabPainel({
         </motion.div>
 
         {/* ══ 4. ATIVIDADE RECENTE ════════════════════════════════════════ */}
-        <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: 'clamp(10px,2dvh,14px)' }}>
+        <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: 'clamp(12px,2dvh,15px)' }}>
           <div className="absolute top-0 left-[30%] right-[30%] h-[1px]
             bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
 
           {/* Header */}
           <div className="flex items-center justify-between mb-2 flex-none px-1">
              <div>
-               <h3 className="text-[12px] font-black uppercase italic tracking-[0.12em] text-white leading-none">Atividade Recente</h3>
-               <p className="text-[8px] text-neutral-500 font-bold tracking-[0.15em] uppercase mt-1">
+               <h3 className="text-[12px] font-black uppercase tracking-[0.14em] text-white leading-none">Atividade Recente</h3>
+               <p className="text-[8px] text-neutral-500 font-bold tracking-[0.16em] uppercase mt-1.5">
                  {loadingActivity ? 'Carregando…' : recentActivity.length > 0 ? 'Sincronizado' : 'Nenhum treino ainda'}
                </p>
              </div>
-             <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C] bg-[#B4FF3C]/10 px-2.5 py-1.5 rounded-full text-[8.5px] font-black tracking-widest uppercase border border-[#B4FF3C]/20 shadow-[0_0_10px_rgba(180,255,60,0.15)]">
+             <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C]/80 bg-[#B4FF3C]/[0.07] px-2.5 py-1.5 rounded-full text-[8.5px] font-black tracking-widest uppercase border border-[#B4FF3C]/15">
                Histórico
              </motion.button>
           </div>
 
           {/* List — real data from Supabase */}
-          <div className="flex flex-col gap-[5px] flex-none">
+          <div className="flex flex-col gap-[7px] flex-none">
             {loadingActivity ? (
               /* Skeleton loader */
               [0, 1].map((i) => (
@@ -525,20 +546,20 @@ export default function TabPainel({
               /* Real activity rows */
               recentActivity.map((log, i) => {
                 const accent = i === 0 ? '#CDFF5A' : 'rgba(255,255,255,0.75)';
-                const bgOpacity = i === 0 ? 'rgba(205,255,90,0.06)' : 'rgba(255,255,255,0.025)';
-                const border = i === 0 ? 'rgba(205,255,90,0.12)' : 'rgba(255,255,255,0.07)';
+                const bgOpacity = i === 0 ? 'linear-gradient(135deg, rgba(205,255,90,0.055), rgba(255,255,255,0.025))' : 'rgba(255,255,255,0.026)';
+                const border = i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.065)';
                 return (
                   <motion.div
                     whileTap={{ scale: 0.97 }}
                     key={log.id}
                     onClick={() => openLogDetail(log)}
                     className="flex items-center justify-between cursor-pointer"
-                    style={{ padding: '10px 12px', borderRadius: '14px', background: bgOpacity, border: `1px solid ${border}` }}
+                    style={{ padding: '11px 12px', borderRadius: '14px', background: bgOpacity, border: `1px solid ${border}`, boxShadow: i === 0 ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'none' }}
                   >
                     {/* Ícone */}
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                        style={{ background: i === 0 ? 'rgba(205,255,90,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.07)'}` }}>
                         {getWorkoutIcon(
                           log.workout_name
                           || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
@@ -546,7 +567,7 @@ export default function TabPainel({
                       </div>
                       {/* Texto */}
                       <div>
-                        <p className="text-[11px] font-bold text-white leading-none">
+                        <p className="text-[11.5px] font-bold text-white leading-none">
                           {log.workout_name
                             || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
                             || 'Treino'}
@@ -583,10 +604,10 @@ export default function TabPainel({
               whileTap={{ scale: 0.93 }}
               className="relative overflow-hidden flex flex-col items-center justify-center"
               style={{
-                borderRadius: '18px',
-                background: 'rgba(16,16,20,0.97)',
-                border: `1px solid rgba(${glowRgb},0.18)`,
-                boxShadow: `0 5px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04)`,
+                borderRadius: '16px',
+                background: 'rgba(13,14,17,0.96)',
+                border: `1px solid rgba(${glowRgb},0.13)`,
+                boxShadow: `0 8px 24px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.04)`,
                 paddingTop: 'clamp(8px,1.6dvh,12px)',
                 paddingBottom: 'clamp(8px,1.6dvh,12px)',
               }}

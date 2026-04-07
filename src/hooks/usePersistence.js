@@ -256,7 +256,7 @@ export function useExerciseCompletion(userId, workoutKey) {
       setSessionId(sid);
 
       // Load completions from cache
-      const completionsKey = `completions_${today}`;
+      const completionsKey = `completions_${userId}_${workoutKey}_${today}`;
       const cached = cacheHelpers.loadFromDisk(completionsKey);
       setCompletedExercises(cached || []);
     } catch (err) {
@@ -284,7 +284,7 @@ export function useExerciseCompletion(userId, workoutKey) {
 
       // 2️⃣ Save to cache
       const today = new Date().toISOString().split('T')[0];
-      const completionsKey = `completions_${today}`;
+      const completionsKey = `completions_${userId}_${workoutKey}_${today}`;
       const updated = isCompleting
         ? [...completedExercises, exerciseId]
         : completedExercises.filter(id => id !== exerciseId);
@@ -338,6 +338,8 @@ export function useExerciseCompletion(userId, workoutKey) {
         .eq('user_id', userId)
         .eq('workout_key', workoutKey)
         .gte('completed_at', `${today}T00:00:00`)
+        .order('completed_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
