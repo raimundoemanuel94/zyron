@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { profileService } from '../../core/profile/profileService';
 import { supabase } from '../../lib/supabase';
-import { ShieldAlert, Cpu, Dumbbell } from 'lucide-react';
+import { ShieldAlert } from 'lucide-react';
 
 /**
  * RBACGuard - Middleware de Proteção de Rota Industrial
@@ -37,7 +37,7 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
         console.error('[RBACGuard] Erro na verificação:', err);
         setError(`Erro: ${err.message || 'Falha na validação de privilégios'}`);
       } finally {
-        setTimeout(() => setVerifying(false), 2000); // Reduzido para 2s para melhor UX
+        setTimeout(() => setVerifying(false), 2700); // Um pouco mais de tempo para reforçar o visual premium
       }
     }
 
@@ -46,34 +46,67 @@ export default function RBACGuard({ user, onRoleVerified, children }) {
 
   if (verifying) {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-6 text-center">
-        <div className="relative mb-10 flex justify-center">
-          <div className="absolute inset-0 bg-yellow-500/20 blur-[50px] animate-pulse rounded-full w-32 h-32 ml-auto mr-auto" />
-          <motion.div 
-            animate={{ scale: [1, 1.15, 1], rotate: [-5, 5, -5] }}
-            transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
-            className="relative p-6 bg-neutral-900 border border-white/5 shadow-[0_0_40px_rgba(253,224,71,0.15)] rounded-3xl"
+      <div className="fixed inset-0 z-50 overflow-hidden bg-black text-center">
+        <div
+          className="absolute inset-0 z-0 bg-cover bg-center opacity-22"
+          style={{ backgroundImage: "url('/images/zyron-hero-impact.png')" }}
+        />
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/52 via-black/76 to-black/95" />
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.32 }}
+          transition={{ duration: 0.45 }}
+          className="absolute inset-0 z-0"
+          style={{
+            background:
+              'radial-gradient(circle at 18% 16%, rgba(253,200,0,0.16), transparent 42%), radial-gradient(circle at 82% 84%, rgba(255,255,255,0.08), transparent 42%)',
+          }}
+        />
+
+        <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full flex flex-col items-center"
           >
-            <Dumbbell className="text-yellow-400 drop-shadow-[0_0_15px_rgba(253,224,71,0.6)]" size={64} />
+            <motion.svg
+              width="58"
+              height="58"
+              viewBox="0 0 40 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="mb-5"
+              animate={{ y: [0, -2, 0], opacity: [0.82, 1, 0.82] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <path d="M10 32L22 8H30L18 32H10Z" fill="#FDC800" />
+              <path d="M22 32L34 8H26L14 32H22Z" fill="#FDC800" fillOpacity="0.7" />
+            </motion.svg>
+
+            <h2 className="mb-1 text-[34px] font-black italic uppercase tracking-tight text-white drop-shadow-2xl">
+              ZYRON
+            </h2>
+            <p className="mb-6 text-[10px] font-bold uppercase tracking-[0.26em] text-white/55">
+              Preparando seu painel
+            </p>
+
+            <div className="mb-4 flex items-center gap-2.5">
+              {[0, 1, 2].map((i) => (
+                <motion.span
+                  key={i}
+                  className={`h-2.5 w-2.5 rounded-full ${i === 1 ? "bg-[#FDC800]" : "bg-white/85"}`}
+                  animate={{ y: [0, -8, 0], opacity: [0.35, 1, 0.35], scale: [0.94, 1, 0.94] }}
+                  transition={{ duration: 0.66, repeat: Infinity, delay: i * 0.16, ease: "easeInOut" }}
+                  style={i === 1 ? { boxShadow: "0 0 10px rgba(253,200,0,0.45)" } : undefined}
+                />
+              ))}
+            </div>
+
+            <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-white/42">Carregando</p>
           </motion.div>
         </div>
-        
-        <h2 className="text-3xl font-black italic text-white uppercase tracking-tighter mb-4 drop-shadow-lg">
-          FORJANDO<br/><span className="text-yellow-400">RESULTADOS...</span>
-        </h2>
-        
-        <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden mb-6 relative">
-          <motion.div
-            className="absolute top-0 left-0 h-full w-24 bg-linear-to-r from-transparent via-yellow-400 to-transparent blur-[1px]"
-            animate={{ x: [-100, 250] }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-            style={{ boxShadow: '0 0 10px rgba(253,224,71,0.5)' }}
-          />
-        </div>
-        
-        <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.3em] max-w-xs">
-          Sincronizando banco de dados de performance
-        </p>
       </div>
     );
   }

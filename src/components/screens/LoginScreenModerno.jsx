@@ -17,7 +17,7 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsInitialLoading(false);
-    }, 1200); // 1.2s para garantir o "feel" de app grande
+    }, 1800); // 1.8s para um loading mais premium
     return () => clearTimeout(timer);
   }, []);
 
@@ -60,6 +60,20 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
     </svg>
   );
 
+  const PremiumDotsLoader = () => (
+    <div className="mt-6 flex items-center gap-2.5">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className={`h-2.5 w-2.5 rounded-full ${i === 1 ? "bg-[#FDC800]" : "bg-white/85"}`}
+          animate={{ y: [0, -8, 0], opacity: [0.35, 1, 0.35], scale: [0.94, 1, 0.94] }}
+          transition={{ duration: 0.66, repeat: Infinity, delay: i * 0.16, ease: "easeInOut" }}
+          style={i === 1 ? { boxShadow: "0 0 10px rgba(253,200,0,0.45)" } : undefined}
+        />
+      ))}
+    </div>
+  );
+
   const AppleIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2.044-.156-3.078 1.09-4.01 1.09zM15.53 4.654c1.055-1.287 1.055-2.441.902-3.41C15.49 1.352 14.39 2.04 13.582 3c-.808.932-1.042 2.117-.834 3.014 1.09.083 2.103-.541 2.782-1.36z" />
@@ -83,24 +97,25 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
 
   // Variantes das animações cinematográficas
   const containerVariants = {
-    hidden: { opacity: 0 },
+    hidden: { opacity: 0, y: 8 },
     visible: {
       opacity: 1,
+      y: 0,
       transition: { 
-        staggerChildren: 0.15,
-        delayChildren: 0.3
+        staggerChildren: 0.09,
+        delayChildren: 0.08
       }
     }
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
+    hidden: { y: 14, opacity: 0, scale: 0.99 },
+    visible: { y: 0, opacity: 1, scale: 1, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }
   };
 
   const logoVariants = {
-    hidden: { y: -40, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: "easeOut" } }
+    hidden: { y: -24, opacity: 0, scale: 0.98 },
+    visible: { y: 0, opacity: 1, scale: 1, transition: { duration: 0.36, ease: [0.22, 1, 0.36, 1] } }
   };
 
   return (
@@ -111,48 +126,69 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
           <motion.div
             key="splash"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.5 } }}
+            exit={{ opacity: 0, scale: 1.02, transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] } }}
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black overflow-hidden"
           >
-            {/* Background da Atleta na Splash */}
             <div
-              className="absolute inset-0 z-0 bg-no-repeat bg-cover scale-110 opacity-40 blur-[4px]"
+              className="absolute inset-0 z-0 bg-no-repeat bg-cover"
               style={{ backgroundImage: "url('/images/zyron-hero-impact.png')", backgroundPosition: "center top" }}
             />
-            <div className="relative z-10 flex flex-col items-center">
+            <motion.div
+              initial={{ scale: 1.08 }}
+              animate={{ scale: 1.02 }}
+              transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-0 z-0 bg-no-repeat bg-cover opacity-35"
+              style={{ backgroundImage: "url('/images/zyron-hero-impact.png')", backgroundPosition: "center top" }}
+            />
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/35 via-black/76 to-black/94" />
+
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 w-full px-8 flex flex-col items-center"
+            >
               <motion.div
-                animate={{ scale: [1, 1.08, 1], opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                animate={{ y: [0, -2, 0], opacity: [0.85, 1, 0.85] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                className="mb-5"
               >
                 <ZyronLogoIcon />
               </motion.div>
-              <motion.h2 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 0.8, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="text-white text-2xl font-black tracking-tighter mt-4"
+
+              <motion.h2
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.28, delay: 0.06 }}
+                className="text-white text-[34px] font-black italic tracking-tight drop-shadow-2xl"
               >
                 ZYRON
               </motion.h2>
-              {/* Barra de Progresso Minimalista */}
-              <div className="w-40 h-0.5 bg-white/10 mt-8 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ x: "-100%" }}
-                  animate={{ x: "0%" }}
-                  transition={{ duration: 1.2, ease: "easeInOut" }}
-                  className="w-full h-full bg-[#FDC800]"
-                />
-              </div>
-            </div>
+              <p className="text-white/52 text-[10px] font-bold uppercase tracking-[0.26em] mt-1 text-center">
+                Preparando sua experiencia
+              </p>
+
+              <PremiumDotsLoader />
+
+              <p className="mt-3 text-center text-[9px] font-semibold uppercase tracking-[0.24em] text-white/42">
+                Carregando
+              </p>
+            </motion.div>
           </motion.div>
         ) : (
-          <div key="content" className="relative w-full min-h-screen flex flex-col items-center justify-center bg-gray-900 text-gray-900 font-sans overflow-hidden">
+          <motion.div
+            key="content"
+            initial={{ opacity: 0, y: 16, scale: 0.995 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-full min-h-screen flex flex-col items-center justify-center bg-gray-900 text-gray-900 font-sans overflow-hidden"
+          >
             
             {/* ── BACKGROUND ATLETA (ETAPA 1: LEVE ZOOM REVERSO) ── */}
             <motion.div
               initial={{ scale: 1.08 }}
               animate={{ scale: 1 }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               className="absolute inset-0 z-0 bg-no-repeat bg-cover"
               style={{
                 backgroundImage: "url('/images/zyron-hero-impact.png')",
@@ -239,8 +275,9 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
                 {/* 🔥 ETAPA 2 — BOTÃO COM EFEITO REAL */}
                 <motion.button
                   variants={itemVariants}
-                  whileHover={{ scale: 1.015, filter: "brightness(1.05)" }}
-                  whileTap={{ scale: 0.97, boxShadow: "0 5px 15px rgba(253,200,0,0.2)" }}
+                  whileHover={{ scale: 1.018, y: -1 }}
+                  whileTap={{ scale: 0.985, y: 0 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.6 }}
                   disabled={!isFormValid || loading}
                   type="submit"
                   className="w-full bg-linear-to-r from-[#FDE047] to-[#facc15] text-black h-15 rounded-full text-md font-black uppercase tracking-widest mt-4 shadow-xl shadow-[#FDC800]/30 transition-all duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
@@ -261,13 +298,13 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
                 <p className="text-gray-200 text-[10px] font-black mb-6 tracking-[0.3em] uppercase opacity-40">Entrar com</p>
                 
                 <div className="flex gap-8 items-center">
-                  <motion.button whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all text-white border border-white/5 backdrop-blur-md shadow-lg">
+                  <motion.button whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all text-white border border-white/5 backdrop-blur-md shadow-lg">
                     <AppleIcon />
                   </motion.button>
-                  <motion.button whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all text-[#1877F2] border border-white/5 backdrop-blur-md shadow-lg">
+                  <motion.button whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all text-[#1877F2] border border-white/5 backdrop-blur-md shadow-lg">
                     <FacebookIcon />
                   </motion.button>
-                  <motion.button whileHover={{ scale: 1.1, y: -2 }} whileTap={{ scale: 0.95 }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all border border-white/5 backdrop-blur-md shadow-lg">
+                  <motion.button whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.97 }} transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }} className="bg-white/10 p-4 rounded-full hover:bg-white/15 transition-all border border-white/5 backdrop-blur-md shadow-lg">
                     <GoogleIcon />
                   </motion.button>
                 </div>
@@ -286,7 +323,7 @@ const LoginScreenModerno = ({ onLogin, onRegisterClick }) => {
 
             </motion.div>
             
-          </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>
