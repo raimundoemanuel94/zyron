@@ -8,6 +8,7 @@ export async function generateShareableImage(photoBase64, stats) {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    const accent = '#F4FF3A';
 
     const W = 1080;
     const H = 1920;
@@ -38,42 +39,50 @@ export async function generateShareableImage(photoBase64, stats) {
       ctx.fillStyle = bottomGrad;
       ctx.fillRect(0, H - 720, W, 720);
 
-      roundRect(ctx, 64, H - 640, W - 128, 520, 44);
-      ctx.fillStyle = 'rgba(5,7,6,0.62)';
+      roundRect(ctx, 58, H - 650, W - 116, 530, 42);
+      ctx.fillStyle = 'rgba(2,3,4,0.72)';
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(205,255,90,0.22)';
+      ctx.strokeStyle = 'rgba(244,255,58,0.24)';
       ctx.stroke();
+
+      ctx.fillStyle = 'rgba(244,255,58,0.9)';
+      roundRect(ctx, 96, H - 606, 116, 36, 18);
+      ctx.fill();
 
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
-      ctx.font = '700 26px sans-serif';
-      ctx.fillStyle = 'rgba(205,255,90,0.88)';
-      ctx.fillText('TREINO CONCLUIDO', 96, H - 552);
+      ctx.font = '900 18px sans-serif';
+      ctx.fillStyle = '#050504';
+      ctx.fillText('DONE', 128, H - 582);
 
-      ctx.font = '900 60px sans-serif';
+      ctx.font = '900 58px sans-serif';
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(stats.dayName || getLocalizedDayName(), 96, H - 484);
+      ctx.fillText(stats.dayName || getLocalizedDayName(), 96, H - 510);
 
-      ctx.font = '700 28px sans-serif';
+      ctx.font = '800 27px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.64)';
-      ctx.fillText(`${stats.duration}  /  ${stats.sets}`, 96, H - 432);
+      ctx.fillText(`${stats.duration}  |  ${stats.sets}`, 96, H - 456);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.fillRect(96, H - 418, W - 192, 2);
 
       drawWeekStrip(ctx, {
         x: 96,
-        y: H - 320,
+        y: H - 330,
         todayIdx: stats.dayIndex ?? new Date().getDay(),
         trainedDays: stats.trainedDays || [new Date().getDay()],
+        accent,
       });
 
       ctx.textAlign = 'center';
-      ctx.font = '900 58px sans-serif';
-      ctx.fillStyle = '#CDFF5A';
-      ctx.fillText('ZYRON', W / 2, H - 192);
+      ctx.font = '900 64px sans-serif';
+      ctx.fillStyle = accent;
+      ctx.fillText('ZYRON', W / 2, H - 198);
 
-      ctx.font = '600 22px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.54)';
-      ctx.fillText('A FORCA DA SUA EVOLUCAO', W / 2, H - 154);
+      ctx.font = '700 22px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.58)';
+      ctx.fillText('A FORCA DA SUA EVOLUCAO', W / 2, H - 156);
 
       canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
     };
@@ -82,7 +91,7 @@ export async function generateShareableImage(photoBase64, stats) {
   });
 }
 
-function drawWeekStrip(ctx, { x, y, todayIdx, trainedDays }) {
+function drawWeekStrip(ctx, { x, y, todayIdx, trainedDays, accent }) {
   const labels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
   const cell = 76;
   const gap = 22;
@@ -94,12 +103,12 @@ function drawWeekStrip(ctx, { x, y, todayIdx, trainedDays }) {
 
     ctx.beginPath();
     ctx.arc(cx, y, cell / 2, 0, Math.PI * 2);
-    ctx.fillStyle = isTrained ? '#CDFF5A' : 'rgba(255,255,255,0.08)';
+    ctx.fillStyle = isTrained ? accent : 'rgba(255,255,255,0.08)';
     ctx.fill();
 
     if (isToday) {
       ctx.lineWidth = 4;
-      ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
       ctx.stroke();
     }
 
@@ -112,7 +121,7 @@ function drawWeekStrip(ctx, { x, y, todayIdx, trainedDays }) {
     if (isTrained) {
       ctx.beginPath();
       ctx.arc(cx, y + cell / 2 + 16, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#CDFF5A';
+      ctx.fillStyle = accent;
       ctx.fill();
     }
   });

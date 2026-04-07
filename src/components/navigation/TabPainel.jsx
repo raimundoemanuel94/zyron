@@ -110,6 +110,16 @@ export default function TabPainel({
     return `${date.toDateString()}::${String(log.workout_key || log.workout_name || 'treino')}`;
   };
 
+  const getWorkoutLogDate = (log) => new Date(log.ended_at || log.completed_at || log.created_at);
+
+  const isFinishedWorkoutLog = (log) => (
+    Number(log.duration_seconds) > 0
+    || Number(log.duration_minutes) > 0
+    || !!log.workout_name
+    || !!log.ended_at
+    || !!log.started_at
+  );
+
   const saveMetricEdit = () => {
     const num = parseFloat(editMetricValue);
     if (isNaN(num) || num < 0) { setEditingMetric(null); return; }
@@ -141,12 +151,15 @@ export default function TabPainel({
       const { data, error } = await supabase
         .from('workout_logs').select('*')
         .eq('user_id', user.id)
-        .gt('duration_seconds', 0)
         .gte('created_at', startOfWeek.toISOString())
         .order('created_at', { ascending: true });
       if (error) return;
-      if (data?.length > 0)
-        setTrainedDays([...new Set(data.map(log => new Date(log.created_at).getDay()))]);
+      if (data?.length > 0) {
+        const finishedLogs = data.filter(isFinishedWorkoutLog);
+        setTrainedDays([...new Set(finishedLogs.map(log => getWorkoutLogDate(log).getDay()))]);
+      } else {
+        setTrainedDays([]);
+      }
     } catch (_) { /* silenced */ }
   };
 
@@ -158,14 +171,13 @@ export default function TabPainel({
         .from('workout_logs')
         .select('*')
         .eq('user_id', user.id)
-        .gt('duration_seconds', 0)
         .order('created_at', { ascending: false })
-        .limit(12);
+        .limit(24);
       if (!error && data) {
         const uniqueByWorkoutDay = [];
         const seen = new Set();
 
-        for (const log of data) {
+        for (const log of data.filter(isFinishedWorkoutLog)) {
           const key = getWorkoutDayKey(log);
           if (seen.has(key)) continue;
           seen.add(key);

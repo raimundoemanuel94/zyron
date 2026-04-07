@@ -28,12 +28,19 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
 
         const { data } = await supabase
           .from('workout_logs')
-          .select('created_at')
+          .select('created_at, completed_at, ended_at, started_at, duration_seconds, duration_minutes, workout_name')
           .eq('user_id', session.user.id)
-          .gt('duration_seconds', 0)
           .gte('created_at', startOfWeek.toISOString());
 
-        const days = data?.map(log => new Date(log.created_at).getDay()) || [];
+        const days = data
+          ?.filter(log => (
+            Number(log.duration_seconds) > 0
+            || Number(log.duration_minutes) > 0
+            || !!log.workout_name
+            || !!log.ended_at
+            || !!log.started_at
+          ))
+          .map(log => new Date(log.ended_at || log.completed_at || log.created_at).getDay()) || [];
         const todayIdx = new Date().getDay();
         if (!days.includes(todayIdx)) days.push(todayIdx);
         setTrainedDays([...new Set(days)]);
@@ -143,7 +150,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-5 text-white overflow-y-auto">
-      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_50%_at_50%_8%,rgba(205,255,90,0.08),transparent_62%)]" />
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_50%_at_50%_8%,rgba(244,255,58,0.10),transparent_62%)]" />
 
       <AnimatePresence>
         {showCelebration && (
@@ -153,7 +160,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
             exit={{ scale: 1.8, opacity: 0 }}
             className="absolute z-60 pointer-events-none"
           >
-            <Trophy size={112} className="text-[#CDFF5A] drop-shadow-[0_0_26px_rgba(205,255,90,0.34)]" />
+            <Trophy size={112} className="text-[#F4FF3A] drop-shadow-[0_0_26px_rgba(244,255,58,0.36)]" />
           </motion.div>
         )}
       </AnimatePresence>
@@ -168,7 +175,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
             src="/images/zyron-logo.png"
             alt="ZYRON"
             className="w-36 h-auto object-contain"
-            style={{ filter: 'drop-shadow(0 0 18px rgba(205,255,90,0.25)) brightness(1.05) saturate(0.95)' }}
+            style={{ filter: 'drop-shadow(0 0 18px rgba(244,255,58,0.28)) brightness(1.05) saturate(0.95)' }}
           />
           <p className="text-white/55 text-[10px] font-semibold tracking-[0.22em] uppercase">
             A forca da sua evolucao.
@@ -177,9 +184,9 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
 
         <div className="flex gap-3 justify-center">
           {['Treino Feito', 'Dados Blindados'].map(label => (
-            <div key={label} className="flex items-center gap-1.5 bg-[#CDFF5A]/10 border border-[#CDFF5A]/20 rounded-xl px-3 py-1.5">
-              <span className="text-[#CDFF5A] text-[10px] font-black">OK</span>
-              <span className="text-[#CDFF5A] font-black text-[10px] uppercase tracking-widest">{label}</span>
+            <div key={label} className="flex items-center gap-1.5 bg-[#F4FF3A]/10 border border-[#F4FF3A]/20 rounded-xl px-3 py-1.5">
+              <span className="text-[#F4FF3A] text-[10px] font-black">OK</span>
+              <span className="text-[#F4FF3A] font-black text-[10px] uppercase tracking-widest">{label}</span>
             </div>
           ))}
         </div>
@@ -191,20 +198,20 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
           </div>
           <div className="space-y-1 text-right">
             <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">Series Totais</span>
-            <div className="text-xl font-black text-[#CDFF5A]">{sets?.length ?? 0}</div>
+            <div className="text-xl font-black text-[#F4FF3A]">{sets?.length ?? 0}</div>
           </div>
         </div>
 
         <div className="relative group">
-          <div className="aspect-square w-full bg-[rgba(12,13,15,0.94)] border border-dashed border-white/[0.12] rounded-[18px] flex flex-col items-center justify-center overflow-hidden transition-all group-hover:border-[#CDFF5A]/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="aspect-square w-full bg-[rgba(12,13,15,0.94)] border border-dashed border-white/[0.12] rounded-[18px] flex flex-col items-center justify-center overflow-hidden transition-all group-hover:border-[#F4FF3A]/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
             {photo ? (
               <>
                 <img src={shareableUrl || photo} alt="Seu fisico" className="w-full h-full object-cover" />
 
                 {isGenerating && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                    <div className="w-8 h-8 border-4 border-[#CDFF5A] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#CDFF5A]">Estilizando Card...</span>
+                    <div className="w-8 h-8 border-4 border-[#F4FF3A] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[#F4FF3A]">Estilizando Card...</span>
                   </div>
                 )}
 
@@ -217,8 +224,8 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
               </>
             ) : (
               <label className="flex flex-col items-center gap-4 cursor-pointer p-12 text-center">
-                <div className="p-4 bg-[#CDFF5A]/10 rounded-full border border-[#CDFF5A]/20">
-                  <Camera size={32} className="text-[#CDFF5A]" />
+                <div className="p-4 bg-[#F4FF3A]/10 rounded-full border border-[#F4FF3A]/20">
+                  <Camera size={32} className="text-[#F4FF3A]" />
                 </div>
                 <div className="space-y-1">
                   <span className="font-black uppercase text-sm tracking-[0.08em]">Registrar Progresso</span>
@@ -255,7 +262,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
             onClick={() => saveWorkout(true)}
             disabled={isSaving}
             className={`w-full h-16 rounded-[16px] flex items-center justify-center gap-3 font-black uppercase tracking-[0.10em] text-[14px] transition-all ${
-              isSaving ? 'bg-neutral-800 text-neutral-500' : 'bg-[#CDFF5A] text-neutral-950 shadow-[0_0_24px_rgba(205,255,90,0.28)] active:scale-95'
+              isSaving ? 'bg-neutral-800 text-neutral-500' : 'bg-[#F4FF3A] text-neutral-950 shadow-[0_0_24px_rgba(244,255,58,0.30)] active:scale-95'
             }`}
           >
             {isSaving ? 'SINCRONIZANDO...' : (
