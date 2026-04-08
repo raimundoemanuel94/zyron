@@ -330,6 +330,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
             // completedExercises gerenciado pelo hook useExerciseCompletion — não precisa setter manual
             setSessionTime(Number(session.sessionTime) || 0);
+            setSessionSets(Array.isArray(session.sessionSets) ? session.sessionSets : []);
+            setSessionStartedAt(session.sessionStartedAt || null);
+            setSessionLocation(session.sessionLocation || null);
             if (session.isTraining) setActiveTab('workout');
           }
         }
@@ -408,7 +411,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           isTraining,
           selectedWorkoutKey,
           completedExercises,
-          sessionTime
+          sessionTime,
+          sessionSets,
+          sessionStartedAt,
+          sessionLocation
         };
         
         const cleanSession = sanitizeWorkoutState(rawSession);
@@ -419,7 +425,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     } else {
       localStorage.removeItem('gym_active_session');
     }
-  }, [isTraining, selectedWorkoutKey, completedExercises, sessionTime, isLoaded]);
+  }, [isTraining, selectedWorkoutKey, completedExercises, sessionTime, sessionSets, sessionStartedAt, sessionLocation, isLoaded]);
 
   // Session Timer Logic
   useEffect(() => {
@@ -505,9 +511,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       const exerciseName = currentEx?.name || `Exercise ${id}`;
 
       // Persist to Supabase via hook
-      await toggleExerciseCompletion(id, exerciseName, { reps: setData?.reps, sets: setData?.sets });
+      await toggleExerciseCompletion(id, exerciseName, {
+        reps: setData?.reps,
+        sets: setData?.set_number || setData?.sets,
+        notes: setData?.status === 'failed' ? 'Falha registrada na serie' : null,
+      });
     }
-    setRestTimer(60);
+
+    const restSeconds = Number(setData?.rest_seconds);
+    const exerciseRest = Number(currentWorkout?.exercises?.find(ex => ex.id === id)?.rest);
+    setRestTimer(Number.isFinite(restSeconds) ? restSeconds : (Number.isFinite(exerciseRest) ? exerciseRest : 60));
   };
 
   const handleFinishSession = async () => {

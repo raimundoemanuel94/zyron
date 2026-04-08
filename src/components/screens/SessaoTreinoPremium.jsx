@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dumbbell, Zap, Play, Coffee, Flame, ArrowRight, Target, TrendingUp, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { C, Btn, Badge, Card } from '../../styles/ds';
 
-// Muscle accent palette — kept as semantic overrides on top of DS base
+// Muscle accent palette â€” kept as semantic overrides on top of DS base
 const MUSCLE_COLORS = {
   'Peito':       { bg: 'rgba(245,158,11,0.14)',  text: '#F59E0B', border: 'rgba(245,158,11,0.30)' },
   'Costas':      { bg: 'rgba(59,130,246,0.14)',   text: '#7DA1FF', border: 'rgba(59,130,246,0.30)' },
   'Perna':       { bg: 'rgba(52,211,153,0.14)',   text: '#34D399', border: 'rgba(52,211,153,0.30)' },
-  'Bíceps':      { bg: 'rgba(139,92,246,0.14)',   text: '#A78BFA', border: 'rgba(139,92,246,0.30)' },
-  'Tríceps':     { bg: 'rgba(251,113,133,0.14)',  text: '#FB7185', border: 'rgba(251,113,133,0.30)' },
+  'BÃ­ceps':      { bg: 'rgba(139,92,246,0.14)',   text: '#A78BFA', border: 'rgba(139,92,246,0.30)' },
+  'TrÃ­ceps':     { bg: 'rgba(251,113,133,0.14)',  text: '#FB7185', border: 'rgba(251,113,133,0.30)' },
   'Ombro':       { bg: 'rgba(56,189,248,0.14)',   text: '#38BDF8', border: 'rgba(56,189,248,0.30)' },
-  'Abdômen':     { bg: 'rgba(251,146,60,0.14)',   text: '#FB923C', border: 'rgba(251,146,60,0.30)' },
+  'AbdÃ´men':     { bg: 'rgba(251,146,60,0.14)',   text: '#FB923C', border: 'rgba(251,146,60,0.30)' },
   'Panturrilha': { bg: 'rgba(45,212,191,0.14)',   text: '#2DD4BF', border: 'rgba(45,212,191,0.30)' },
-  'Glúteos':     { bg: 'rgba(244,114,182,0.14)',  text: '#F472B6', border: 'rgba(244,114,182,0.30)' },
+  'GlÃºteos':     { bg: 'rgba(244,114,182,0.14)',  text: '#F472B6', border: 'rgba(244,114,182,0.30)' },
 };
 
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -30,7 +30,7 @@ import haptics from '../../utils/haptics';
  * SESSAO TREINO PREMIUM
  * Merged screen combining:
  * - Workout selection carousel (Tela de Treino)
- * - Interactive anatomy visualization (Tela de Exercícios)
+ * - Interactive anatomy visualization (Tela de ExercÃ­cios)
  * - Active training session management
  * - Premium academy-style interface
  */
@@ -83,12 +83,20 @@ export default function SessaoTreinoPremium({
     return currentWorkout?.exercises?.filter(ex => ex.group === muscle) || [];
   };
 
+  const workoutEntries = Object.entries(workoutData)
+    .filter(([key, workout]) => key !== '0' && key !== '6' && workout.exercises.length > 0);
+  const todayEntry = workoutEntries.find(([key]) => today === parseInt(key));
+  const secondaryWorkouts = workoutEntries.filter(([key]) => key !== String(today));
+  const exerciseTotal = currentWorkout?.exercises?.length || 0;
+  const completedTotal = currentWorkout?.exercises?.filter(ex => completedExercises.includes(ex.id)).length || 0;
+  const progressPercent = exerciseTotal > 0 ? Math.round((completedTotal / exerciseTotal) * 100) : 0;
+
   return (
     <AnimatePresence mode="wait">
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          STATE 1: SELECTION MODE — Carousel + Anatomy Preview
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          STATE 1: SELECTION MODE â€” Carousel + Anatomy Preview
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {!isTraining && (
         <motion.div
           key="session-selection"
@@ -111,12 +119,12 @@ export default function SessaoTreinoPremium({
               </p>
               <h2 className="text-[20px] font-black uppercase tracking-tight text-white leading-none flex items-center gap-2">
                 <Dumbbell size={17} style={{ color: C.neon }} />
-                Rotinas Disponíveis
+                Rotinas DisponÃ­veis
               </h2>
             </div>
 
             {/* Carousel */}
-            <div className="-mx-4">
+            <div className="-mx-4 hidden">
               <Swiper
                 effect="coverflow"
                 grabCursor
@@ -159,14 +167,14 @@ export default function SessaoTreinoPremium({
                           {/* Exercise count badge */}
                           <div className="absolute top-3 left-3 z-10">
                             <span className={Badge.neutral}>
-                              {workout.exercises.length} exercícios
+                              {workout.exercises.length} exercÃ­cios
                             </span>
                           </div>
 
                           {/* Today badge */}
                           {isToday && (
                             <div className="absolute top-3 right-3 z-10">
-                              <span className={Badge.neon}>⚡ Hoje</span>
+                              <span className={Badge.neon}>âš¡ Hoje</span>
                             </div>
                           )}
 
@@ -193,7 +201,7 @@ export default function SessaoTreinoPremium({
                               style={isToday ? Btn.primary : { ...Btn.secondary, borderRadius: '14px' }}
                             >
                               <span className="font-black text-[11px] uppercase tracking-widest">
-                                {isToday ? '⚡ Treino de Hoje' : 'Selecionar'}
+                                {isToday ? 'âš¡ Treino de Hoje' : 'Selecionar'}
                               </span>
                               <Play size={12} />
                             </motion.button>
@@ -205,8 +213,8 @@ export default function SessaoTreinoPremium({
                                 const firstEx = workout.exercises[0];
                                 if (firstEx) {
                                   setVideoModal({
-                                    name: `Técnica: ${firstEx.name}`,
-                                    query: EXERCISE_VIDEOS[firstEx.id] || firstEx.name + ' técnica exercício'
+                                    name: `TÃ©cnica: ${firstEx.name}`,
+                                    query: EXERCISE_VIDEOS[firstEx.id] || firstEx.name + ' tÃ©cnica exercÃ­cio'
                                   });
                                 }
                               }}
@@ -215,7 +223,7 @@ export default function SessaoTreinoPremium({
                             >
                               <Play size={10} style={{ color: C.textSub }} />
                               <span className="text-[9px] font-bold uppercase tracking-widest"
-                                style={{ color: C.textSub }}>Pré-visualizar Técnica</span>
+                                style={{ color: C.textSub }}>PrÃ©-visualizar TÃ©cnica</span>
                             </motion.button>
                           </div>
                         </motion.div>
@@ -223,6 +231,109 @@ export default function SessaoTreinoPremium({
                     );
                   })}
               </Swiper>
+            </div>
+
+            {todayEntry && (
+              <motion.div
+                whileTap={{ scale: 0.98 }}
+                className="relative overflow-hidden rounded-[22px] border"
+                style={{
+                  minHeight: 250,
+                  borderColor: 'rgba(244,255,58,0.34)',
+                  background: 'linear-gradient(180deg, rgba(24,24,18,0.98), rgba(6,6,7,0.98))',
+                  boxShadow: '0 18px 44px rgba(0,0,0,0.46), inset 0 1px 0 rgba(255,255,255,0.06)',
+                }}
+              >
+                <img
+                  src={todayEntry[1].image || '/images/chest.png'}
+                  className="absolute inset-0 w-full h-full object-cover opacity-35"
+                  alt={todayEntry[1].title}
+                  style={{ filter: 'grayscale(0.45) contrast(1.08)' }}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.94)_0%,rgba(0,0,0,0.72)_52%,rgba(0,0,0,0.34)_100%)]" />
+                <div className="absolute inset-x-0 top-0 h-px bg-[#F4FF3A]/60" />
+
+                <div className="relative z-10 flex h-full min-h-[250px] flex-col justify-between p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="inline-flex rounded-full border border-[#F4FF3A]/30 bg-[#F4FF3A]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#F4FF3A]">
+                        Treino de hoje
+                      </span>
+                      <p className="mt-3 text-[9px] font-black uppercase tracking-[0.22em] text-white/38">
+                        {todayEntry[1].focus}
+                      </p>
+                      <h3 className="mt-1 max-w-[230px] text-[24px] font-black uppercase leading-[0.94] tracking-tight text-white">
+                        {todayEntry[1].title}
+                      </h3>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-right">
+                      <p className="text-[18px] font-black leading-none text-white">{todayEntry[1].exercises.length}</p>
+                      <p className="mt-1 text-[8px] font-black uppercase tracking-widest text-white/35">exerc.</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {todayEntry[1].preCardio && (
+                      <p className="inline-flex items-center gap-2 rounded-full border border-[#F4FF3A]/18 bg-black/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white/60">
+                        <Zap size={11} className="text-[#F4FF3A]" />
+                        {todayEntry[1].preCardio}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={(e) => { e.stopPropagation(); haptics.heavy(); startSession(parseInt(todayEntry[0])); }}
+                        className="flex items-center justify-center gap-2 rounded-xl bg-[#F4FF3A] px-4 py-3 text-[11px] font-black uppercase tracking-widest text-black shadow-[0_0_18px_rgba(244,255,58,0.24)]"
+                      >
+                        <Play size={13} className="fill-black" />
+                        Iniciar
+                      </motion.button>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const firstEx = todayEntry[1].exercises[0];
+                          if (firstEx) {
+                            setVideoModal({
+                              name: `Tecnica: ${firstEx.name}`,
+                              query: EXERCISE_VIDEOS[firstEx.id] || firstEx.name + ' tecnica exercicio'
+                            });
+                          }
+                        }}
+                        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60"
+                      >
+                        Tecnica
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            <div className="space-y-2">
+              <p className="px-1 text-[9px] font-black uppercase tracking-[0.22em] text-white/30">Outras rotinas</p>
+              <div className="grid grid-cols-1 gap-2">
+                {secondaryWorkouts.map(([key, workout]) => (
+                  <motion.button
+                    key={key}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => { haptics.medium(); startSession(parseInt(key)); }}
+                    className="flex items-center gap-3 rounded-2xl border border-white/7 bg-white/[0.025] p-3 text-left transition-all hover:border-[#F4FF3A]/25 hover:bg-white/[0.04]"
+                  >
+                    <img
+                      src={workout.image || '/images/chest.png'}
+                      alt={workout.title}
+                      className="h-14 w-14 rounded-xl object-cover opacity-80"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[9px] font-black uppercase tracking-[0.18em] text-white/30">{workout.focus}</p>
+                      <h4 className="truncate text-[14px] font-black uppercase leading-tight text-white">{workout.title}</h4>
+                      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-[#F4FF3A]/75">{workout.exercises.length} exercicios</p>
+                    </div>
+                    <ArrowRight size={14} className="text-white/30" />
+                  </motion.button>
+                ))}
+              </div>
             </div>
           </motion.div>
 
@@ -241,7 +352,7 @@ export default function SessaoTreinoPremium({
                     Dia de Descanso
                   </p>
                   <p className="text-[10px] font-semibold mt-0.5" style={{ color: C.textSub }}>
-                    Recuperação ativa recomendada. Hidratação e mobilidade.
+                    RecuperaÃ§Ã£o ativa recomendada. HidrataÃ§Ã£o e mobilidade.
                   </p>
                 </div>
               </div>
@@ -265,9 +376,9 @@ export default function SessaoTreinoPremium({
         </motion.div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════
-          STATE 2: ACTIVE TRAINING — Full Exercise Session
-          ═══════════════════════════════════════════════════════════════════ */}
+      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+          STATE 2: ACTIVE TRAINING â€” Full Exercise Session
+          â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       {isTraining && (
         <motion.div
           key="active-training"
@@ -279,28 +390,33 @@ export default function SessaoTreinoPremium({
         >
           {/* Session header */}
           <motion.div
-            className="flex items-center justify-between px-4 py-3 rounded-[18px] sticky top-0 z-30"
-            style={{ background: 'rgba(14,14,18,0.92)', border: `1px solid ${C.border}`, backdropFilter: 'blur(16px)' }}
+            className="sticky top-0 z-30 flex items-center justify-between overflow-hidden rounded-[18px] border px-4 py-3"
+            style={{
+              background: 'linear-gradient(180deg, rgba(13,13,12,0.96), rgba(5,5,6,0.94))',
+              borderColor: 'rgba(244,255,58,0.14)',
+              backdropFilter: 'blur(16px)',
+              boxShadow: '0 12px 34px rgba(0,0,0,0.36)',
+            }}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] leading-none mb-0.5"
-                style={{ color: C.neonDim }}>Sessão Ativa</p>
+                style={{ color: C.neonDim }}>SessÃ£o Ativa</p>
               <h2 className="text-[17px] font-black uppercase tracking-tight text-white leading-tight truncate">
                 {currentWorkout?.title || 'Treino'}
               </h2>
             </div>
             <div className="flex items-center gap-2 ml-3 shrink-0">
               {restTimer > 0 ? (
-                <span className={Badge.neon}>⏱ {restTimer}s</span>
+                <span className={Badge.neon}>â± {restTimer}s</span>
               ) : (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '2px 8px', borderRadius: 999, fontSize: '8.5px',
                   fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em',
                   background: 'rgba(74,222,128,0.10)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.22)'
-                }}>✓ Go</span>
+                }}>âœ“ Go</span>
               )}
               <motion.div
                 animate={{ scale: [1, 1.12, 1] }}
@@ -310,6 +426,14 @@ export default function SessaoTreinoPremium({
               >
                 <Flame size={14} style={{ color: '#4ADE80' }} />
               </motion.div>
+            </div>
+            <div className="absolute inset-x-4 bottom-1 h-1 overflow-hidden rounded-full bg-white/[0.06]">
+              <motion.div
+                className="h-full rounded-full bg-[#F4FF3A]"
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercent}%` }}
+                transition={{ duration: 0.35 }}
+              />
             </div>
           </motion.div>
 
@@ -327,29 +451,28 @@ export default function SessaoTreinoPremium({
             </motion.div>
           )}
 
-          {/* Anatomy — collapsible */}
+          {/* Anatomy â€” collapsible */}
           {currentWorkout?.exercises?.length > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="overflow-hidden rounded-[18px]"
-              style={{ ...Card.style }}
+              className="overflow-hidden rounded-2xl border border-white/7 bg-white/[0.025] px-3 py-2.5"
             >
               {/* Toggle header */}
               <button
                 onClick={() => setAnatomyOpen(v => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 transition-colors"
+                className="w-full flex items-center justify-between transition-colors"
                 style={{ background: 'transparent' }}
               >
                 <div className="flex items-center gap-2">
-                  <Target size={13} style={{ color: C.neon }} />
-                  <span className="text-white font-black uppercase text-[11px] tracking-tight">Músculos Trabalhados</span>
+                  <Target size={12} className="text-[#F4FF3A]" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/55">Filtros</span>
                   {/* Color dots per muscle group */}
                   <div className="flex gap-1 ml-1">
                     {[...new Set(currentWorkout.exercises.map(e => e.group))].map(muscle => {
                       const mc = MUSCLE_COLORS[muscle];
                       return (
-                        <span key={muscle} className="w-2 h-2 rounded-full"
+                        <span key={muscle} className="w-1.5 h-1.5 rounded-full"
                           style={{ background: mc?.text || C.neon }} />
                       );
                     })}
@@ -370,8 +493,8 @@ export default function SessaoTreinoPremium({
                     transition={{ duration: 0.25 }}
                     className="overflow-hidden"
                   >
-                    <div className="px-4 pb-4">
-                      <div className="scale-95 origin-top rounded-[16px] overflow-hidden">
+                    <div className="pt-3 pb-2">
+                      <div className="max-h-[210px] overflow-hidden rounded-[14px] border border-white/7 bg-black/30">
                         <AnatomyMap2D
                           activeGroup={
                             isPremiumUser && activePrimaryMuscles?.length > 0
@@ -385,12 +508,12 @@ export default function SessaoTreinoPremium({
                 )}
               </AnimatePresence>
 
-              {/* Muscle filter chips — always visible */}
-              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+              {/* Muscle filter chips â€” always visible */}
+              <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
                 <motion.button
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setSelectedMuscle(null)}
-                  className="px-3 py-1 rounded-[8px] font-black uppercase text-[9px] tracking-wider transition-all"
+                  className="shrink-0 px-3 py-1.5 rounded-full font-black uppercase text-[8px] tracking-wider transition-all"
                   style={{
                     background: selectedMuscle === null ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
                     color: selectedMuscle === null ? '#fff' : C.textSub,
@@ -411,7 +534,7 @@ export default function SessaoTreinoPremium({
                       key={muscle}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setSelectedMuscle(muscle === selectedMuscle ? null : muscle)}
-                      className="px-3 py-1 rounded-[8px] font-black uppercase text-[9px] tracking-wider transition-all"
+                      className="shrink-0 px-3 py-1.5 rounded-full font-black uppercase text-[8px] tracking-wider transition-all"
                       style={
                         selectedMuscle === muscle
                           ? { background: mc.text, color: '#000', border: `1px solid ${mc.text}` }
@@ -420,7 +543,7 @@ export default function SessaoTreinoPremium({
                             : { background: mc.bg, color: mc.text, border: `1px solid ${mc.border}` }
                       }
                     >
-                      {allDone ? '✓ ' : ''}{muscle} {completedCount}/{muscleExercises.length}
+                      {allDone ? 'âœ“ ' : ''}{muscle} {completedCount}/{muscleExercises.length}
                     </motion.button>
                   );
                 })}
@@ -433,17 +556,27 @@ export default function SessaoTreinoPremium({
             {!currentWorkout?.exercises?.length ? (
               <div className="flex flex-col items-center justify-center py-14 rounded-[20px]"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)' }}>
-                <span className="text-3xl mb-3 opacity-30">☕</span>
+                <span className="text-3xl mb-3 opacity-30">â˜•</span>
                 <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>
-                  OFF DAY — Descanso Ativo
+                  OFF DAY â€” Descanso Ativo
                 </p>
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-2 px-1 pb-1">
+                <div className="flex items-end justify-between px-1 pb-2">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.22em] text-[#F4FF3A]/65">Logbook</p>
+                    <h3 className="text-[18px] font-black uppercase leading-none text-white">Exercicios</h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white/45">
+                    {completedExercises.length}/{currentWorkout.exercises.length}
+                  </span>
+                </div>
+
+                <div className="hidden items-center gap-2 px-1 pb-1">
                   <TrendingUp size={13} style={{ color: C.neon }} />
                   <span className="font-black uppercase text-[10px] tracking-tight" style={{ color: C.textSub }}>
-                    Exercícios — {completedExercises.length}/{currentWorkout.exercises.length} concluídos
+                    ExercÃ­cios â€” {completedExercises.length}/{currentWorkout.exercises.length} concluÃ­dos
                   </span>
                 </div>
 
@@ -480,44 +613,47 @@ export default function SessaoTreinoPremium({
             <motion.div
               initial={{ opacity: 0, scale: 0.96 }}
               whileInView={{ opacity: 1, scale: 1 }}
-              className="rounded-[20px] overflow-hidden"
+              className="rounded-2xl overflow-hidden"
               style={{
-                background: cardioRunning ? C.neon : 'rgba(14,14,18,0.97)',
-                border: cardioRunning ? `1px solid ${C.neon}` : `1px solid ${C.neonBorder}`,
-                boxShadow: cardioRunning ? '0 0 24px rgba(205,255,90,0.20)' : 'none',
-                padding: '16px',
+                background: cardioRunning
+                  ? 'linear-gradient(180deg, rgba(244,255,58,0.10), rgba(8,8,7,0.98))'
+                  : 'rgba(255,255,255,0.025)',
+                border: cardioRunning ? '1px solid rgba(244,255,58,0.34)' : '1px solid rgba(255,255,255,0.08)',
+                boxShadow: cardioRunning ? '0 12px 30px rgba(0,0,0,0.30)' : 'none',
+                padding: '14px',
               }}
             >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full"
-                  style={{ background: cardioRunning ? 'rgba(0,0,0,0.12)' : C.neonBg }}>
-                  <Flame size={14} style={{ color: cardioRunning ? '#000' : C.neon }} />
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#F4FF3A]/18 bg-[#F4FF3A]/8">
+                    <Flame size={14} className="text-[#F4FF3A]" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: C.textSub }}>Cardio final</p>
+                    <p className="truncate text-[12px] font-black uppercase leading-none text-white">{currentWorkout.cardio}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[9px] font-bold uppercase tracking-widest"
-                    style={{ color: cardioRunning ? 'rgba(0,0,0,0.5)' : C.textSub }}>Finalização</p>
-                  <p className="text-[12px] font-black uppercase leading-none"
-                    style={{ color: cardioRunning ? '#000' : '#fff' }}>{currentWorkout.cardio}</p>
-                </div>
+                {cardioRunning && (
+                  <span className="rounded-full border border-[#F4FF3A]/22 bg-[#F4FF3A]/10 px-3 py-1 text-[12px] font-black font-mono text-[#F4FF3A]">
+                    {formatCardioTime(cardioTime)}
+                  </span>
+                )}
               </div>
 
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={(e) => { e.stopPropagation(); setCardioRunning(!cardioRunning); }}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-[14px]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl"
                 style={cardioRunning
-                  ? { background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(0,0,0,0.10)', color: '#000', borderRadius: '14px' }
-                  : { ...Btn.primary, borderRadius: '14px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }
+                  ? { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,255,58,0.22)', color: '#F4FF3A' }
+                  : { background: '#F4FF3A', border: '1px solid #F4FF3A', color: '#000', boxShadow: 'none' }
                 }
               >
                 <span className="font-black text-[11px] uppercase tracking-widest">
-                  {cardioRunning ? '■ Finalizar Cardio' : '▶ Iniciar Cardio'}
+                  {cardioRunning ? 'Finalizar cardio' : 'Iniciar cardio'}
                 </span>
                 {cardioRunning && (
-                  <div className="flex items-center gap-2">
-                    <div className="h-1.5 w-1.5 rounded-full bg-red-600 animate-ping" />
-                    <span className="font-black font-mono text-[15px]">{formatCardioTime(cardioTime)}</span>
-                  </div>
+                  <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />
                 )}
               </motion.button>
             </motion.div>
@@ -530,7 +666,7 @@ export default function SessaoTreinoPremium({
             className="w-full flex items-center justify-center gap-2 py-4 mt-2 rounded-[18px]"
             style={Btn.danger}
           >
-            <span className="text-[10.5px] font-black uppercase tracking-widest">🛑 Finalizar Sessão</span>
+            <span className="text-[10.5px] font-black uppercase tracking-widest">ðŸ›‘ Finalizar SessÃ£o</span>
           </motion.button>
         </motion.div>
       )}

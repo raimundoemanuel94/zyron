@@ -8,7 +8,15 @@ ALTER TABLE public.workout_logs
   ADD COLUMN IF NOT EXISTS workout_name   TEXT,
   ADD COLUMN IF NOT EXISTS started_at     TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS ended_at       TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS location       TEXT;
+  ADD COLUMN IF NOT EXISTS location       TEXT,
+  ADD COLUMN IF NOT EXISTS sync_id        TEXT,
+  ADD COLUMN IF NOT EXISTS source         TEXT DEFAULT 'web',
+  ADD COLUMN IF NOT EXISTS synced_at      TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS status         TEXT DEFAULT 'synced';
+
+CREATE UNIQUE INDEX IF NOT EXISTS workout_logs_sync_id_key
+  ON public.workout_logs (sync_id)
+  WHERE sync_id IS NOT NULL;
 
 -- 2. Backfill: usar created_at como ended_at para logs antigos
 UPDATE public.workout_logs
@@ -25,8 +33,18 @@ CREATE TABLE IF NOT EXISTS public.set_logs (
   weight_kg    NUMERIC,
   reps         INTEGER,
   rpe          INTEGER,
+  rir          INTEGER,
+  rest_seconds INTEGER,
+  duration_seconds INTEGER,
+  status       TEXT DEFAULT 'completed',
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE public.set_logs
+  ADD COLUMN IF NOT EXISTS rir              INTEGER,
+  ADD COLUMN IF NOT EXISTS rest_seconds     INTEGER,
+  ADD COLUMN IF NOT EXISTS duration_seconds INTEGER,
+  ADD COLUMN IF NOT EXISTS status           TEXT DEFAULT 'completed';
 
 -- 4. RLS para set_logs
 ALTER TABLE public.set_logs ENABLE ROW LEVEL SECURITY;

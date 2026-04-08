@@ -222,6 +222,7 @@ export function useExerciseLoads(userId) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useExerciseCompletion(userId, workoutKey) {
+  const legacyCompletionSyncEnabled = import.meta.env.VITE_LEGACY_EXERCISE_COMPLETION_SYNC === 'true';
   const [completedExercises, setCompletedExercises] = useState(() => {
     // Initialize from cache
     try {
@@ -290,22 +291,24 @@ export function useExerciseCompletion(userId, workoutKey) {
         : completedExercises.filter(id => id !== exerciseId);
       cacheHelpers.saveToDisk(completionsKey, updated);
 
-      // 3️⃣ Sync to Supabase (async, non-blocking)
-      syncExerciseToSupabase(
-        exerciseId,
-        exerciseName,
-        isCompleting,
-        data
-      ).catch(err => {
-        console.error('Failed to sync exercise completion:', err);
-        setError(err.message);
-        // Rollback on failure
-        setCompletedExercises(prev =>
-          isCompleting
-            ? prev.filter(id => id !== exerciseId)
-            : [...prev, exerciseId]
-        );
-      });
+      // 3️⃣ Legacy sync opcional. No fluxo novo, o backend registra isso no sync final.
+      if (legacyCompletionSyncEnabled) {
+        syncExerciseToSupabase(
+          exerciseId,
+          exerciseName,
+          isCompleting,
+          data
+        ).catch(err => {
+          console.error('Failed to sync exercise completion:', err);
+          setError(err.message);
+          // Rollback on failure
+          setCompletedExercises(prev =>
+            isCompleting
+              ? prev.filter(id => id !== exerciseId)
+              : [...prev, exerciseId]
+          );
+        });
+      }
     } catch (err) {
       console.error('Failed to toggle exercise:', err);
       setError(err.message);
@@ -316,7 +319,7 @@ export function useExerciseCompletion(userId, workoutKey) {
           : [...prev, exerciseId]
       );
     }
-  }, [userId, completedExercises]);
+  }, [userId, completedExercises, legacyCompletionSyncEnabled]);
 
   // Sync exercise completion to Supabase
   const syncExerciseToSupabase = async (

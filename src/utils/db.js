@@ -1,5 +1,5 @@
 const DB_NAME = 'ZYRON_OFFLINE_DB';
-const DB_VERSION = 2; // Bumped for PENDING_SYNC
+const DB_VERSION = 3; // Bumped for richer sync queue metadata
 const STORE_NAME = 'PENDING_PHOTOS';
 const SYNC_STORE_NAME = 'PENDING_SYNC';
 /**
@@ -138,6 +138,8 @@ class ZyronDB {
         if (item) {
           item.retryCount = retryCount;
           item.status = status;
+          item.lastAttemptAt = Date.now();
+          item.nextRetryAt = Date.now() + Math.min(15 * 60 * 1000, Math.max(30 * 1000, (2 ** retryCount) * 1000));
           const putReq = store.put(item);
           putReq.onsuccess = () => resolve(true);
           putReq.onerror = () => reject(putReq.error);
@@ -145,6 +147,35 @@ class ZyronDB {
           resolve(false);
         }
       };
+      getReq.onerror = () => reject(getReq.error);
+    });
+  }
+
+  async updateSyncItem(id, updates = {}) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(SYNC_STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(SYNC_STORE_NAME);
+      const getReq = store.get(id);
+
+      getReq.onsuccess = () => {
+        const item = getReq.result;
+        if (!item) {
+          resolve(false);
+          return;
+        }
+
+        const nextItem = {
+          ...item,
+          ...updates,
+          updatedAt: Date.now(),
+        };
+
+        const putReq = store.put(nextItem);
+        putReq.onsuccess = () => resolve(nextItem);
+        putReq.onerror = () => reject(putReq.error);
+      };
+
       getReq.onerror = () => reject(getReq.error);
     });
   }

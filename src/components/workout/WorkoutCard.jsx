@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlayCircle, CheckCircle2, Trophy, Zap, Plus, Minus, History, Play, Square, X, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { Play, ChevronUp } from 'lucide-react';
 import haptics from '../../utils/haptics';
 import ExerciseAnimation from './ExerciseAnimation';
 import { EXERCISE_ANIMATIONS, DEFAULT_ANIMATION } from '../../data/exerciseAnimations';
@@ -11,13 +11,26 @@ const MUSCLE_COLORS = {
   'Peito':      { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
   'Costas':     { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
   'Perna':      { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-  'Bíceps':     { badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-  'Tríceps':    { badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
+  'BÃ­ceps':     { badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+  'TrÃ­ceps':    { badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
   'Ombro':      { badge: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
-  'Abdômen':    { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
+  'AbdÃ´men':    { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
   'Panturrilha':{ badge: 'bg-teal-500/15 text-teal-400 border-teal-500/30' },
-  'Antebraço':  { badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30' },
-  'Glúteos':    { badge: 'bg-pink-500/15 text-pink-400 border-pink-500/30' },
+  'AntebraÃ§o':  { badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30' },
+  'GlÃºteos':    { badge: 'bg-pink-500/15 text-pink-400 border-pink-500/30' },
+};
+
+const clampNumber = (value, min, max) => {
+  if (value === '') return '';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '';
+  return String(Math.min(max, Math.max(min, parsed)));
+};
+
+const getDefaultReps = (repsRange) => {
+  if (!repsRange) return '';
+  const match = String(repsRange).match(/\d+/);
+  return match ? match[0] : '';
 };
 
 export default function WorkoutCard({
@@ -39,11 +52,19 @@ export default function WorkoutCard({
   // Load persistence with BD sync
   const { updateLoad: persistLoad } = useExerciseLoads(userId);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [videoPlaying, setVideoPlaying] = useState(false);
   const [activeSet, setActiveSet] = useState(1);
   const [isRunning, setIsRunning] = useState(false);
   const [setTimer, setSetTimer] = useState(0);
   const [showVideo, setShowVideo] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [loggedSets, setLoggedSets] = useState([]);
+  const [actualReps, setActualReps] = useState('');
+  const [rpe, setRpe] = useState('');
+  const [rir, setRir] = useState('');
+  const [restSeconds, setRestSeconds] = useState(String(ex.rest || 60));
+  const [setStatus, setSetStatus] = useState('completed');
+  const [setError, setSetError] = useState('');
+  const totalSets = parseInt(ex.sets, 10) || 1;
   const cardRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -72,83 +93,132 @@ export default function WorkoutCard({
     audio.play().catch(e => console.log("Audio play blocked"));
   };
 
+  const getValidatedSetData = () => {
+    const repsValue = parseInt(actualReps, 10);
+    const weightValue = parseFloat(load);
+    const rpeValue = rpe === '' ? null : parseInt(rpe, 10);
+    const rirValue = rir === '' ? null : parseInt(rir, 10);
+    const restValue = parseInt(restSeconds, 10);
+
+    if (!Number.isFinite(repsValue) || repsValue <= 0) {
+      return { error: 'Informe as reps reais desta serie.' };
+    }
+
+    if (!Number.isFinite(weightValue) || weightValue < 0) {
+      return { error: 'Confirme a carga usada.' };
+    }
+
+    if (rpeValue !== null && (!Number.isFinite(rpeValue) || rpeValue < 1 || rpeValue > 10)) {
+      return { error: 'RPE deve ficar entre 1 e 10.' };
+    }
+
+    if (rirValue !== null && (!Number.isFinite(rirValue) || rirValue < 0 || rirValue > 10)) {
+      return { error: 'RIR deve ficar entre 0 e 10.' };
+    }
+
+    if (!Number.isFinite(restValue) || restValue < 0) {
+      return { error: 'Confirme o descanso em segundos.' };
+    }
+
+    return {
+      data: {
+        set_number: activeSet,
+        weight_kg: weightValue,
+        reps: repsValue,
+        rpe: rpeValue,
+        rir: rirValue,
+        rest_seconds: restValue,
+        duration_seconds: setTimer || null,
+        status: setStatus,
+      }
+    };
+  };
+
+  const resetSetCapture = () => {
+    setActualReps('');
+    setRpe('');
+    setRir('');
+    setRestSeconds(String(ex.rest || 60));
+    setSetStatus('completed');
+    setSetTimer(0);
+    setSetError('');
+  };
+
+  const registerSet = () => {
+    const { data, error } = getValidatedSetData();
+
+    if (error) {
+      setSetError(error);
+      setIsExpanded(true);
+      haptics.medium();
+      return false;
+    }
+
+    setIsRunning(false);
+    haptics.success();
+    playMetalSound();
+
+    onUpdateLoad(ex.id, String(data.weight_kg));
+    setLoggedSets(prev => {
+      const next = prev.filter(set => set.set_number !== data.set_number);
+      return [...next, data].sort((a, b) => a.set_number - b.set_number);
+    });
+
+    if (userId) {
+      persistLoad(ex.id, ex.name, data.weight_kg, null).catch(err => console.error('Failed to persist load:', err));
+    }
+
+    const isFinalSet = data.set_number >= totalSets;
+
+    onComplete(ex.id, isFinalSet, data);
+
+    if (isFinalSet) {
+      setIsExpanded(false);
+    } else {
+      setActiveSet(Math.min(data.set_number + 1, totalSets));
+    }
+
+    resetSetCapture();
+    return true;
+  };
+
   const handleToggleSet = (e) => {
     e.stopPropagation();
-    if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback on interact
+    if (navigator.vibrate) navigator.vibrate(50);
+
     if (!isRunning) {
+      setSetError('');
+      setActualReps(prev => prev || getDefaultReps(ex.reps));
       setIsRunning(true);
       setSetTimer(0);
-      // Activate muscle pump on start (if premium user)
       if (onActivateMuscle && isPremiumUser) {
         onActivateMuscle(ex.id);
       }
-    } else {
-      setIsRunning(false);
-      haptics.success();
-      playMetalSound();
-      
-      // Feature request: "Ao clicar em finalizar, dispare automaticamente o temporizador de descanso no topo e REGISTRE A CARGA"
-      onUpdateLoad(ex.id, load || '0');
-      // Persist load to Supabase
-      if (userId && load) {
-        persistLoad(ex.id, ex.name, parseFloat(load), null).catch(err => console.error('Failed to persist load:', err));
-      }
-
-      const setData = {
-        set_number: activeSet,
-        weight_kg: load || '0',
-        reps: ex.reps ? parseInt(ex.reps.split('-')[0]) : 0,
-        rpe: null // Could be added to UI in the future
-      };
-
-      if (activeSet < parseInt(ex.sets)) {
-        setActiveSet(prev => prev + 1);
-        onComplete(ex.id, false, setData); // Partial complete/timer trigger + data
-      } else {
-        onComplete(ex.id, true, setData); // Final complete + data
-        setIsExpanded(false);
-      }
-    }
-  };
-
-  // Smart Play (Intersection Observer) - Feature 1
-  useEffect(() => {
-    if (!isExpanded) {
-      setVideoPlaying(false);
       return;
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVideoPlaying(true);
-        } else {
-          setVideoPlaying(false);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (cardRef.current) {
-      observer.observe(cardRef.current);
-    }
-
-    return () => {
-      if (cardRef.current) observer.unobserve(cardRef.current);
-    };
-  }, [isExpanded]);
-
-  // Haptic Picker Handlers - Feature 2
-  const handleLoadChange = (delta) => {
-    haptics.light();
-    const currentLoad = parseFloat(load) || 0;
-    const newLoad = Math.max(0, currentLoad + delta);
-    onUpdateLoad(ex.id, newLoad.toString());
-    // Persist load to Supabase
-    if (userId) {
-      persistLoad(ex.id, ex.name, newLoad, null).catch(err => console.error('Failed to persist load:', err));
-    }
+    registerSet();
   };
+
+  useEffect(() => {
+    if (!loggedSets.length) return;
+
+    const firstPendingSet = Array.from({ length: totalSets }, (_, index) => index + 1)
+      .find(setNumber => !loggedSets.some(set => set.set_number === setNumber));
+
+    if (firstPendingSet && firstPendingSet !== activeSet) {
+      setActiveSet(firstPendingSet);
+    }
+  }, [loggedSets, totalSets, activeSet]);
+
+  useEffect(() => {
+    setActiveSet(1);
+    setLoggedSets([]);
+    setIsRunning(false);
+    setShowVideo(false);
+    setShowAdvanced(false);
+    resetSetCapture();
+  }, [ex.id]);
 
   const isNewPR = parseFloat(load) > (prHistoryLoad || 0);
 
@@ -158,11 +228,16 @@ export default function WorkoutCard({
       ref={cardRef}
       className={`relative bg-neutral-950 backdrop-blur-md border transition-all duration-300 overflow-hidden ${
         completed
-          ? 'border-emerald-500/30 opacity-60 rounded-2xl'
+          ? 'border-emerald-500/30 opacity-70 rounded-2xl'
           : isExpanded
-            ? 'border-yellow-400/60 rounded-3xl shadow-[0_0_25px_rgba(253,224,71,0.08)] z-10'
-            : 'border-white/5 hover:border-yellow-400/20 rounded-2xl'
+            ? 'border-yellow-400/55 rounded-[22px] shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_24px_rgba(253,224,71,0.08)] z-10'
+            : 'border-white/7 hover:border-yellow-400/25 rounded-2xl'
       }`}
+      style={{
+        background: isExpanded
+          ? 'linear-gradient(180deg, rgba(18,18,16,0.98), rgba(5,5,6,0.98))'
+          : 'linear-gradient(180deg, rgba(15,15,16,0.98), rgba(8,8,9,0.98))',
+      }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onClick={() => {
         if (!completed && !isExpanded) {
@@ -192,19 +267,20 @@ export default function WorkoutCard({
               transition={{ repeat: Infinity, duration: 1 }}
               className="text-5xl mb-2"
             >
-              🏆
+              ðŸ†
             </motion.div>
             <span className="text-2xl font-black italic text-emerald-400 uppercase tracking-widest">NOVO RECORDE!</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ─── COLLAPSED STATE — Compact Horizontal Row ─── */}
+      {/* â”€â”€â”€ COLLAPSED STATE â€” Compact Horizontal Row â”€â”€â”€ */}
       {!isExpanded && (
-        <div className="flex items-center gap-3 p-3">
+        <div className="relative grid grid-cols-[1fr_auto] items-center gap-3 p-4">
+          <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[#F4FF3A]/70" />
           {/* Thumbnail animado */}
           <div
-            className="relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer group/thumb border border-white/10 bg-neutral-900"
+            className="hidden relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer group/thumb border border-white/10 bg-neutral-900 shadow-inner"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(true);
@@ -227,22 +303,26 @@ export default function WorkoutCard({
             </div>
           </div>
 
-          {/* Informações do exercício */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
+          {/* InformaÃ§Ãµes do exercÃ­cio */}
+          <div className="min-w-0 pl-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
                 {ex.group}
               </span>
+              <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white/35">
+                {activeSet}/{ex.sets}
+              </span>
               {completed && (
-                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">✓ Completo</span>
+                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">âœ“ Completo</span>
               )}
             </div>
-            <h3 className="text-base font-black uppercase tracking-tight text-white leading-none truncate">
+            <h3 className="text-[16px] font-black uppercase tracking-tight text-white leading-[0.95] truncate">
               {ex.name}
             </h3>
-            <div className="flex gap-3 mt-1">
-              <span className="text-[10px] font-bold text-neutral-500">{ex.sets}×{ex.reps}</span>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              <span className="text-[10px] font-bold text-neutral-500">{ex.sets}Ã—{ex.reps}</span>
               <span className="text-[10px] font-black text-yellow-400">{load || '0'} kg</span>
+              <span className="text-[10px] font-bold text-neutral-600">{ex.rest || 60}s descanso</span>
               {prHistoryLoad && (
                 <span className="text-[10px] font-bold text-neutral-600">PR: {prHistoryLoad}kg</span>
               )}
@@ -254,119 +334,103 @@ export default function WorkoutCard({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onComplete(ex.id, true);
+                setIsExpanded(true);
+                cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
-              className="shrink-0 text-[8px] font-black text-white/20 hover:text-yellow-400 uppercase tracking-widest px-2 py-1 rounded-lg hover:bg-yellow-400/10 transition-all"
+              className="shrink-0 rounded-full border border-[#F4FF3A]/28 bg-[#F4FF3A]/10 px-4 py-2.5 text-[8px] font-black uppercase tracking-widest text-[#F4FF3A] transition-all hover:bg-[#F4FF3A]/16"
             >
-              Quick<br/>Check
+              Registrar
             </button>
           )}
         </div>
       )}
 
-      {/* ─── EXPANDED STATE — Full Layout ─── */}
+      {/* Expanded state: series logger */}
       {isExpanded && (
-        <div className="flex flex-col">
-          {/* ── Banner: Exercise Animation (Treino Mestre style) ── */}
-          <div className="relative rounded-t-2xl overflow-hidden bg-neutral-900">
-            <ExerciseAnimation
-              frame0={animData.frame0}
-              frame1={animData.frame1}
-              frame0fb={animData.frame0fb}
-              frame1fb={animData.frame1fb}
-              muscles={animData.muscles || []}
-              tip={animData.tip || ''}
-              instructions={animData.instructions || []}
-              exerciseName={ex.name}
-              className="min-h-[160px] max-h-[220px]"
-            />
-            {/* Fechar — canto superior direito (sobrepõe a animação) */}
+        <div className="flex flex-col p-4 pb-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
+                  {ex.group}
+                </span>
+                <span className="rounded-full border border-[#F4FF3A]/22 bg-[#F4FF3A]/8 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#F4FF3A]">
+                  Serie {activeSet}/{ex.sets}
+                </span>
+              </div>
+              <h3 className="truncate text-[20px] font-black uppercase leading-[0.95] tracking-tight text-white">
+                {ex.name}
+              </h3>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-white/38">
+                Alvo {ex.reps} reps - descanso {ex.rest || 60}s
+              </p>
+            </div>
             <button
               onClick={(e) => { e.stopPropagation(); setIsExpanded(false); setShowVideo(false); }}
-              className="absolute top-2 right-2 p-1.5 bg-black/70 backdrop-blur-sm rounded-full border border-white/10 text-white/60 hover:text-white transition-all z-30"
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] p-2 text-white/55 transition-all hover:text-white"
             >
-              <ChevronUp size={12} />
+              <ChevronUp size={13} />
             </button>
           </div>
 
-          {/* ── Optional YouTube button (secondary) ── */}
-          <div className="px-3 pt-2">
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-white/8 bg-white/[0.025] px-3 py-2">
+            <div className="flex items-center gap-1.5">
+              {Array.from({ length: parseInt(ex.sets) || 0 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`rounded-full transition-all duration-300 ${
+                    i < activeSet - 1
+                      ? 'h-2 w-5 bg-emerald-400/80'
+                      : i === activeSet - 1
+                        ? 'h-2 w-8 bg-[#F4FF3A] shadow-[0_0_8px_rgba(244,255,58,0.45)]'
+                        : 'h-2 w-2 bg-white/12'
+                  }`}
+                />
+              ))}
+            </div>
             <button
               onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
-              className="w-full flex items-center justify-center gap-2 py-1.5 bg-neutral-900 border border-white/5 hover:border-yellow-400/20 rounded-xl transition-all group/yt"
+              className="rounded-full border border-white/8 bg-black/30 px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-[#F4FF3A]"
             >
-              <Play className="text-red-500 fill-red-500" size={12} />
-              <span className="text-[9px] font-black text-neutral-500 group-hover/yt:text-neutral-300 uppercase tracking-widest transition-colors">
-                {showVideo ? 'Fechar Vídeo YouTube' : 'Ver no YouTube'}
-              </span>
+              {showVideo ? 'Fechar tecnica' : 'Tecnica'}
             </button>
           </div>
 
-          {/* Inline YouTube Video (collapse) */}
           <AnimatePresence>
             {showVideo && (
-              <React.Fragment>
-                <div className="fixed inset-0 z-40 bg-transparent" onClick={(e) => { e.stopPropagation(); setShowVideo(false); }} />
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden bg-black relative z-50 mx-3 mb-2 rounded-xl"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="relative aspect-video">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${videoQuery}?autoplay=1&modestbranding=1&rel=0`}
-                      title={ex.name}
-                      className="w-full h-full rounded-xl"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    />
-                    <button onClick={(e) => { e.stopPropagation(); setShowVideo(false); }} className="absolute top-2 right-2 p-1.5 bg-black/70 rounded-full text-white hover:bg-red-500 transition-colors z-10">
-                      <X size={14} />
-                    </button>
-                  </div>
-                </motion.div>
-              </React.Fragment>
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="mt-3 overflow-hidden rounded-2xl border border-white/8 bg-black/40"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="grid grid-cols-[88px_1fr] items-center gap-3 p-2">
+                  <ExerciseAnimation
+                    frame0={animData.frame0}
+                    frame1={animData.frame1}
+                    frame0fb={animData.frame0fb}
+                    frame1fb={animData.frame1fb}
+                    muscles={animData.muscles || []}
+                    tip={animData.tip || ''}
+                    instructions={animData.instructions || []}
+                    exerciseName={ex.name}
+                    className="h-[78px] rounded-xl overflow-hidden"
+                  />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
+                    className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/45"
+                  >
+                    Tecnica visual ativa
+                  </button>
+                </div>
+              </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Info: badge + nome + progress dots */}
-          <div className="px-4 pt-3 pb-2">
-            <div className="flex items-center justify-between">
-              <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
-                {ex.group}
-              </span>
-              {/* Progress dots para séries */}
-              <div className="flex items-center gap-1">
-                {Array.from({ length: parseInt(ex.sets) || 0 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`rounded-full transition-all duration-300 ${
-                      i < activeSet - 1
-                        ? 'w-2 h-2 bg-emerald-400'
-                        : i === activeSet - 1
-                          ? 'w-3 h-3 bg-yellow-400 shadow-[0_0_8px_rgba(253,224,71,0.6)]'
-                          : 'w-2 h-2 bg-neutral-700'
-                    }`}
-                  />
-                ))}
-                <span className="text-[9px] font-black text-neutral-500 ml-1">{activeSet}/{ex.sets}</span>
-              </div>
-            </div>
-
-            <h3 className="text-lg font-black uppercase tracking-tight italic text-white leading-none mt-1.5">
-              {ex.name}
-            </h3>
-
-            {/* Reps info */}
-            <p className="text-[11px] font-black text-neutral-400 uppercase tracking-widest mt-1">
-              {ex.reps} repetições
-            </p>
-          </div>
         </div>
       )}
 
-      {/* Progressive Reveal Box */}
+      {/* Series logger */}
       <AnimatePresence>
         {isExpanded && !completed && (
           <motion.div
@@ -376,72 +440,218 @@ export default function WorkoutCard({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-3">
-
-              {/* Carga — linha horizontal compacta */}
-              <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 transition-all ${
-                isNewPR
-                  ? 'bg-emerald-950/30 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
-                  : 'bg-neutral-900/60 border-white/8'
-              }`}>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-neutral-500">Carga</p>
-                  {isNewPR && (
-                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">🏆 Novo PR!</p>
-                  )}
-                  {prHistoryLoad && !isNewPR && (
-                    <p className="text-[9px] text-neutral-600 font-bold">Ant: {prHistoryLoad}kg</p>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
+              <div className="rounded-2xl border border-[#F4FF3A]/18 bg-[#F4FF3A]/[0.035] p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[8px] font-black uppercase tracking-widest text-[#F4FF3A]/75">Serie atual</p>
+                    <p className="mt-1 text-sm font-black uppercase tracking-tight text-white">
+                      Serie {activeSet} de {totalSets}
+                    </p>
+                  </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleLoadChange(-2.5); }}
-                    className="w-7 h-7 rounded-lg bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-neutral-300 text-xs font-black transition-all"
-                  >
-                    −
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleLoadChange(-1); }}
-                    className="w-8 h-8 rounded-lg bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-white transition-all"
-                  >
-                    <Minus size={16} />
-                  </button>
-
-                  <input
-                    type="number"
-                    value={load || ''}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => {
-                      onUpdateLoad(ex.id, e.target.value);
-                      // Persist load to Supabase
-                      if (userId && e.target.value) {
-                        persistLoad(ex.id, ex.name, parseFloat(e.target.value), null).catch(err => console.error('Failed to persist load:', err));
-                      }
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSetStatus(prev => prev === 'completed' ? 'failed' : 'completed');
                     }}
-                    placeholder="0"
-                    className={`w-16 bg-transparent text-center font-black text-2xl italic tracking-tighter outline-none ${isNewPR ? 'text-emerald-400' : 'text-white'}`}
-                  />
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleLoadChange(1); }}
-                    className="w-8 h-8 rounded-lg bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-white transition-all"
+                    className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all ${
+                      setStatus === 'failed'
+                        ? 'border-red-400/50 bg-red-500/16 text-red-200'
+                        : 'border-emerald-400/35 bg-emerald-400/10 text-emerald-300'
+                    }`}
                   >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleLoadChange(2.5); }}
-                    className="w-7 h-7 rounded-lg bg-neutral-800 border border-white/5 flex items-center justify-center active:scale-90 hover:bg-neutral-700 text-neutral-300 text-xs font-black transition-all"
-                  >
-                    +
+                    {setStatus === 'failed' ? 'Falha' : 'Feita'}
                   </button>
                 </div>
 
-                <span className={`text-lg font-black tracking-tighter ${isNewPR ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                  kg
-                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="rounded-xl border border-white/10 bg-black/35 px-3 py-2">
+                    <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Carga usada</span>
+                    <div className="mt-1 flex items-baseline gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.5"
+                        inputMode="decimal"
+                        value={load || ''}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          setSetError('');
+                          onUpdateLoad(ex.id, e.target.value);
+                        }}
+                        placeholder="0"
+                        className="w-full bg-transparent text-xl font-black text-white outline-none"
+                      />
+                      <span className="text-[10px] font-black text-[#F4FF3A]">kg</span>
+                    </div>
+                  </label>
+
+                  <label className="rounded-xl border border-white/10 bg-black/35 px-3 py-2">
+                    <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Reps feitas</span>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={actualReps}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        setSetError('');
+                        setActualReps(clampNumber(e.target.value, 0, 999));
+                      }}
+                      placeholder={getDefaultReps(ex.reps) || '0'}
+                      className="mt-1 w-full bg-transparent text-xl font-black text-white outline-none"
+                    />
+                  </label>
+                </div>
               </div>
 
-              {/* Botão Série — Alta hierarquia visual */}
+              <div className="rounded-2xl border border-white/8 bg-black/25 px-3 py-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/35">Series do exercicio</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/25">
+                    {loggedSets.length}/{totalSets} salvas
+                  </span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {Array.from({ length: totalSets }).map((_, index) => {
+                    const setNumber = index + 1;
+                    const logged = loggedSets.find(set => set.set_number === setNumber);
+                    const isActiveSet = setNumber === activeSet;
+
+                    return (
+                      <div
+                        key={setNumber}
+                        className={`min-w-[82px] rounded-xl border px-2 py-2 ${
+                          logged?.status === 'failed'
+                            ? 'border-red-400/35 bg-red-500/10'
+                            : logged
+                              ? 'border-emerald-400/30 bg-emerald-400/10'
+                              : isActiveSet
+                                ? 'border-[#F4FF3A]/45 bg-[#F4FF3A]/10'
+                                : 'border-white/8 bg-white/[0.025]'
+                        }`}
+                      >
+                        <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">S{setNumber}</span>
+                        <span className="mt-1 block text-[10px] font-black text-white/70">
+                          {logged ? `${logged.weight_kg}kg x ${logged.reps}` : isActiveSet ? 'Agora' : 'A fazer'}
+                        </span>
+                        <span className={`mt-1 block text-[8px] font-black uppercase tracking-widest ${
+                          logged?.status === 'failed'
+                            ? 'text-red-300'
+                            : logged
+                              ? 'text-emerald-300'
+                              : isActiveSet
+                                ? 'text-[#F4FF3A]'
+                                : 'text-white/22'
+                        }`}
+                        >
+                          {logged ? (logged.status === 'failed' ? 'Falha' : 'Feita') : isActiveSet ? 'Atual' : 'Pendente'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.025] px-3 py-2">
+                <label>
+                  <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Descanso apos a serie</span>
+                  <div className="mt-1 flex items-baseline gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={restSeconds}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => {
+                        setSetError('');
+                        setRestSeconds(clampNumber(e.target.value, 0, 999));
+                      }}
+                      className="w-20 bg-transparent text-base font-black text-white outline-none"
+                    />
+                    <span className="text-[10px] font-black uppercase text-[#F4FF3A]">s</span>
+                  </div>
+                </label>
+
+                {isRunning && (
+                  <span className="rounded-full border border-[#F4FF3A]/30 bg-[#F4FF3A]/10 px-3 py-1.5 font-mono text-sm font-black text-[#F4FF3A]">
+                    {formatSetTime(setTimer)}
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowAdvanced(prev => !prev); }}
+                className="w-full rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-left text-[9px] font-black uppercase tracking-widest text-white/40 transition-all hover:text-[#F4FF3A]"
+              >
+                {showAdvanced ? 'Ocultar detalhes' : '+ Detalhes: RPE / RIR'}
+              </button>
+
+              <AnimatePresence>
+                {showAdvanced && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="grid grid-cols-2 gap-2 overflow-hidden"
+                  >
+                    <label className="rounded-xl bg-white/[0.035] border border-white/8 px-3 py-2">
+                      <span className="block text-[8px] font-black uppercase tracking-widest text-neutral-500">RPE opcional</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        inputMode="numeric"
+                        value={rpe}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          setSetError('');
+                          setRpe(clampNumber(e.target.value, 1, 10));
+                        }}
+                        placeholder="1-10"
+                        className="mt-1 w-full bg-transparent text-lg font-black text-white outline-none"
+                      />
+                    </label>
+
+                    <label className="rounded-xl bg-white/[0.035] border border-white/8 px-3 py-2">
+                      <span className="block text-[8px] font-black uppercase tracking-widest text-neutral-500">RIR opcional</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        inputMode="numeric"
+                        value={rir}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          setSetError('');
+                          setRir(clampNumber(e.target.value, 0, 10));
+                        }}
+                        placeholder="0-10"
+                        className="mt-1 w-full bg-transparent text-lg font-black text-white outline-none"
+                      />
+                    </label>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {(isNewPR || prHistoryLoad) && (
+                <p className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-wider ${
+                  isNewPR
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-white/8 bg-white/[0.025] text-white/35'
+                }`}
+                >
+                  {isNewPR ? 'Novo PR de carga neste exercicio.' : `Carga anterior: ${prHistoryLoad}kg`}
+                </p>
+              )}
+
+              {setError && (
+                <p className="rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300">
+                  {setError}
+                </p>
+              )}
+
               <motion.button
                 layout
                 onClick={(e) => {
@@ -450,35 +660,34 @@ export default function WorkoutCard({
                     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 }}
-                className={`w-full h-14 rounded-xl flex items-center justify-between px-5 transition-all duration-300 font-black ${
+                className={`w-full h-12 rounded-2xl flex items-center justify-between px-4 transition-all duration-300 font-black ${
                   isRunning
-                    ? 'bg-yellow-400 text-neutral-950 shadow-[0_0_25px_rgba(253,224,71,0.5)]'
-                    : 'bg-neutral-900 text-white border-2 border-yellow-400/60 hover:border-yellow-400 hover:bg-neutral-800'
+                    ? 'bg-[#F4FF3A] text-neutral-950'
+                    : 'bg-[#F4FF3A]/12 text-[#F4FF3A] border border-[#F4FF3A]/35 hover:bg-[#F4FF3A]/18'
                 }`}
               >
                 <div className="flex items-center gap-3 leading-none">
                   {isRunning ? (
-                    <div className="w-2 h-2 bg-red-600 rounded-full animate-ping shrink-0" />
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-red-600 animate-ping" />
                   ) : (
-                    <Play className={`shrink-0 ${isRunning ? 'fill-neutral-950 text-neutral-950' : 'fill-yellow-400 text-yellow-400'}`} size={18} />
+                    <Play className="shrink-0 fill-[#F4FF3A] text-[#F4FF3A]" size={16} />
                   )}
-                  <div>
-                    <span className={`text-[9px] font-black uppercase tracking-widest block ${isRunning ? 'text-neutral-700' : 'text-neutral-500'}`}>
-                      {isRunning ? 'Em Execução' : `Série ${activeSet} de ${ex.sets}`}
+                  <div className="text-left">
+                    <span className={`block text-[8px] font-black uppercase tracking-widest ${isRunning ? 'text-neutral-700' : 'text-white/35'}`}>
+                      Serie {activeSet} de {totalSets}
                     </span>
-                    <span className="text-base font-black italic uppercase tracking-tight">
-                      {isRunning ? '■ Finalizar Série' : '▶ Iniciar Série'}
+                    <span className="text-[12px] font-black uppercase tracking-widest">
+                      {isRunning ? 'Finalizar serie' : 'Iniciar serie'}
                     </span>
                   </div>
                 </div>
 
-                {isRunning && (
-                  <span className="text-2xl font-black font-mono tracking-tighter text-neutral-950">
-                    {formatSetTime(setTimer)}
+                {!isRunning && (
+                  <span className="text-[9px] font-black uppercase tracking-widest text-white/35">
+                    {setStatus === 'failed' ? 'Falha' : 'Feita'}
                   </span>
                 )}
               </motion.button>
-
             </div>
           </motion.div>
         )}
