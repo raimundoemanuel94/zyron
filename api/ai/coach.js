@@ -255,6 +255,47 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
       `Ultimo treino: ${toWorkoutLabel(lastWorkout)}`,
       `Tendencia: ${trend}`,
     ],
+    metrics: {
+      context,
+      recentWorkoutCount: recentWorkouts.length,
+      weeklyDays,
+      averageDuration,
+      lastWorkoutLabel: toWorkoutLabel(lastWorkout),
+      trend,
+      latestCheckinLabel: checkins[0] ? formatCheckin(checkins[0]) : 'Sem check-ins recentes',
+      hasPrs: prs.length > 0,
+    },
+  };
+};
+
+const buildCoachFallback = ({ context, metrics }) => {
+  const durationLine = metrics.averageDuration > 0
+    ? `media de ${metrics.averageDuration} min`
+    : 'duracao ainda curta no historico';
+
+  const analysis = metrics.recentWorkoutCount > 0
+    ? `Analise: voce treinou ${metrics.weeklyDays} dia(s) na semana, com ${durationLine}, e sua tendencia esta ${metrics.trend}.`
+    : 'Analise: ainda nao encontrei treinos recentes suficientes para uma leitura completa.';
+
+  const recommendationByContext = {
+    workout: metrics.recentWorkoutCount > 0
+      ? `Recomendacao: repita o nivel do ultimo treino (${metrics.lastWorkoutLabel}) com execucao limpa e mais 1 serie forte no exercicio principal.`
+      : 'Recomendacao: registre o proximo treino completo para eu calibrar volume, duracao e intensidade.',
+    progress: metrics.hasPrs
+      ? `Recomendacao: mantenha a progressao de carga com pequenos aumentos e proteja a tecnica nas series finais.`
+      : 'Recomendacao: atualize cargas reais nos proximos treinos para liberar uma leitura melhor de progresso.',
+    recovery: metrics.weeklyDays >= 4
+      ? `Recomendacao: segure a intensidade por 24h, priorize sono e entre no proximo treino apenas se a energia voltar bem.`
+      : `Recomendacao: voce pode seguir com o proximo treino, mas preserve pausas consistentes e ritmo controlado.`,
+  };
+
+  const motivation = metrics.recentWorkoutCount > 0
+    ? 'Motivacao: seu historico ja mostra consistencia real; agora transforme isso em repeticao forte.'
+    : 'Motivacao: o primeiro registro bem feito ja abre uma leitura muito mais precisa para voce.';
+
+  return {
+    message: [analysis, recommendationByContext[context], motivation].join('\n'),
+    suggestions: [recommendationByContext[context].replace(/^Recomendacao:\s*/i, '')],
   };
 };
 
@@ -346,31 +387,42 @@ export default async function handler(req) {
       fetchRecentPrs(supabase, user.id),
     ]);
 
-    const { summaryText, insights } = buildSummary({
+    const { summaryText, insights, metrics } = buildSummary({
       context,
       workouts,
       checkins,
       prs,
     });
 
-    const rawMessage = await requestCoachAnalysis(summaryText);
-    const normalized = normalizeCoachMessage(rawMessage);
-    const message = [
-      normalized.analysis,
-      normalized.recommendation,
-      normalized.motivation,
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    return json({
-      message,
-      insights,
-      suggestions: [
+    try {
+      const rawMessage = await requestCoachAnalysis(summaryText);
+      const normalized = normalizeCoachMessage(rawMessage);
+      const message = [
+        normalized.analysis,
         normalized.recommendation,
         normalized.motivation,
-      ].filter(Boolean),
-    });
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      return json({
+        message,
+        insights,
+        suggestions: [
+          normalized.recommendation,
+          normalized.motivation,
+        ].filter(Boolean),
+      });
+    } catch (error) {
+      console.error('[ai/coach]', error);
+      const fallback = buildCoachFallback({ context, metrics });
+
+      return json({
+        message: fallback.message,
+        insights,
+        suggestions: fallback.suggestions,
+      });
+    }
   } catch (error) {
     console.error('[ai/coach]', error);
     return json({ error: 'AI unavailable' }, 503);

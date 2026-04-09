@@ -1,4 +1,10 @@
 const GEMINI_MODEL = 'gemini-2.0-flash';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'gemma2-9b-it',
+];
 
 const readEnv = (key) => {
   if (typeof process !== 'undefined' && process?.env?.[key]) {
@@ -16,6 +22,10 @@ const getGeminiApiKey = () =>
   readEnv('GEMINI_API_KEY')
   || readEnv('VITE_GEMINI_API_KEY');
 
+const getGroqApiKey = () =>
+  readEnv('GROQ_API_KEY')
+  || readEnv('VITE_GROQ_API_KEY');
+
 const buildGeminiUrl = (model = GEMINI_MODEL) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getGeminiApiKey()}`;
 
@@ -25,6 +35,70 @@ const getResponseText = (payload) => (
     .join('\n')
     .trim()
 ) || '';
+
+const getGroqText = (payload) =>
+  payload?.choices?.[0]?.message?.content?.trim() || '';
+
+async function generateGroqText(
+  prompt,
+  {
+    temperature = 0.55,
+    maxOutputTokens = 220,
+  } = {},
+) {
+  const apiKey = getGroqApiKey();
+  if (!apiKey) {
+    throw new Error('GROQ_API_KEY not configured');
+  }
+
+  const messages = [
+    {
+      role: 'system',
+      content: 'Siga estritamente o formato pedido pelo usuario e use portugues brasileiro quando a instrucao estiver em portugues.',
+    },
+    {
+      role: 'user',
+      content: String(prompt || ''),
+    },
+  ];
+
+  for (const model of GROQ_MODELS) {
+    const response = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature,
+        max_tokens: maxOutputTokens,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        continue;
+      }
+
+      throw new Error(
+        payload?.error?.message
+        || payload?.message
+        || `Groq HTTP ${response.status}`,
+      );
+    }
+
+    const text = getGroqText(payload);
+    if (text) {
+      return text;
+    }
+  }
+
+  throw new Error('All Groq models unavailable');
+}
 
 export function buildSystemPrompt(profile, metrics, prHistory, workoutData) {
   const today = new Date().getDay();
@@ -91,44 +165,58 @@ export async function generateGeminiText(
 ) {
   const apiKey = getGeminiApiKey();
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
+    return generateGroqText(prompt, {
+      temperature,
+      maxOutputTokens,
+    });
   }
 
-  const response = await fetch(buildGeminiUrl(model), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: String(prompt || '') }],
-        },
-      ],
-      generationConfig: {
-        temperature,
-        maxOutputTokens,
+  try {
+    const response = await fetch(buildGeminiUrl(model), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: String(prompt || '') }],
+          },
+        ],
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+        },
+      }),
+    });
 
-  const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => ({}));
 
-  if (!response.ok) {
-    throw new Error(
-      payload?.error?.message
-      || payload?.message
-      || `Gemini HTTP ${response.status}`,
-    );
+    if (!response.ok) {
+      throw new Error(
+        payload?.error?.message
+        || payload?.message
+        || `Gemini HTTP ${response.status}`,
+      );
+    }
+
+    const text = getResponseText(payload);
+    if (!text) {
+      throw new Error('Empty Gemini response');
+    }
+
+    return text;
+  } catch (error) {
+    if (!getGroqApiKey()) {
+      throw error;
+    }
+
+    return generateGroqText(prompt, {
+      temperature,
+      maxOutputTokens,
+    });
   }
-
-  const text = getResponseText(payload);
-  if (!text) {
-    throw new Error('Empty Gemini response');
-  }
-
-  return text;
 }
 
 export async function sendMessageToGemini(history = [], userMessage = '', systemInstruction = '') {
