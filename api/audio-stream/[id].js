@@ -32,17 +32,73 @@ const PROVIDERS = [
   },
 ];
 
-const pickBestAudio = (payload) => {
+const norm = (value) => String(value || '').toLowerCase();
+
+const isIOSCompatibleStream = (stream) => {
+  const format = norm(stream?.format);
+  const mimeType = norm(stream?.mimeType || stream?.mime_type);
+  const codec = norm(stream?.codec || stream?.audioCodec || stream?.codecs);
+  const url = norm(stream?.url);
+
+  if (mimeType.includes('audio/mp4') || mimeType.includes('audio/aac') || mimeType.includes('audio/mpeg')) return true;
+  if (mimeType.includes('application/vnd.apple.mpegurl')) return true;
+  if (format.includes('mp4') || format.includes('m4a') || format.includes('aac') || format.includes('mp3')) return true;
+  if (format.includes('hls') || format.includes('m3u8') || url.includes('.m3u8')) return true;
+  if (codec.includes('mp4a') || codec.includes('aac') || codec.includes('mp3')) return true;
+  return false;
+};
+
+const isWebmLike = (stream) => {
+  const format = norm(stream?.format);
+  const mimeType = norm(stream?.mimeType || stream?.mime_type);
+  const codec = norm(stream?.codec || stream?.audioCodec || stream?.codecs);
+  return (
+    format.includes('webm')
+    || mimeType.includes('webm')
+    || codec.includes('opus')
+    || codec.includes('vorbis')
+  );
+};
+
+const toQualityScore = (stream) => {
+  const quality = norm(stream?.quality);
+  if (quality.includes('best')) return 30;
+  if (quality.includes('high')) return 20;
+  if (quality.includes('medium')) return 10;
+  return 0;
+};
+
+const toBitrateScore = (stream) => {
+  const bitrate = Number(stream?.bitrate || 0);
+  if (!Number.isFinite(bitrate)) return 0;
+  return Math.min(40, Math.max(0, Math.floor(bitrate / 16000)));
+};
+
+const scoreStream = (stream, isIOSClient) => {
+  let score = toQualityScore(stream) + toBitrateScore(stream);
+
+  if (isIOSClient) {
+    if (isIOSCompatibleStream(stream)) score += 120;
+    if (isWebmLike(stream)) score -= 160;
+  } else {
+    if (isWebmLike(stream)) score += 70;
+    if (isIOSCompatibleStream(stream)) score += 35;
+  }
+
+  return score;
+};
+
+const pickBestAudio = (payload, { isIOSClient = false } = {}) => {
   const audioStreams = Array.isArray(payload?.audioStreams) ? payload.audioStreams : [];
 
   if (!audioStreams.length) return null;
 
-  return (
-    audioStreams.find((stream) => stream?.format === 'webm' && stream?.quality === 'best')
-    || audioStreams.find((stream) => stream?.format === 'mp4')
-    || audioStreams.find((stream) => stream?.format === 'webm')
-    || audioStreams[0]
-  );
+  const ranked = audioStreams
+    .filter((stream) => Boolean(stream?.url))
+    .map((stream) => ({ stream, score: scoreStream(stream, isIOSClient) }))
+    .sort((a, b) => b.score - a.score);
+
+  return ranked[0]?.stream || null;
 };
 
 const getFromCache = (videoId) => {
@@ -139,6 +195,8 @@ const toFailureType = (errorCode) => {
 export default async function handler(req) {
   const requestId = createRequestId();
   const log = createApiLogger({ scope: 'audio-stream', requestId });
+  const userAgent = req.headers.get('user-agent') || '';
+  const isIOSClient = /iphone|ipad|ipod/i.test(userAgent);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -205,7 +263,7 @@ export default async function handler(req) {
   for (const provider of PROVIDERS) {
     try {
       const payload = await fetchProvider(provider, videoId, 8000);
-      const bestAudio = pickBestAudio(payload);
+      const bestAudio = pickBestAudio(payload, { isIOSClient });
 
       if (!bestAudio?.url) {
         const parseFailure = {
@@ -223,6 +281,8 @@ export default async function handler(req) {
         videoId,
         audioUrl: bestAudio.url,
         format: bestAudio.format || null,
+        mimeType: bestAudio.mimeType || bestAudio.mime_type || null,
+        codec: bestAudio.codec || bestAudio.audioCodec || bestAudio.codecs || null,
         quality: bestAudio.quality || null,
         bitrate: bestAudio.bitrate || null,
         title: payload.title || 'Unknown',
@@ -230,6 +290,7 @@ export default async function handler(req) {
         duration: payload.duration || 0,
         thumbnail: payload.thumbnail || null,
         provider: provider.name,
+        ios_compatible: isIOSCompatibleStream(bestAudio),
       };
 
       setCache(videoId, result);
@@ -237,7 +298,10 @@ export default async function handler(req) {
       log.info('provider=SUCCESS', {
         videoId,
         provider: provider.name,
+        ios_client: isIOSClient,
+        ios_compatible: result.ios_compatible,
         format: result.format,
+        mimeType: result.mimeType,
         quality: result.quality,
       });
 
@@ -328,4 +392,3 @@ export default async function handler(req) {
     corsHeaders: CORS_HEADERS,
   });
 }
-

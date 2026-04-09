@@ -28,20 +28,25 @@ export const MusicProvider = ({ children }) => {
   const gainNode = useRef(null);
   const analyserNode = useRef(null);
   const animationFrameId = useRef(null);
+  const isIOSClient = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+
+  const isLikelyUnsupportedOnIOS = (streamData = {}) => {
+    const format = String(streamData?.format || '').toLowerCase();
+    const mimeType = String(streamData?.mimeType || streamData?.mime_type || '').toLowerCase();
+    const codec = String(streamData?.codec || '').toLowerCase();
+    return (
+      format.includes('webm')
+      || mimeType.includes('webm')
+      || codec.includes('opus')
+      || codec.includes('vorbis')
+    );
+  };
 
   // Função agressiva para forçar áudio no PWA
   const forcePlayAudio = async (audioElement, trackId) => {
     const strategies = [
       // Estratégia 1: Play direto
       () => audioElement.play(),
-      
-      // Estratégia 2: Com contexto de áudio
-      () => {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const source = audioContext.createMediaElementSource(audioElement);
-        source.connect(audioContext.destination);
-        return audioElement.play();
-      },
       
       // Estratégia 3: Muted depois unmuted
       () => {
@@ -62,6 +67,16 @@ export const MusicProvider = ({ children }) => {
         });
       }
     ];
+
+    // Em iOS Safari, createMediaElementSource em stream remoto costuma falhar e não ajuda autoplay.
+    if (!isIOSClient) {
+      strategies.splice(1, 0, () => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = ctx.createMediaElementSource(audioElement);
+        source.connect(ctx.destination);
+        return audioElement.play();
+      });
+    }
 
     for (let i = 0; i < strategies.length; i++) {
       try {
@@ -274,15 +289,32 @@ export const MusicProvider = ({ children }) => {
             logger.info('Proxy Vercel funcionou', { 
               trackId: track.id,
               audioUrl: streamData.audioUrl,
-              format: streamData.format
+              format: streamData.format,
+              mimeType: streamData.mimeType || null,
+              codec: streamData.codec || null,
             });
+
+            if (isIOSClient && isLikelyUnsupportedOnIOS(streamData)) {
+              throw new Error('STREAM_UNSUPPORTED_ON_IOS');
+            }
             
             // Criar elemento de áudio dinamicamente para PWA
             const audioElement = new Audio();
             audioElement.src = streamData.audioUrl;
+            if (streamData?.mimeType) audioElement.type = streamData.mimeType;
             audioElement.volume = volume / 100;
             audioElement.crossOrigin = "anonymous";
             audioElement.playsInline = true;
+            audioElement.preload = 'auto';
+            audioElement.setAttribute('playsinline', 'true');
+            audioElement.setAttribute('webkit-playsinline', 'true');
+
+            if (isIOSClient && streamData?.mimeType) {
+              const support = audioElement.canPlayType(streamData.mimeType);
+              if (!support) {
+                throw new Error(`UNSUPPORTED_MIME_ON_IOS:${streamData.mimeType}`);
+              }
+            }
             
             // Usar estratégia agressiva para PWA
             const success = await forcePlayAudio(audioElement, track.id);
