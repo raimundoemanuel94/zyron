@@ -161,7 +161,8 @@ const validateSet = (set, index) => {
   }
 
   return {
-    exercise_id: validateUUID(set.exercise_id ?? set.exerciseId, `sets[${index}].exercise_id`),
+    // exercise_id uses short keys like 'p1', 'c1' — not UUIDs
+    exercise_id: validateString(set.exercise_id ?? set.exerciseId, `sets[${index}].exercise_id`, 1, 100),
     set_number: validateInteger(set.set_number ?? set.setNumber ?? (index + 1), `sets[${index}].set_number`, 1),
     reps: validateInteger(set.reps, `sets[${index}].reps`, 0),
     weight_kg: validateFloat(set.weight_kg ?? set.weight, `sets[${index}].weight_kg`, 0),

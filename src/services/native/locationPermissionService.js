@@ -11,13 +11,61 @@ export const isNativeRuntime = () => Capacitor.isNativePlatform();
 
 export const isNativeIOS = () => isNativeRuntime() && Capacitor.getPlatform() === 'ios';
 
+// ── Web / PWA helpers ────────────────────────────────────────────────────────
+
+const queryWebPermission = async () => {
+  if (!navigator.permissions) return 'prompt';
+  try {
+    const result = await navigator.permissions.query({ name: 'geolocation' });
+    return normalizeState(result.state);
+  } catch {
+    return 'prompt';
+  }
+};
+
+// Triggers the browser permission dialog and resolves with the outcome.
+const requestWebPermission = () =>
+  new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ ok: false, reason: 'NOT_SUPPORTED' });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      () => resolve({ ok: true, fine: 'granted', coarse: 'granted' }),
+      (err) => {
+        if (err.code === 1 /* PERMISSION_DENIED */) {
+          resolve({ ok: false, fine: 'denied', coarse: 'denied', reason: 'DENIED' });
+        } else {
+          // Timeout or unavailable — permission may have been granted but GPS failed
+          resolve({ ok: true, fine: 'granted', coarse: 'granted' });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  });
+
+// ── Public API ───────────────────────────────────────────────────────────────
+
 export const getLocationPermissionState = async () => {
   if (!isNativeRuntime()) {
+    if (!navigator.geolocation) {
+      return {
+        supported: false,
+        platform: 'web',
+        fine: 'denied',
+        coarse: 'denied',
+        canBackgroundCheckin: false,
+      };
+    }
+
+    const fine = await queryWebPermission();
+
     return {
-      supported: false,
+      supported: true,
       platform: 'web',
-      fine: 'prompt',
-      coarse: 'prompt',
+      fine,
+      coarse: fine,
       canBackgroundCheckin: false,
     };
   }
@@ -37,10 +85,19 @@ export const getLocationPermissionState = async () => {
 
 export const requestLocationPermission = async () => {
   if (!isNativeRuntime()) {
+    if (!navigator.geolocation) {
+      return {
+        ok: false,
+        reason: 'NOT_SUPPORTED',
+        message: 'Geolocalização não disponível neste navegador.',
+      };
+    }
+
+    const result = await requestWebPermission();
     return {
-      ok: false,
-      reason: 'NOT_NATIVE',
-      message: 'Permissão nativa indisponível no web/PWA.',
+      ...result,
+      canBackgroundCheckin: false,
+      nextStep: result.ok ? 'READY_FOR_CHECKIN' : 'SHOW_MANUAL_FALLBACK',
     };
   }
 
@@ -54,9 +111,7 @@ export const requestLocationPermission = async () => {
     fine,
     coarse,
     canBackgroundCheckin: isNativeIOS() && granted,
-    nextStep: granted
-      ? 'READY_FOR_CHECKIN'
-      : 'SHOW_MANUAL_FALLBACK',
+    nextStep: granted ? 'READY_FOR_CHECKIN' : 'SHOW_MANUAL_FALLBACK',
   };
 };
 
@@ -71,4 +126,3 @@ export const getIOSPermissionGuidance = () => ({
     'Ative Localização Precisa',
   ],
 });
-

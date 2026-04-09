@@ -49,6 +49,7 @@ export const MusicProvider = ({ children }) => {
 
   const playerRef = useRef(null);
   const nativeAudioRef = useRef(null);
+  const nativeAudioUrlRef = useRef(null); // tracks actual URL assigned; avoids false-positive from removeAttribute('src')
   const silentAudioRef = useRef(null);
   const wakeLockRef = useRef(null);
   const retryHandlerRef = useRef(null);
@@ -171,14 +172,21 @@ export const MusicProvider = ({ children }) => {
       nextTrack();
     };
 
+    const handleError = () => {
+      nativeAudioUrlRef.current = null; // allow fallback to iframe on next togglePlay
+      setIsPlaying(false);
+    };
+
     nativeAudio.addEventListener('play', handlePlay);
     nativeAudio.addEventListener('pause', handlePause);
     nativeAudio.addEventListener('ended', handleEnded);
+    nativeAudio.addEventListener('error', handleError);
 
     return () => {
       nativeAudio.removeEventListener('play', handlePlay);
       nativeAudio.removeEventListener('pause', handlePause);
       nativeAudio.removeEventListener('ended', handleEnded);
+      nativeAudio.removeEventListener('error', handleError);
     };
   }, [playlist, currentTrack]);
 
@@ -313,6 +321,7 @@ export const MusicProvider = ({ children }) => {
       nativeAudio.currentTime = 0;
       nativeAudio.removeAttribute('src');
       nativeAudio.load();
+      nativeAudioUrlRef.current = null; // clear our tracking ref
     }
   };
 
@@ -394,6 +403,7 @@ export const MusicProvider = ({ children }) => {
 
     nativeAudio.pause();
     nativeAudio.src = streamData.audioUrl;
+    nativeAudioUrlRef.current = streamData.audioUrl; // track the URL
     nativeAudio.preload = 'auto';
     nativeAudio.crossOrigin = 'anonymous';
     nativeAudio.volume = volume / 100;
@@ -542,7 +552,8 @@ export const MusicProvider = ({ children }) => {
 
   const togglePlay = async () => {
     const nativeAudio = nativeAudioRef.current;
-    const hasNativeSource = Boolean(nativeAudio?.src);
+    // Use our tracking ref — nativeAudio.src is truthy even after removeAttribute('src')
+    const hasNativeSource = Boolean(nativeAudioUrlRef.current);
 
     logger.userAction('togglePlay', {
       isPlaying,

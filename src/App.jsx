@@ -21,8 +21,16 @@ function App() {
   const [userRole, setUserRole] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [viewManager, setViewManager] = useState('app'); // app | admin | personal
+  const [swUpdateReady, setSwUpdateReady] = useState(false);
 
   const globalConstraintsRef = useRef(null);
+
+  // ── PWA Update Banner ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const handleUpdate = () => setSwUpdateReady(true);
+    window.addEventListener('zyron:sw-update', handleUpdate);
+    return () => window.removeEventListener('zyron:sw-update', handleUpdate);
+  }, []);
 
   useEffect(() => {
     logger.systemEvent('App inicializado', {
@@ -191,6 +199,44 @@ function App() {
         ref={globalConstraintsRef}
         className="relative min-h-screen w-full overflow-x-hidden bg-black selection:bg-yellow-400 selection:text-black"
       >
+        {swUpdateReady && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 80,
+              left: 16,
+              right: 16,
+              zIndex: 9999,
+              background: '#1a1a1a',
+              border: '1px solid rgba(205,255,90,0.35)',
+              borderRadius: 14,
+              padding: '12px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>
+              Nova versão disponível
+            </span>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                background: '#cdff5a',
+                color: '#000',
+                border: 'none',
+                borderRadius: 8,
+                padding: '6px 14px',
+                fontWeight: 900,
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              Atualizar
+            </button>
+          </div>
+        )}
         {isAuthenticated && (
           <GlobalPlayer constraintsRef={globalConstraintsRef} />
         )}

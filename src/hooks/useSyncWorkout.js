@@ -77,14 +77,21 @@ const toAddressLabel = (location) => {
 
 const buildSyncPayload = (userId, workout, sets, syncId) => {
   const finishedAt = workout.ended_at || workout.finishedAt || workout.created_at || new Date().toISOString();
-  const startedAt = workout.started_at || workout.startedAt || null;
+  const startedAt = workout.started_at || workout.startedAt || finishedAt;
+  const durationMinutes = Math.max(1, Math.round((Number(workout.duration_seconds) || 0) / 60));
   const photoPath = workout.photo_storage_path || workout.photoPath || null;
   const photos = photoPath ? [{ path: photoPath, fileName: workout.photo_file_name || null }] : [];
 
   return {
+    // ── Root-level fields required by validateWorkoutSyncPayload ──
+    sync_id: syncId,
+    syncId,
+    started_at: startedAt,
+    ended_at: finishedAt,
+    duration_minutes: durationMinutes,
+    // ─────────────────────────────────────────────────────────────
     id: syncId,
     type: 'workout_log',
-    syncId,
     userId,
     source: 'web',
     workout: {
