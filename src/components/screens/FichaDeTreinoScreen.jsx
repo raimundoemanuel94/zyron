@@ -1057,7 +1057,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
         className="flex-1 w-full px-4 pt-1 relative z-10 overflow-y-auto"
-        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(144px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
 

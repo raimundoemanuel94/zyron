@@ -5,7 +5,7 @@ import logger from './utils/logger';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MusicProvider } from './contexts/MusicContext';
 import FichaDeTreinoScreen from './components/screens/FichaDeTreinoScreen';
-import GlobalPlayer from './components/shared/GlobalPlayer';
+import MusicDock from './components/shared/MusicDock';
 import OnboardingScreen from './components/screens/OnboardingScreen';
 import LoginScreenModerno from './components/screens/LoginScreenModerno';
 import AdminScreen from './components/screens/AdminScreen';
@@ -237,9 +237,7 @@ function App() {
             </button>
           </div>
         )}
-        {isAuthenticated && (
-          <GlobalPlayer constraintsRef={globalConstraintsRef} />
-        )}
+        {isAuthenticated && <MusicDock />}
 
         <div className="min-h-screen bg-black text-white">
           <SpeedInsights />
