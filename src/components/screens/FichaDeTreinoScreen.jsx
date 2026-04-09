@@ -20,6 +20,7 @@ import {
   Shield,
   Activity,
   Play,
+  Pause,
   CheckCircle2,
   Timer as TimerIcon,
   Plus,
@@ -43,6 +44,8 @@ import {
   Beef,
   Camera,
   Scale,
+  Music2,
+  SkipForward,
   MessageSquare,
   ChevronRight,
   LogOut
@@ -65,6 +68,7 @@ import TabEvolucao from '../navigation/TabEvolucao';
 import TabPerfil from '../navigation/TabPerfil';
 import TabCoach from '../navigation/TabCoach';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
+import MusicDock from '../shared/MusicDock';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
 import { useMusic } from '../../contexts/MusicContext';
@@ -155,7 +159,13 @@ const QUICK_ICON_MAP = {
 };
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
-  const { currentTrack: dockTrack } = useMusic();
+  const {
+    currentTrack,
+    isPlaying: isMusicPlaying,
+    togglePlay: toggleMusicPlayback,
+    nextTrack: playNextTrack,
+    playlist: musicPlaylist,
+  } = useMusic();
   // USE PROFILE: Centralized hook for profile and metrics
   const { profile, metrics, stats, isLoading: profileLoading, updateProfile } = useProfile(user?.id);
 
@@ -207,6 +217,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [painelRefreshKey, setPainelRefreshKey] = useState(0);
   const [sessionStartedAt, setSessionStartedAt] = useState(null);
   const [sessionLocation, setSessionLocation] = useState(null);
+  const [musicPanelOpen, setMusicPanelOpen] = useState(false);
+  const [musicPanelView, setMusicPanelView] = useState('player');
   const avatarInputRef = useRef(null);
 
   // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
@@ -804,10 +816,44 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   };
 
+  const openMusicPanel = useCallback((view = 'player') => {
+    if (window.navigator?.vibrate) window.navigator.vibrate(18);
+    setFabOpen(false);
+    setMusicPanelView(view);
+    setMusicPanelOpen(true);
+  }, []);
+
+  const handleMusicToggleAction = useCallback(async () => {
+    setFabOpen(false);
+
+    if (!currentTrack) {
+      setMusicPanelView('search');
+      setMusicPanelOpen(true);
+      return;
+    }
+
+    if (window.navigator?.vibrate) window.navigator.vibrate(15);
+    await toggleMusicPlayback();
+  }, [currentTrack, toggleMusicPlayback]);
+
+  const handleMusicNextAction = useCallback(() => {
+    setFabOpen(false);
+
+    if (!currentTrack || musicPlaylist.length <= 1) {
+      setMusicPanelView('search');
+      setMusicPanelOpen(true);
+      return;
+    }
+
+    if (window.navigator?.vibrate) window.navigator.vibrate(15);
+    playNextTrack();
+  }, [currentTrack, musicPlaylist.length, playNextTrack]);
+
   const waterGoal = metrics?.waterGoalLiters || 3.5;
   const proteinGoal = metrics?.proteinGoalG || 160;
   const isHydrationAlert = (Date.now() - lastWaterTime) > 7200000; // 2 hours in ms
   const remainingProtein = Math.max(0, proteinGoal - protein);
+  const showMusicIndicator = Boolean(currentTrack && isMusicPlaying);
 
   // ── NavButton — minimalista, layoutId deslizante ──────────────────────────
   const NavButton = ({ id, icon: Icon, label }) => {
@@ -1059,7 +1105,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
         className="flex-1 w-full px-4 pt-1 relative z-10 overflow-y-auto"
-        style={{ paddingBottom: dockTrack ? 'calc(144px + env(safe-area-inset-bottom))' : 'calc(72px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
 
@@ -1285,9 +1331,66 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     {
+                      icon: Search,
+                      label: 'Buscar musica',
+                      sub: currentTrack ? 'Adicionar faixa' : 'Escolher primeira',
+                      color: 'text-[#B4FF3C]',
+                      bg: 'bg-[#B4FF3C]/10 border-[#B4FF3C]/15',
+                      delay: 0.05,
+                      action: () => openMusicPanel('search'),
+                    },
+                    {
+                      icon: Music2,
+                      label: 'Abrir player',
+                      sub: currentTrack ? 'Controles completos' : 'Player e busca',
+                      color: 'text-violet-300',
+                      bg: 'bg-violet-500/10 border-violet-400/15',
+                      delay: 0.08,
+                      action: () => openMusicPanel('player'),
+                    },
+                    {
+                      icon: isMusicPlaying ? Pause : Play,
+                      label: 'Pausar/Continuar',
+                      sub: currentTrack ? (isMusicPlaying ? 'Pausar faixa' : 'Retomar agora') : 'Abrir para tocar',
+                      color: 'text-amber-300',
+                      bg: 'bg-amber-500/10 border-amber-400/15',
+                      delay: 0.11,
+                      action: handleMusicToggleAction,
+                    },
+                    {
+                      icon: SkipForward,
+                      label: 'Proxima faixa',
+                      sub: musicPlaylist.length > 1 ? 'Avancar fila' : 'Adicionar mais',
+                      color: 'text-cyan-300',
+                      bg: 'bg-cyan-500/10 border-cyan-400/15',
+                      delay: 0.14,
+                      action: handleMusicNextAction,
+                    },
+                  ].map(({ icon: Ic, label, sub, color, bg, delay, action }) => (
+                    <motion.button
+                      key={label}
+                      whileTap={{ scale: 0.94 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
+                      onClick={action}
+                      className={`flex flex-col items-start p-3.5 rounded-[16px] border ${bg} transition-all`}
+                    >
+                      <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center mb-2.5`}>
+                        <Ic size={15} className={color} />
+                      </div>
+                      <span className="text-white text-[10.5px] font-bold leading-tight">{label}</span>
+                      <span className={`text-[8.5px] font-medium mt-0.5 ${color} opacity-70`}>{sub}</span>
+                    </motion.button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
                       icon: Droplets, label: 'Beber 250ml', sub: 'Registrar copo',
                       color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-400/15',
-                      delay: 0.07,
+                      delay: 0.18,
                       action: () => {
                         setFabOpen(false);
                         if (window.navigator?.vibrate) window.navigator.vibrate(20);
@@ -1299,7 +1402,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     {
                       icon: Beef, label: 'Adicionar 30g', sub: 'Scoop proteína',
                       color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-400/15',
-                      delay: 0.1,
+                      delay: 0.21,
                       action: () => {
                         setFabOpen(false);
                         if (window.navigator?.vibrate) window.navigator.vibrate(20);
@@ -1330,11 +1433,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 {/* Atalhos secundários */}
                 {[
                   {
-                    icon: Camera, label: 'Nova Foto de Progresso', delay: 0.13,
+                    icon: Camera, label: 'Nova Foto de Progresso', delay: 0.24,
                     action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('progress'), 100); },
                   },
                   {
-                    icon: Scale, label: 'Atualizar Peso Corporal', delay: 0.16,
+                    icon: Scale, label: 'Atualizar Peso Corporal', delay: 0.27,
                     action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('perfil'), 100); },
                   },
                 ].map(({ icon: Ic, label, delay, action }) => (
@@ -1398,6 +1501,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               }
             >
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+              {showMusicIndicator && (
+                <>
+                  <div
+                    className="absolute top-[7px] right-[7px] h-2.5 w-2.5 rounded-full bg-[#B4FF3C] z-10"
+                    style={{ boxShadow: '0 0 10px rgba(180,255,60,0.95)' }}
+                  />
+                  <div className="absolute top-[5px] right-[5px] h-3.5 w-3.5 rounded-full bg-[#B4FF3C]/35 animate-ping" />
+                </>
+              )}
               <Plus
                 size={24}
                 strokeWidth={2.8}
@@ -1681,6 +1793,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         userId={user?.id}
         isOpen={notificationSheetOpen}
         onClose={() => setNotificationSheetOpen(false)}
+      />
+
+      <MusicDock
+        isOpen={musicPanelOpen}
+        onClose={() => setMusicPanelOpen(false)}
+        initialView={musicPanelView}
       />
 
       {/* Global Style Inject for Animations */}
