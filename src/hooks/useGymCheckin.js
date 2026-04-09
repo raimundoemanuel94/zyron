@@ -147,7 +147,7 @@ export function useGymCheckin({
     };
   }, []);
 
-  const startWatch = useCallback(async (gymOverride = null) => {
+  const startWatch = useCallback(async (gymOverride = null, initialPosition = null) => {
     if (!enabled) return false;
 
     const activeGym = gymOverride || gymRef.current;
@@ -184,6 +184,16 @@ export function useGymCheckin({
       error: null,
     };
     updateState(waitingGpsState);
+
+    if (initialPosition?.coords) {
+      try {
+        processReading(normalizeGeoReading(initialPosition, 'gps'));
+      } catch (seedErr) {
+        logger.warn('Failed to seed initial location reading', {
+          error: seedErr?.message,
+        });
+      }
+    }
 
     const onPosition = (position) => {
       try {

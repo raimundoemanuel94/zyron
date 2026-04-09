@@ -22,7 +22,7 @@ export const DEFAULT_CHECKIN_CONFIG = {
   maxAccuracyM: 80,
   fallbackRadiusM: 120,
   heartbeatIntervalMs: 2 * 60 * 1000,
-  distanceFilterM: 20,
+  distanceFilterM: 0,
 };
 
 const toRad = (value) => (value * Math.PI) / 180;

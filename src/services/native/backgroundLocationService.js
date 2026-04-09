@@ -21,7 +21,7 @@ const IOS_BACKGROUND_OPTIONS = {
   backgroundTitle: 'ZYRON Check-in',
   requestPermissions: false,
   stale: false,
-  distanceFilter: 20,
+  distanceFilter: 0,
 };
 
 const normalizePluginLocation = (location) => {
@@ -52,7 +52,7 @@ export async function startLocationWatch({
   onReading,
   onError,
   preferBackground = true,
-  distanceFilterM = 20,
+  distanceFilterM = 0,
 } = {}) {
   if (typeof onReading !== 'function') {
     throw new Error('onReading callback is required');

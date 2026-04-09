@@ -605,7 +605,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         radiusM: 120,
       };
 
-      const started = await startGymCheckinWatch(dynamicGym);
+      const started = await startGymCheckinWatch(dynamicGym, initialPos);
       if (!started) {
         startManualCheckin();
       }
