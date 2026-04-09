@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import logger from '../utils/logger';
 
 const MusicContext = createContext();
@@ -29,6 +30,7 @@ export const MusicProvider = ({ children }) => {
   const analyserNode = useRef(null);
   const animationFrameId = useRef(null);
   const isIOSClient = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  const isNativeIOSApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
 
   const isLikelyUnsupportedOnIOS = (streamData = {}) => {
     const format = String(streamData?.format || '').toLowerCase();
@@ -273,6 +275,21 @@ export const MusicProvider = ({ children }) => {
     localStorage.setItem('zyron_last_track', JSON.stringify(track));
     
     try {
+      if (isNativeIOSApp) {
+        logger.info('Modo nativo iOS: forçando playback via YouTube iframe', {
+          trackId: track.id,
+        });
+
+        if (playerRef.current && playerRef.current.loadVideoById) {
+          playerRef.current.loadVideoById(track.id);
+          setIsPlaying(true);
+          updateMediaSession(track);
+          await startSilentAudio();
+          requestWakeLock();
+          return;
+        }
+      }
+
       // PRIORIZAR PROXY DE ÁUDIO VIA VERCEL
       console.log('🎵 Tentando proxy de áudio Vercel para:', track.id);
       logger.info('Tentando proxy de áudio Vercel', { trackId: track.id });
@@ -461,16 +478,15 @@ export const MusicProvider = ({ children }) => {
     }
   };
   const togglePlay = async () => {
-    logger.userAction('togglePlay', { 
+    logger.userAction('togglePlay', {
       isPlaying: isPlaying,
       hasCurrentTrack: !!currentTrack,
       trackId: currentTrack?.id
     });
-    
-    console.log('🎯 Toggle Play acionado - isPlaying:', isPlaying);
-    
+
+    console.log('Toggle Play acionado - isPlaying:', isPlaying);
+
     if (isPlaying) {
-      // Pausar todos os áudios
       if (playerRef.current && playerRef.current.pauseVideo) {
         playerRef.current.pauseVideo();
       }
@@ -482,66 +498,69 @@ export const MusicProvider = ({ children }) => {
       }
       setIsPlaying(false);
       releaseWakeLock();
-      logger.userAction('Música pausada', { trackId: currentTrack?.id });
-    } else {
-      // FORÇAR UI INSTANTÂNEA
-      if (currentTrack) {
-        setIsPlaying(true); // UI imediata
-        console.log('🚀 Forçando UI de playback imediato');
-      }
-      
+      logger.userAction('Musica pausada', { trackId: currentTrack?.id });
+      return;
+    }
+
+    if (currentTrack) {
+      setIsPlaying(true);
+      console.log('Forcando UI de playback imediato');
+    }
+
+    let playbackStarted = false;
+
+    if (silentAudioRef.current) {
       try {
-        // 1. Áudio silencioso primeiro
-        if (silentAudioRef.current) {
-          silentAudioRef.current.volume = 0.01;
-          await silentAudioRef.current.play();
-          console.log('🔊 Silent audio iniciado');
-          logger.debug('Silent audio iniciado');
-        }
-        
-        // 2. Áudio de background (se tiver src)
-        if (backgroundAudioRef.current && backgroundAudioRef.current.src) {
-          backgroundAudioRef.current.volume = volume / 100;
-          await backgroundAudioRef.current.play();
-          console.log('🎵 Background audio retomado');
-          logger.debug('Background audio retomado');
-        }
-        
-        // 3. YouTube iframe (se existir)
-        if (currentTrack && playerRef.current) {
-          if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
-            playerRef.current.loadVideoById(currentTrack.id);
-          } else {
-            playerRef.current.playVideo();
-          }
-          console.log('📺 YouTube play iniciado');
-          logger.debug('YouTube play iniciado');
-        }
-        
-        updateMediaSession(currentTrack);
-        requestWakeLock();
-        
-        console.log('✅ Playback triplo concluído com sucesso');
-        logger.userAction('Música iniciada', { 
-          trackId: currentTrack?.id,
-          trackTitle: currentTrack?.title,
-          volume: volume
-        });
-        
+        silentAudioRef.current.volume = 0.01;
+        await silentAudioRef.current.play();
+        logger.debug('Silent audio iniciado');
       } catch (error) {
-        console.error('ERRO NO PLAYBACK:', error);
-        logger.error('Erro no playback', {
-          trackId: currentTrack?.id,
-          errorMessage: error.message,
-          errorStack: error.stack
-        }, error);
-        
-        alert(`Erro ao tocar: ${error.message}`);
-        
-        // Resetar estado em caso de erro
-        setIsPlaying(false);
+        logger.warn('Silent audio falhou no togglePlay', { error: error?.message });
       }
     }
+
+    if (backgroundAudioRef.current && backgroundAudioRef.current.src) {
+      try {
+        backgroundAudioRef.current.volume = volume / 100;
+        await backgroundAudioRef.current.play();
+        logger.debug('Background audio retomado');
+        playbackStarted = true;
+      } catch (error) {
+        logger.warn('Background audio falhou no togglePlay', { error: error?.message });
+      }
+    }
+
+    if (currentTrack && playerRef.current) {
+      try {
+        if (playerRef.current.getPlayerState() === window.YT.PlayerState.CUED || playerRef.current.getPlayerState() === -1) {
+          playerRef.current.loadVideoById(currentTrack.id);
+        } else {
+          playerRef.current.playVideo();
+        }
+        logger.debug('YouTube play iniciado');
+        playbackStarted = true;
+      } catch (error) {
+        logger.warn('YouTube play falhou no togglePlay', {
+          error: error?.message,
+          trackId: currentTrack?.id,
+        });
+      }
+    }
+
+    if (!playbackStarted) {
+      setIsPlaying(false);
+      alert('Erro ao tocar: formato de midia indisponivel neste dispositivo.');
+      return;
+    }
+
+    updateMediaSession(currentTrack);
+    requestWakeLock();
+
+    logger.userAction('Musica iniciada', {
+      trackId: currentTrack?.id,
+      trackTitle: currentTrack?.title,
+      volume: volume
+    });
   };
 
   const nextTrack = () => {
@@ -939,3 +958,5 @@ export const MusicProvider = ({ children }) => {
     </MusicContext.Provider>
   );
 }
+
+
