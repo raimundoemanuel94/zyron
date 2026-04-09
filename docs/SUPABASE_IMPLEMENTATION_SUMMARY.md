@@ -187,8 +187,8 @@ Hook updateMetrics() called
 
 ### Environment Variables (`.env`)
 ```
-VITE_SUPABASE_URL=https://rhdrscomxprooqkrrsbg.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_muQAoOSfe-05nUCiEX049Q_dZWqECdk
+VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 ### Supabase Client (`src/lib/supabase.js`)
@@ -378,3 +378,4 @@ The ZYRON Supabase persistence layer is **fully implemented, tested, and ready f
 **Generated**: April 6, 2026
 **By**: Claude Agent
 **For**: Raimundo (ZYRON Developer)
+

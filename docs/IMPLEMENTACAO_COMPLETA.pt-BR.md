@@ -115,8 +115,8 @@ setLanguage('pt-BR');
 
 **Supabase Credentials** (`.env`)
 ```
-VITE_SUPABASE_URL=https://rhdrscomxprooqkrrsbg.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_muQAoOSfe-05nUCiEX049Q_dZWqECdk
+VITE_SUPABASE_URL=https://YOUR_PROJECT_ID.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
 ```
 
 **Cliente Supabase** (`src/lib/supabase.js`)
@@ -322,3 +322,4 @@ O ZYRON agora possui uma camada de persistência robusta, escalável e offline-f
 **Para**: Raimundo - Desenvolvedor ZYRON
 
 Aproveite! 💪
+
