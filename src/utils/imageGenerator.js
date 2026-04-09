@@ -1,0 +1,160 @@
+/**
+ * Generates a ZYRON branded share card for stories.
+ * @param {string} photoBase64
+ * @param {Object} stats
+ * @returns {Promise<Blob>}
+ */
+export async function generateShareableImage(photoBase64, stats) {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const accent = '#F4FF3A';
+
+    const W = 1080;
+    const H = 1920;
+    canvas.width = W;
+    canvas.height = H;
+
+    const img = new Image();
+    img.src = photoBase64;
+
+    img.onload = () => {
+      const scale = Math.max(W / img.width, H / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const offsetX = (W - drawW) / 2;
+      const offsetY = (H - drawH) / 2;
+      ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+
+      const topGrad = ctx.createLinearGradient(0, 0, 0, 360);
+      topGrad.addColorStop(0, 'rgba(0,0,0,0.68)');
+      topGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = topGrad;
+      ctx.fillRect(0, 0, W, 360);
+
+      const bottomGrad = ctx.createLinearGradient(0, H - 720, 0, H);
+      bottomGrad.addColorStop(0, 'rgba(0,0,0,0)');
+      bottomGrad.addColorStop(0.48, 'rgba(0,0,0,0.66)');
+      bottomGrad.addColorStop(1, 'rgba(0,0,0,0.95)');
+      ctx.fillStyle = bottomGrad;
+      ctx.fillRect(0, H - 720, W, 720);
+
+      roundRect(ctx, 58, H - 650, W - 116, 530, 42);
+      ctx.fillStyle = 'rgba(2,3,4,0.72)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(244,255,58,0.24)';
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(244,255,58,0.9)';
+      roundRect(ctx, 96, H - 606, 116, 36, 18);
+      ctx.fill();
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.font = '900 18px sans-serif';
+      ctx.fillStyle = '#050504';
+      ctx.fillText('DONE', 128, H - 582);
+
+      ctx.font = '900 58px sans-serif';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(stats.dayName || getLocalizedDayName(), 96, H - 510);
+
+      ctx.font = '800 27px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.64)';
+      ctx.fillText(`${stats.duration}  |  ${stats.sets}`, 96, H - 456);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      ctx.fillRect(96, H - 418, W - 192, 2);
+
+      drawWeekStrip(ctx, {
+        x: 96,
+        y: H - 330,
+        todayIdx: stats.dayIndex ?? new Date().getDay(),
+        trainedDays: stats.trainedDays || [new Date().getDay()],
+        accent,
+      });
+
+      ctx.textAlign = 'center';
+      ctx.font = '900 64px sans-serif';
+      ctx.fillStyle = accent;
+      ctx.fillText('ZYRON', W / 2, H - 198);
+
+      ctx.font = '700 22px sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.58)';
+      ctx.fillText('A FORCA DA SUA EVOLUCAO', W / 2, H - 156);
+
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+    };
+
+    img.onerror = reject;
+  });
+}
+
+function drawWeekStrip(ctx, { x, y, todayIdx, trainedDays, accent }) {
+  const labels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+  const cell = 76;
+  const gap = 22;
+
+  labels.forEach((label, i) => {
+    const cx = x + i * (cell + gap) + cell / 2;
+    const isToday = i === todayIdx;
+    const isTrained = trainedDays.includes(i);
+
+    ctx.beginPath();
+    ctx.arc(cx, y, cell / 2, 0, Math.PI * 2);
+    ctx.fillStyle = isTrained ? accent : 'rgba(255,255,255,0.08)';
+    ctx.fill();
+
+    if (isToday) {
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.stroke();
+    }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = isTrained ? '800 28px sans-serif' : '700 30px sans-serif';
+    ctx.fillStyle = isTrained ? '#050704' : 'rgba(255,255,255,0.42)';
+    ctx.fillText(isTrained ? 'OK' : label, cx, y + 2);
+
+    if (isTrained) {
+      ctx.beginPath();
+      ctx.arc(cx, y + cell / 2 + 16, 6, 0, Math.PI * 2);
+      ctx.fillStyle = accent;
+      ctx.fill();
+    }
+  });
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+function roundRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+/**
+ * Get current day name in PT-BR with an adjective.
+ */
+export function getLocalizedDayName() {
+  const days = [
+    'Domingo Forte',
+    'Segunda Forte',
+    'Terca Intensa',
+    'Quarta Forte',
+    'Quinta Forte',
+    'Sexta Forte',
+    'Sabado Forte',
+  ];
+  return days[new Date().getDay()];
+}
