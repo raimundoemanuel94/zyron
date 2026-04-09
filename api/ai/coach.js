@@ -11,6 +11,31 @@ const CORS = {
 
 const VALID_CONTEXTS = ['workout', 'progress', 'recovery'];
 const WORKOUT_ORDER_FIELDS = ['ended_at', 'completed_at', 'created_at', 'started_at'];
+const DAY_MS = 86400000;
+const PERSONAL_TARGET_MIN = 3;
+const PERSONAL_TARGET_MAX = 5;
+
+const KNOWN_WORKOUTS = {
+  0: { title: 'Descanso Ativo', focus: 'Recuperacao' },
+  1: { title: 'Peito + Triceps', focus: 'Hipertrofia - Empurre' },
+  2: { title: 'Costas + Biceps', focus: 'Hipertrofia - Puxe' },
+  3: { title: 'Pernas', focus: 'Membros Inferiores' },
+  4: { title: 'Ombro', focus: 'Hipertrofia - Deltoides' },
+  5: { title: 'Biceps + Triceps', focus: 'Bracos e Definicao' },
+  6: { title: 'Descanso Ativo', focus: 'Recuperacao' },
+};
+
+const GENERIC_PATTERNS = [
+  'continue assim',
+  'mantenha consistencia',
+  'mantenha a consistencia',
+  'descanse',
+  'descanso',
+  'hidrate se',
+  'durma bem',
+  'nao exagere',
+  'sem exageros',
+];
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -20,6 +45,14 @@ const json = (body, status = 200) =>
       ...CORS,
     },
   });
+
+const normalizeText = (value = '') =>
+  String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 const isMissingResourceError = (error) => {
   const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
@@ -33,6 +66,8 @@ const isMissingResourceError = (error) => {
     || message.includes('schema cache')
   );
 };
+
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 const getUser = async (supabase, req) => {
   const auth = req.headers.get('Authorization') || '';
@@ -52,25 +87,48 @@ const getWorkoutTimestamp = (workout) =>
   || workout?.started_at
   || null;
 
+const toPositiveNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+};
+
+const getKnownWorkoutMeta = (workout) => {
+  const key = String(workout?.workout_key ?? '').trim();
+  return KNOWN_WORKOUTS[key] || null;
+};
+
+const hasWorkoutSignal = (workout) => Boolean(
+  workout
+  && (
+    workout?.workout_name
+    || workout?.workout_key !== undefined
+    || getWorkoutTimestamp(workout)
+    || toPositiveNumber(workout?.duration_minutes)
+    || toPositiveNumber(workout?.duration_seconds)
+  ),
+);
+
 const getWorkoutDurationMinutes = (workout) => {
-  const durationSeconds = Number(workout?.duration_seconds || 0);
-  if (durationSeconds > 0) {
-    return Math.round(durationSeconds / 60);
-  }
+  if (!workout) return 0;
 
-  const durationMinutes = Number(workout?.duration_minutes || 0);
+  const durationMinutes = toPositiveNumber(workout.duration_minutes);
   if (durationMinutes > 0) {
-    return Math.round(durationMinutes);
+    return Math.max(1, Math.round(durationMinutes));
   }
 
-  if (workout?.started_at && workout?.ended_at) {
-    const diff = new Date(workout.ended_at).getTime() - new Date(workout.started_at).getTime();
-    if (diff > 0) {
-      return Math.round(diff / 60000);
+  if (workout.started_at && workout.ended_at) {
+    const diffMs = new Date(workout.ended_at).getTime() - new Date(workout.started_at).getTime();
+    if (diffMs > 0) {
+      return Math.max(1, Math.round(diffMs / 60000));
     }
   }
 
-  return 0;
+  const durationSeconds = toPositiveNumber(workout.duration_seconds);
+  if (durationSeconds > 0) {
+    return Math.max(1, Math.round(durationSeconds / 60));
+  }
+
+  return hasWorkoutSignal(workout) ? 1 : 0;
 };
 
 const formatDate = (value) => {
@@ -90,12 +148,234 @@ const formatCheckin = (checkin) => {
   return `${duration} min em ${date}`;
 };
 
+const getWorkoutTitle = (workout) => {
+  if (!workout) return 'Nenhum treino recente';
+
+  const explicitTitle = String(workout.workout_name || '').trim();
+  if (explicitTitle) return explicitTitle;
+
+  const knownWorkout = getKnownWorkoutMeta(workout);
+  if (knownWorkout?.title) return knownWorkout.title;
+
+  const workoutKey = String(workout.workout_key || '').trim();
+  return workoutKey ? `Treino ${workoutKey}` : 'Treino';
+};
+
+const getWorkoutBucket = (value) => {
+  const normalized = normalizeText(value);
+
+  if (!normalized) return 'generic';
+  if (normalized.includes('perna') || normalized.includes('inferior') || normalized.includes('gluteo')) return 'lower';
+  if (normalized.includes('peito') || normalized.includes('triceps') || normalized.includes('empurre')) return 'push';
+  if (normalized.includes('costa') || normalized.includes('biceps') || normalized.includes('puxe')) return 'pull';
+  if (normalized.includes('ombro') || normalized.includes('deltoide')) return 'shoulders';
+  if (normalized.includes('braco')) return 'arms';
+  if (normalized.includes('recuper')) return 'recovery';
+  return 'generic';
+};
+
+const inferFocusFromTitle = (title) => {
+  const bucket = getWorkoutBucket(title);
+
+  if (bucket === 'lower') return 'Membros Inferiores';
+  if (bucket === 'push') return 'Superior - Empurre';
+  if (bucket === 'pull') return 'Superior - Puxe';
+  if (bucket === 'shoulders') return 'Deltoides';
+  if (bucket === 'arms') return 'Bracos';
+  if (bucket === 'recovery') return 'Recuperacao';
+  return 'Treino Geral';
+};
+
+const getWorkoutFocus = (workout) => {
+  const knownWorkout = getKnownWorkoutMeta(workout);
+  if (knownWorkout?.focus) return knownWorkout.focus;
+
+  return inferFocusFromTitle(getWorkoutTitle(workout));
+};
+
 const sortByDateDesc = (rows = []) =>
   [...rows].sort((left, right) => {
     const leftTime = new Date(getWorkoutTimestamp(left) || 0).getTime();
     const rightTime = new Date(getWorkoutTimestamp(right) || 0).getTime();
     return rightTime - leftTime;
   });
+
+const toDayKey = (value) => {
+  const date = new Date(value);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const startOfDayDaysAgo = (daysAgo) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - daysAgo);
+  return date;
+};
+
+const addDays = (date, days) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+const countDistinctWorkoutDays = (workouts, startInclusive, endExclusive) => {
+  const keys = new Set();
+
+  workouts.forEach((workout) => {
+    const timestamp = getWorkoutTimestamp(workout);
+    if (!timestamp) return;
+
+    const date = new Date(timestamp);
+    if (date >= startInclusive && date < endExclusive) {
+      keys.add(toDayKey(timestamp));
+    }
+  });
+
+  return keys.size;
+};
+
+const getFrequencyStatus = (current, target) => {
+  if (current >= target) return 'bom';
+  if (current === Math.max(1, target - 1)) return 'quase no alvo';
+  return 'abaixo do alvo';
+};
+
+const getWeeklyComparison = (current, previous) => {
+  if (current === 0 && previous === 0) {
+    return {
+      short: 'ainda sem base recente de comparacao',
+      long: 'sem treinos nas ultimas duas semanas',
+    };
+  }
+
+  if (previous === 0) {
+    return {
+      short: `abriu ${current}x nesta janela sem base da semana passada`,
+      long: `sem base fechada da semana passada; abriu ${current} treino(s) agora`,
+    };
+  }
+
+  if (current > previous) {
+    return {
+      short: `subiu em relacao a semana passada (${previous}x)`,
+      long: `subiu de ${previous}x para ${current}x`,
+    };
+  }
+
+  if (current < previous) {
+    return {
+      short: `caiu em relacao a semana passada (${previous}x)`,
+      long: `caiu de ${previous}x para ${current}x`,
+    };
+  }
+
+  return {
+    short: `manteve o ritmo da semana passada (${previous}x)`,
+    long: `repetiu ${current}x nas duas janelas`,
+  };
+};
+
+const getTimeSinceLastWorkout = (workout) => {
+  if (!workout) {
+    return {
+      days: null,
+      label: 'sem registro recente',
+    };
+  }
+
+  const diffMs = Date.now() - new Date(getWorkoutTimestamp(workout)).getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / DAY_MS));
+
+  if (diffDays === 0) {
+    return { days: 0, label: 'hoje' };
+  }
+
+  if (diffDays === 1) {
+    return { days: 1, label: '1 dia' };
+  }
+
+  return {
+    days: diffDays,
+    label: `${diffDays} dias`,
+  };
+};
+
+const getAverageGapDays = (workouts) => {
+  const recent = workouts.slice(0, 5);
+  if (recent.length < 2) return null;
+
+  const gaps = [];
+  for (let index = 0; index < recent.length - 1; index += 1) {
+    const current = new Date(getWorkoutTimestamp(recent[index])).getTime();
+    const previous = new Date(getWorkoutTimestamp(recent[index + 1])).getTime();
+    const gapDays = Math.round((current - previous) / DAY_MS);
+
+    if (gapDays > 0) {
+      gaps.push(gapDays);
+    }
+  }
+
+  if (!gaps.length) return null;
+  return Math.round(gaps.reduce((sum, value) => sum + value, 0) / gaps.length);
+};
+
+const getRecentPatternSummary = (workouts, averageGapDays) => {
+  const recent = workouts.slice(0, 5);
+  if (!recent.length) {
+    return 'Sem padrao suficiente ainda.';
+  }
+
+  const titleCounts = new Map();
+  recent.forEach((workout) => {
+    const title = getWorkoutTitle(workout);
+    titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
+  });
+
+  const [topTitle = '', topCount = 0] = [...titleCounts.entries()]
+    .sort((left, right) => right[1] - left[1])[0] || [];
+
+  if (topCount > 1 && averageGapDays) {
+    return `${topTitle} apareceu ${topCount}x nos ultimos ${recent.length} treinos, com ritmo medio de ${averageGapDays} dia(s) entre sessoes.`;
+  }
+
+  const titles = recent.slice(0, 3).map(getWorkoutTitle);
+  if (averageGapDays) {
+    return `ritmo medio de ${averageGapDays} dia(s) entre sessoes, alternando ${titles.join(' -> ')}.`;
+  }
+
+  return `ultimos treinos: ${titles.join(' -> ')}.`;
+};
+
+const getTrend = (workouts) => {
+  const durations = workouts
+    .slice(0, 6)
+    .map(getWorkoutDurationMinutes)
+    .filter((value) => value > 0);
+
+  if (durations.length < 2) {
+    return workouts.length >= 2 ? 'subindo' : 'estavel';
+  }
+
+  const midpoint = Math.max(1, Math.floor(durations.length / 2));
+  const recent = durations.slice(0, midpoint);
+  const previous = durations.slice(midpoint);
+
+  if (!previous.length) {
+    return 'estavel';
+  }
+
+  const recentAverage = recent.reduce((sum, value) => sum + value, 0) / recent.length;
+  const previousAverage = previous.reduce((sum, value) => sum + value, 0) / previous.length;
+
+  if (Math.abs(recentAverage - previousAverage) < 4) {
+    return 'estavel';
+  }
+
+  return recentAverage > previousAverage ? 'subindo' : 'caindo';
+};
 
 const fetchRecentWorkouts = async (supabase, userId) => {
   for (const field of WORKOUT_ORDER_FIELDS) {
@@ -164,43 +444,94 @@ const fetchRecentPrs = async (supabase, userId) => {
 const toWorkoutLabel = (workout) => {
   if (!workout) return 'Nenhum treino recente';
 
-  const title = workout.workout_name || `Treino ${workout.workout_key || ''}`.trim() || 'Treino';
+  const title = getWorkoutTitle(workout);
   const date = formatDate(getWorkoutTimestamp(workout));
   const duration = getWorkoutDurationMinutes(workout);
-
-  if (!duration) {
-    return `${title} em ${date}`;
-  }
 
   return `${title} em ${date} (${duration} min)`;
 };
 
-const getTrend = (workouts) => {
-  const durations = workouts
-    .slice(0, 6)
-    .map(getWorkoutDurationMinutes)
-    .filter((value) => value > 0);
+const buildPrimarySuggestion = ({ context, metrics }) => {
+  const lastTitle = metrics.lastWorkoutTitle !== 'Nenhum treino recente'
+    ? metrics.lastWorkoutTitle.toLowerCase()
+    : 'proximo treino';
 
-  if (durations.length < 2) {
-    return workouts.length >= 2 ? 'subindo' : 'caindo';
+  if (context === 'recovery') {
+    if (metrics.lastWorkoutBucket === 'lower') {
+      return 'amanha faca treino leve de superior e preserve pernas sem falha';
+    }
+
+    if (metrics.daysSinceLastWorkout >= 2) {
+      return `volte hoje com carga controlada no primeiro bloco de ${lastTitle}`;
+    }
+
+    if (metrics.lastWorkoutBucket === 'push') {
+      return 'amanha faca puxada leve de superior com tecnica limpa';
+    }
+
+    if (metrics.lastWorkoutBucket === 'pull') {
+      return 'amanha faca empurre leve de superior sem levar a falha';
+    }
+
+    return 'retorne com carga progressiva no proximo treino util, sem cortar aquecimento';
   }
 
-  const midpoint = Math.max(1, Math.floor(durations.length / 2));
-  const recent = durations.slice(0, midpoint);
-  const previous = durations.slice(midpoint);
+  if (context === 'progress') {
+    if (metrics.trend === 'subindo') {
+      return `retorne com carga progressiva no proximo treino de ${lastTitle} se a tecnica seguir limpa`;
+    }
 
-  if (!previous.length) {
-    return recent[0] >= 45 ? 'subindo' : 'caindo';
+    if (metrics.weeklyDays < metrics.personalTargetFrequency) {
+      return `encaixe mais 1 sessao nesta janela e repita ${lastTitle} sem cortar series principais`;
+    }
+
+    return `repita ${lastTitle} com a mesma base e busque 1 a 2 reps extras antes de subir carga`;
   }
 
-  const recentAverage = recent.reduce((sum, value) => sum + value, 0) / recent.length;
-  const previousAverage = previous.reduce((sum, value) => sum + value, 0) / previous.length;
+  if (metrics.daysSinceLastWorkout >= 3) {
+    return `volte hoje e use 2 series de aproximacao antes da carga principal de ${lastTitle}`;
+  }
 
-  return recentAverage >= previousAverage ? 'subindo' : 'caindo';
+  if (metrics.lastWorkoutBucket === 'lower') {
+    return 'amanha faca treino leve de superior para alternar o estimulo';
+  }
+
+  if (metrics.lastWorkoutBucket === 'push') {
+    return 'no proximo treino, entre em puxada com carga progressiva e pausa curta';
+  }
+
+  if (metrics.lastWorkoutBucket === 'pull') {
+    return 'no proximo treino, volte para empurre com carga progressiva e tecnica limpa';
+  }
+
+  return `retorne com carga progressiva no proximo treino de ${lastTitle}`;
+};
+
+const buildSupportSuggestion = (metrics) => {
+  if (metrics.weeklyDays < metrics.personalTargetFrequency) {
+    const missingSessions = metrics.personalTargetFrequency - metrics.weeklyDays;
+    return `feche ${metrics.personalTargetFrequency}x na janela atual com mais ${missingSessions} sessao(oes) para retomar seu padrao`;
+  }
+
+  if (metrics.averageDuration > 0) {
+    return `mantenha as proximas sessoes perto de ${metrics.averageDuration} min para sustentar o ritmo atual`;
+  }
+
+  return 'registre inicio e fim do treino para refinar a leitura das proximas sessoes';
+};
+
+const buildSmartSuggestions = ({ context, metrics }) => {
+  const suggestions = [
+    buildPrimarySuggestion({ context, metrics }),
+    buildSupportSuggestion(metrics),
+  ].filter(Boolean);
+
+  return [...new Set(suggestions)].slice(0, 2);
 };
 
 const buildSummary = ({ context, workouts, checkins, prs }) => {
-  const recentWorkouts = sortByDateDesc(workouts).slice(0, 7);
+  const trackedWorkouts = sortByDateDesc(workouts).filter(hasWorkoutSignal);
+  const recentWorkouts = trackedWorkouts.slice(0, 7);
   const lastWorkout = recentWorkouts[0] || null;
   const averageDuration = recentWorkouts.length
     ? Math.round(
@@ -208,20 +539,34 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
     )
     : 0;
 
-  const weekStart = new Date();
-  weekStart.setHours(0, 0, 0, 0);
-  weekStart.setDate(weekStart.getDate() - 6);
+  const todayStart = startOfDayDaysAgo(0);
+  const tomorrowStart = addDays(todayStart, 1);
+  const currentWeekStart = startOfDayDaysAgo(6);
+  const previousWeekStart = startOfDayDaysAgo(13);
+  const thirdWeekStart = startOfDayDaysAgo(20);
 
-  const weeklyDays = new Set(
-    workouts
-      .filter((workout) => {
-        const timestamp = getWorkoutTimestamp(workout);
-        return timestamp && new Date(timestamp) >= weekStart;
-      })
-      .map((workout) => new Date(getWorkoutTimestamp(workout)).toISOString().slice(0, 10)),
-  ).size;
+  const weeklyDays = countDistinctWorkoutDays(trackedWorkouts, currentWeekStart, tomorrowStart);
+  const previousWeekDays = countDistinctWorkoutDays(trackedWorkouts, previousWeekStart, currentWeekStart);
+  const thirdWeekDays = countDistinctWorkoutDays(trackedWorkouts, thirdWeekStart, previousWeekStart);
 
+  const targetSamples = [weeklyDays, previousWeekDays, thirdWeekDays].filter((value) => value > 0);
+  const personalTargetFrequency = targetSamples.length
+    ? clamp(
+      Math.round(targetSamples.reduce((sum, value) => sum + value, 0) / targetSamples.length),
+      PERSONAL_TARGET_MIN,
+      PERSONAL_TARGET_MAX,
+    )
+    : 4;
+
+  const frequencyStatus = getFrequencyStatus(weeklyDays, personalTargetFrequency);
+  const comparison = getWeeklyComparison(weeklyDays, previousWeekDays);
+  const timeSinceLastWorkout = getTimeSinceLastWorkout(lastWorkout);
+  const averageGapDays = getAverageGapDays(recentWorkouts);
   const trend = getTrend(recentWorkouts);
+  const lastWorkoutTitle = getWorkoutTitle(lastWorkout);
+  const lastWorkoutFocus = getWorkoutFocus(lastWorkout);
+  const lastWorkoutBucket = getWorkoutBucket(`${lastWorkoutTitle} ${lastWorkoutFocus}`);
+  const patternSummary = getRecentPatternSummary(recentWorkouts, averageGapDays);
   const checkinSummary = checkins.length
     ? checkins.slice(0, 3).map(formatCheckin).join(', ')
     : 'Sem check-ins recentes';
@@ -238,65 +583,98 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
     recovery: 'Foco do pedido: recuperacao e capacidade de voltar bem.',
   }[context];
 
+  const metrics = {
+    context,
+    recentWorkoutCount: recentWorkouts.length,
+    weeklyDays,
+    previousWeekDays,
+    personalTargetFrequency,
+    frequencyStatus,
+    comparisonShort: comparison.short,
+    comparisonLong: comparison.long,
+    averageDuration,
+    trend,
+    lastWorkoutTitle,
+    lastWorkoutFocus,
+    lastWorkoutBucket,
+    lastWorkoutLabel: toWorkoutLabel(lastWorkout),
+    timeSinceLastWorkoutLabel: timeSinceLastWorkout.label,
+    daysSinceLastWorkout: timeSinceLastWorkout.days,
+    latestCheckinLabel: checkins[0] ? formatCheckin(checkins[0]) : 'Sem check-ins recentes',
+    hasPrs: prs.length > 0,
+    patternSummary,
+  };
+
+  const suggestions = buildSmartSuggestions({ context, metrics });
+
   return {
     summaryText: [
       contextLine,
-      `Ultimos 7 treinos analisados: ${recentWorkouts.length}`,
-      `Dias treinados na semana: ${weeklyDays}`,
-      `Media de duracao: ${averageDuration} min`,
-      `Ultimo treino: ${toWorkoutLabel(lastWorkout)}`,
-      `Tendencia: ${trend}`,
+      `Ultimo treino: ${lastWorkoutTitle} | foco ${lastWorkoutFocus}`,
+      `Tempo desde o ultimo treino: ${timeSinceLastWorkout.label}`,
+      `Frequencia atual: ${weeklyDays}x | meta pessoal: ${personalTargetFrequency}x | semana passada: ${previousWeekDays}x`,
+      `Comparacao semanal: ${comparison.long}`,
+      `Media de duracao real: ${averageDuration} min`,
+      `Tendencia de duracao: ${trend}`,
+      `Padrao recente: ${patternSummary}`,
       `Ultimos check-ins: ${checkinSummary}`,
       `PRs: ${prSummary}`,
+      `Sugestao concreta preferida: ${suggestions[0] || 'Sem sugestao suficiente ainda.'}`,
     ].join('\n'),
     insights: [
-      `Dias treinados: ${weeklyDays}`,
-      `Media de duracao: ${averageDuration} min`,
-      `Ultimo treino: ${toWorkoutLabel(lastWorkout)}`,
-      `Tendencia: ${trend}`,
+      `Voce treinou ${weeklyDays}x (${frequencyStatus}) e ${comparison.short}.`,
+      lastWorkout
+        ? `Ultimo treino: ${lastWorkoutTitle}; voce esta ha ${timeSinceLastWorkout.label} sem repetir sessao.`
+        : 'Ultimo treino: ainda sem registro recente suficiente.',
+      averageDuration
+        ? `Media real de duracao: ${averageDuration} min, com tendencia ${trend}.`
+        : 'Media real de duracao: ainda sem minutos suficientes.',
+      `Meta pessoal de frequencia: ${personalTargetFrequency}x; padrao recente: ${patternSummary}`,
     ],
-    metrics: {
-      context,
-      recentWorkoutCount: recentWorkouts.length,
-      weeklyDays,
-      averageDuration,
-      lastWorkoutLabel: toWorkoutLabel(lastWorkout),
-      trend,
-      latestCheckinLabel: checkins[0] ? formatCheckin(checkins[0]) : 'Sem check-ins recentes',
-      hasPrs: prs.length > 0,
-    },
+    suggestions,
+    metrics,
   };
 };
 
-const buildCoachFallback = ({ context, metrics }) => {
-  const durationLine = metrics.averageDuration > 0
-    ? `media de ${metrics.averageDuration} min`
-    : 'duracao ainda curta no historico';
+const buildCoachFallback = ({ metrics, suggestions }) => {
+  if (!metrics.recentWorkoutCount) {
+    const emptyAnalysis = 'Analise: ainda nao encontrei treinos recentes suficientes para fechar sua leitura.';
+    const emptyRecommendation = 'Recomendacao: registre o proximo treino completo com inicio e fim para eu calibrar volume, frequencia e retorno.';
+    const emptyMotivation = 'Motivacao: o primeiro treino bem registrado ja libera uma leitura bem mais util para voce.';
 
-  const analysis = metrics.recentWorkoutCount > 0
-    ? `Analise: voce treinou ${metrics.weeklyDays} dia(s) na semana, com ${durationLine}, e sua tendencia esta ${metrics.trend}.`
-    : 'Analise: ainda nao encontrei treinos recentes suficientes para uma leitura completa.';
+    return {
+      sections: {
+        analysis: emptyAnalysis,
+        recommendation: emptyRecommendation,
+        motivation: emptyMotivation,
+      },
+      message: [emptyAnalysis, emptyRecommendation, emptyMotivation].join('\n'),
+      suggestions: ['registre o proximo treino completo para liberar uma leitura melhor'],
+    };
+  }
 
-  const recommendationByContext = {
-    workout: metrics.recentWorkoutCount > 0
-      ? `Recomendacao: repita o nivel do ultimo treino (${metrics.lastWorkoutLabel}) com execucao limpa e mais 1 serie forte no exercicio principal.`
-      : 'Recomendacao: registre o proximo treino completo para eu calibrar volume, duracao e intensidade.',
-    progress: metrics.hasPrs
-      ? `Recomendacao: mantenha a progressao de carga com pequenos aumentos e proteja a tecnica nas series finais.`
-      : 'Recomendacao: atualize cargas reais nos proximos treinos para liberar uma leitura melhor de progresso.',
-    recovery: metrics.weeklyDays >= 4
-      ? `Recomendacao: segure a intensidade por 24h, priorize sono e entre no proximo treino apenas se a energia voltar bem.`
-      : `Recomendacao: voce pode seguir com o proximo treino, mas preserve pausas consistentes e ritmo controlado.`,
-  };
-
-  const motivation = metrics.recentWorkoutCount > 0
-    ? 'Motivacao: seu historico ja mostra consistencia real; agora transforme isso em repeticao forte.'
-    : 'Motivacao: o primeiro registro bem feito ja abre uma leitura muito mais precisa para voce.';
+  const analysis = `Analise: voce treinou ${metrics.weeklyDays}x (${metrics.frequencyStatus}) e ${metrics.comparisonShort}. Ultimo bloco: ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`;
+  const recommendation = `Recomendacao: ${suggestions[0] || 'retorne com carga progressiva no proximo treino util.'}`;
+  const motivation = metrics.trend === 'subindo'
+    ? `Motivacao: seu padrao recente ja mostra tracao real; agora vale consolidar esse ritmo com mais uma sessao forte.`
+    : `Motivacao: o seu historico ainda sustenta boa retomada se voce encaixar a proxima sessao no timing certo.`;
 
   return {
-    message: [analysis, recommendationByContext[context], motivation].join('\n'),
-    suggestions: [recommendationByContext[context].replace(/^Recomendacao:\s*/i, '')],
+    sections: {
+      analysis,
+      recommendation,
+      motivation,
+    },
+    message: [analysis, recommendation, motivation].join('\n'),
+    suggestions,
   };
+};
+
+const isGenericCoachLine = (value) => {
+  const normalized = normalizeText(value);
+  if (!normalized) return true;
+
+  return GENERIC_PATTERNS.some((pattern) => normalized.includes(pattern));
 };
 
 const normalizeCoachMessage = (raw) => {
@@ -313,10 +691,7 @@ const normalizeCoachMessage = (raw) => {
   };
 
   for (const line of lines) {
-    const normalized = line
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
+    const normalized = normalizeText(line);
 
     if (normalized.startsWith('analise:')) {
       sections.analysis = line.split(':').slice(1).join(':').trim();
@@ -387,35 +762,39 @@ export default async function handler(req) {
       fetchRecentPrs(supabase, user.id),
     ]);
 
-    const { summaryText, insights, metrics } = buildSummary({
+    const { summaryText, insights, suggestions, metrics } = buildSummary({
       context,
       workouts,
       checkins,
       prs,
     });
 
+    const fallback = buildCoachFallback({
+      metrics,
+      suggestions,
+    });
+
     try {
       const rawMessage = await requestCoachAnalysis(summaryText);
       const normalized = normalizeCoachMessage(rawMessage);
-      const message = [
-        normalized.analysis,
-        normalized.recommendation,
-        normalized.motivation,
-      ]
-        .filter(Boolean)
-        .join('\n');
+
+      const analysis = isGenericCoachLine(normalized.analysis)
+        ? fallback.sections.analysis
+        : `Analise: ${normalized.analysis}`;
+      const recommendation = isGenericCoachLine(normalized.recommendation)
+        ? fallback.sections.recommendation
+        : `Recomendacao: ${normalized.recommendation}`;
+      const motivation = isGenericCoachLine(normalized.motivation)
+        ? fallback.sections.motivation
+        : `Motivacao: ${normalized.motivation}`;
 
       return json({
-        message,
+        message: [analysis, recommendation, motivation].join('\n'),
         insights,
-        suggestions: [
-          normalized.recommendation,
-          normalized.motivation,
-        ].filter(Boolean),
+        suggestions,
       });
     } catch (error) {
       console.error('[ai/coach]', error);
-      const fallback = buildCoachFallback({ context, metrics });
 
       return json({
         message: fallback.message,

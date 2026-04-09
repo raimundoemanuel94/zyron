@@ -137,20 +137,19 @@ Melhores marcas:
 ${topPRs}`;
 }
 
-export const buildCoachPrompt = (summary) => `Voce e um coach fitness. Analise os dados:
+export const buildCoachPrompt = (summary) => `Voce e um coach fitness de alta performance. Analise somente os dados reais abaixo:
 
 ${summary}
 
-Responda com:
-- analise curta
-- recomendacao pratica
-- tom motivador
-
 Regras:
-- maximo 5 linhas
-- nada generico
+- cite o ultimo treino pelo nome quando existir
+- cite o padrao do usuario: frequencia, comparacao com a semana passada e tempo desde o ultimo treino
+- a recomendacao precisa ser concreta para a proxima sessao
+- evite frases genericas como "descanse", "continue assim" ou "mantenha consistencia"
 - use apenas os dados enviados
-- entregue exatamente 3 linhas:
+- no maximo 3 linhas
+- cada linha deve ser curta e objetiva
+- entregue exatamente 3 linhas neste formato:
 Analise: ...
 Recomendacao: ...
 Motivacao: ...`;
@@ -247,7 +246,7 @@ export async function sendMessageToGemini(history = [], userMessage = '', system
 
 export async function requestCoachAnalysis(summary) {
   return generateGeminiText(buildCoachPrompt(summary), {
-    temperature: 0.45,
-    maxOutputTokens: 220,
+    temperature: 0.35,
+    maxOutputTokens: 180,
   });
 }
