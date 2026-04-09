@@ -16,15 +16,16 @@ const CORS_HEADERS = buildCorsHeaders({
 const STREAM_CACHE_TTL_MS = 5 * 60 * 1000;
 const STREAM_CACHE_MAX_ITEMS = 300;
 const streamCache = new Map();
+const PROVIDER_CACHE_TTL_MS = 10 * 60 * 1000;
+let providersCache = {
+  value: null,
+  expiresAt: 0,
+};
 
-const PROVIDERS = [
+const STATIC_PROVIDERS = [
   {
-    name: 'pipedapi.kavin.rocks',
-    buildUrl: (id) => `https://pipedapi.kavin.rocks/streams/${id}`,
-  },
-  {
-    name: 'pipedapi.adminforge.de',
-    buildUrl: (id) => `https://pipedapi.adminforge.de/streams/${id}`,
+    name: 'api.piped.private.coffee',
+    buildUrl: (id) => `https://api.piped.private.coffee/streams/${id}`,
   },
   {
     name: 'piped.video',
@@ -101,62 +102,58 @@ const pickBestAudio = (payload, { isIOSClient = false } = {}) => {
   return ranked[0]?.stream || null;
 };
 
-const getFromCache = (videoId) => {
-  const cached = streamCache.get(videoId);
+const toStreamCacheKey = (videoId, isIOSClient) => `${videoId}:${isIOSClient ? 'ios' : 'default'}`;
+
+const getFromCache = (cacheKey) => {
+  const cached = streamCache.get(cacheKey);
   if (!cached) return null;
 
   if (Date.now() >= cached.expiresAt) {
-    streamCache.delete(videoId);
+    streamCache.delete(cacheKey);
     return null;
   }
 
   return cached.value;
 };
 
-const setCache = (videoId, value) => {
+const setCache = (cacheKey, value) => {
   if (streamCache.size >= STREAM_CACHE_MAX_ITEMS) {
     const oldestKey = streamCache.keys().next().value;
     if (oldestKey) streamCache.delete(oldestKey);
   }
 
-  streamCache.set(videoId, {
+  streamCache.set(cacheKey, {
     value,
     expiresAt: Date.now() + STREAM_CACHE_TTL_MS,
   });
 };
 
-const fetchProvider = async (provider, videoId, timeoutMs = 8000) => {
+const sanitizeBaseUrl = (value) => {
+  if (!value || typeof value !== 'string') return null;
+
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:') return null;
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+};
+
+const fetchJsonWithTimeout = async (url, timeoutMs = 5000) => {
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
 
   try {
-    const response = await fetch(provider.buildUrl(videoId), {
+    const response = await fetch(url, {
       headers: {
         Accept: 'application/json',
-        'User-Agent': 'ZYRON-Audio-Proxy/1.1',
+        'User-Agent': 'ZYRON-Audio-Proxy/1.2',
       },
       signal: abortController.signal,
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        throw new ApiError({
-          code: 'UPSTREAM_RATE_LIMITED',
-          message: 'Upstream rate limit reached',
-          status: 502,
-          details: { upstream_status: 429 },
-        });
-      }
-
-      if (response.status === 404) {
-        throw new ApiError({
-          code: 'VIDEO_NOT_FOUND',
-          message: 'Video not found in upstream provider',
-          status: 404,
-          details: { upstream_status: 404 },
-        });
-      }
-
       throw new ApiError({
         code: 'UPSTREAM_ERROR',
         message: `Upstream status ${response.status}`,
@@ -170,18 +167,118 @@ const fetchProvider = async (provider, videoId, timeoutMs = 8000) => {
     if (error?.name === 'AbortError') {
       throw new ApiError({
         code: 'UPSTREAM_TIMEOUT',
-        message: 'Timeout while fetching audio stream',
+        message: 'Timeout while fetching upstream json',
         status: 408,
       });
     }
 
     throw toApiError(error, {
       code: 'UPSTREAM_ERROR',
-      message: 'Failed to fetch audio stream from upstream',
+      message: 'Failed to fetch upstream json',
       status: 502,
     });
   } finally {
     clearTimeout(timeoutId);
+  }
+};
+
+const scoreProviderInstance = (instance) => {
+  const uptime24h = Number(instance?.uptime_24h || 0);
+  const uptime7d = Number(instance?.uptime_7d || 0);
+  const upToDate = instance?.up_to_date ? 10 : 0;
+  const cacheBonus = instance?.cache ? 5 : 0;
+  return uptime24h + uptime7d + upToDate + cacheBonus;
+};
+
+const toProvider = (apiUrl) => {
+  const baseUrl = sanitizeBaseUrl(apiUrl);
+  if (!baseUrl) return null;
+
+  try {
+    const hostname = new URL(baseUrl).host;
+    return {
+      name: hostname,
+      buildUrl: (id) => `${baseUrl}/streams/${id}`,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const dedupeProviders = (providers) => {
+  const seen = new Set();
+  return providers.filter((provider) => {
+    if (!provider?.name || seen.has(provider.name)) return false;
+    seen.add(provider.name);
+    return true;
+  });
+};
+
+const resolveProviders = async () => {
+  if (providersCache.value && Date.now() < providersCache.expiresAt) {
+    return providersCache.value;
+  }
+
+  let discoveredProviders = [];
+
+  try {
+    const instances = await fetchJsonWithTimeout('https://piped-instances.kavin.rocks/', 5000);
+    if (Array.isArray(instances)) {
+      discoveredProviders = instances
+        .map((instance) => ({
+          instance,
+          provider: toProvider(instance?.api_url),
+        }))
+        .filter((entry) => entry.provider)
+        .sort((a, b) => scoreProviderInstance(b.instance) - scoreProviderInstance(a.instance))
+        .slice(0, 6)
+        .map((entry) => entry.provider);
+    }
+  } catch {
+    discoveredProviders = [];
+  }
+
+  const providers = dedupeProviders([...discoveredProviders, ...STATIC_PROVIDERS]);
+
+  providersCache = {
+    value: providers,
+    expiresAt: Date.now() + PROVIDER_CACHE_TTL_MS,
+  };
+
+  return providers;
+};
+
+const fetchProvider = async (provider, videoId, timeoutMs = 8000) => {
+  try {
+    return await fetchJsonWithTimeout(provider.buildUrl(videoId), timeoutMs);
+  } catch (error) {
+    const apiError = toApiError(error, {
+      code: 'UPSTREAM_ERROR',
+      message: 'Failed to fetch audio stream from upstream',
+      status: 502,
+    });
+
+    const upstreamStatus = Number(apiError?.details?.upstream_status || 0);
+
+    if (upstreamStatus === 429) {
+      throw new ApiError({
+        code: 'UPSTREAM_RATE_LIMITED',
+        message: 'Upstream rate limit reached',
+        status: 502,
+        details: { upstream_status: 429 },
+      });
+    }
+
+    if (upstreamStatus === 404) {
+      throw new ApiError({
+        code: 'VIDEO_NOT_FOUND',
+        message: 'Video not found in upstream provider',
+        status: 404,
+        details: { upstream_status: 404 },
+      });
+    }
+
+    throw apiError;
   }
 };
 
@@ -238,9 +335,10 @@ export default async function handler(req) {
     });
   }
 
-  const cached = getFromCache(videoId);
+  const cacheKey = toStreamCacheKey(videoId, isIOSClient);
+  const cached = getFromCache(cacheKey);
   if (cached) {
-    log.info('cache=HIT', { videoId });
+    log.info('cache=HIT', { videoId, ios_client: isIOSClient });
     return successResponse({
       data: {
         ...cached,
@@ -256,11 +354,12 @@ export default async function handler(req) {
     });
   }
 
-  log.info('cache=MISS', { videoId });
+  log.info('cache=MISS', { videoId, ios_client: isIOSClient });
 
   const failures = [];
+  const providers = await resolveProviders();
 
-  for (const provider of PROVIDERS) {
+  for (const provider of providers) {
     try {
       const payload = await fetchProvider(provider, videoId, 8000);
       const bestAudio = pickBestAudio(payload, { isIOSClient });
@@ -293,7 +392,7 @@ export default async function handler(req) {
         ios_compatible: isIOSCompatibleStream(bestAudio),
       };
 
-      setCache(videoId, result);
+      setCache(cacheKey, result);
 
       log.info('provider=SUCCESS', {
         videoId,
