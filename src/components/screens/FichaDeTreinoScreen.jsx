@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   LayoutDashboard,
   Dumbbell,
@@ -66,12 +66,14 @@ import TabPerfil from '../navigation/TabPerfil';
 import TabCoach from '../navigation/TabCoach';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
+import { useGymCheckin } from '../../hooks/useGymCheckin';
 import haptics from '../../utils/haptics';
 import { C } from '../../styles/ds';
 import { useProfile } from '../../core/profile/useProfile';
 import { useExerciseCompletion, useDailyMetrics } from '../../hooks/usePersistence';
 import { usePreferences } from '../../hooks/usePreferences';
 import NotificationSheet from '../NotificationSheet';
+import { checkinApi } from '../../services/checkin/checkinApiService';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -287,6 +289,122 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   // ZYRON SYNC ENGINE: Offline-first persistence
   const { logWorkout, isOnline, syncPending } = useSyncWorkout(user);
+  const checkinBackendIdRef = useRef(null);
+
+  const handleCheckinEvent = useCallback(async (event) => {
+    if (!event?.type || !user?.id) return;
+
+    try {
+      if (event.type === 'CHECKIN_START') {
+        const session = event.session;
+        const result = await checkinApi.start({
+          client_session_id: session?.id || null,
+          gym_id: session?.gym_id || 'workout_default',
+          source: session?.source || 'gps',
+          mode: session?.mode || 'auto',
+          timezone: session?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          started_at_utc: session?.started_at_utc || new Date().toISOString(),
+          started_at_local: session?.started_at_local || new Date().toISOString(),
+          started_lat: session?.started_lat ?? null,
+          started_lng: session?.started_lng ?? null,
+          started_accuracy_m: session?.started_accuracy_m ?? null,
+        });
+
+        const backendId = result?.data?.checkin?.id || null;
+        if (backendId) checkinBackendIdRef.current = backendId;
+        logger.systemEvent('Check-in iniciado', { backendId, mode: session?.mode, source: session?.source });
+        return;
+      }
+
+      if (event.type === 'CHECKIN_HEARTBEAT') {
+        const checkinId = checkinBackendIdRef.current;
+        if (!checkinId) return;
+
+        await checkinApi.heartbeat({
+          checkin_id: checkinId,
+          heartbeat_at_utc: event?.reading?.captured_at_utc || new Date().toISOString(),
+          source: event?.reading?.source || event?.session?.source || 'gps',
+          heartbeat_lat: event?.reading?.lat ?? null,
+          heartbeat_lng: event?.reading?.lng ?? null,
+          heartbeat_accuracy_m: event?.reading?.accuracy_m ?? null,
+        });
+        return;
+      }
+
+      if (event.type === 'CHECKIN_END') {
+        const checkinId = checkinBackendIdRef.current;
+        if (!checkinId) return;
+
+        const session = event.session || {};
+        await checkinApi.end({
+          checkin_id: checkinId,
+          ended_at_utc: session.ended_at_utc || new Date().toISOString(),
+          ended_at_local: session.ended_at_local || new Date().toISOString(),
+          timezone: session.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          duration_minutes: Number(session.duration_minutes || 0),
+          ended_reason: event.reason || session.ended_reason || 'manual',
+          source: event?.reading?.source || session.source || 'manual',
+          ended_lat: session.ended_lat ?? event?.reading?.lat ?? null,
+          ended_lng: session.ended_lng ?? event?.reading?.lng ?? null,
+          ended_accuracy_m: session.ended_accuracy_m ?? event?.reading?.accuracy_m ?? null,
+        });
+
+        logger.systemEvent('Check-in finalizado', {
+          checkinId,
+          durationMinutes: session.duration_minutes || 0,
+          reason: event.reason || session.ended_reason || 'manual',
+        });
+        checkinBackendIdRef.current = null;
+      }
+    } catch (err) {
+      logger.warn('Falha na integracao de check-in', {
+        eventType: event?.type,
+        error: err?.message,
+      }, err);
+    }
+  }, [user?.id]);
+
+  const {
+    startWatch: startGymCheckinWatch,
+    stopWatch: stopGymCheckinWatch,
+    startManualCheckin,
+    endByWorkout,
+    resetCheckin,
+  } = useGymCheckin({
+    gym: null,
+    enabled: true,
+    onEvent: handleCheckinEvent,
+    onError: (err) => logger.warn('Check-in runtime error', err || {}),
+  });
+
+  const captureCurrentPosition = useCallback(() => new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      () => resolve(null),
+      { timeout: 8000, maximumAge: 60000, enableHighAccuracy: true },
+    );
+  }), []);
+
+  const reverseGeocodeLocation = useCallback(async (latitude, longitude) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=pt-BR`,
+        { headers: { 'User-Agent': 'ZyronFitnessApp/4.0' } },
+      );
+      const geo = await res.json();
+      const city = geo.address?.city || geo.address?.town || geo.address?.village || '';
+      const state = geo.address?.state || '';
+      const stateAbbr = geo.address?.['ISO3166-2-lvl4']?.split('-')[1] || state.slice(0, 2).toUpperCase();
+      return city ? `${city}${stateAbbr ? ` · ${stateAbbr}` : ''}` : state || null;
+    } catch {
+      return null;
+    }
+  }, []);
 
   const isAnyAdmin = useMemo(() => {
     const adminEmails = ['raiiimundoemanuel2018@gmail.com', 'raimundoemanuel2018@gmail.com', 'raimundoemanuel1@gmail.com'];
@@ -456,7 +574,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     return () => clearInterval(restTimerRef.current);
   }, [restTimer]);
 
-  const startSession = (workoutKey) => {
+  const startSession = async (workoutKey) => {
     // SECURITY FIX: React onClick passes the Event object if no arguments are provided.
     // If workoutKey is an object (like an SVGSVGElement Event), fallback to `today`.
     let safeKey = today;
@@ -470,32 +588,42 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setSessionTime(0);
     setSessionStartedAt(new Date().toISOString());
 
-    // Capturar localização via GPS → Nominatim reverse geocoding
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            const { latitude, longitude } = pos.coords;
-            const res = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=pt-BR`,
-              { headers: { 'User-Agent': 'ZyronFitnessApp/4.0' } }
-            );
-            const geo = await res.json();
-            const city  = geo.address?.city || geo.address?.town || geo.address?.village || '';
-            const state = geo.address?.state || '';
-            // Abreviação do estado (ex: "Mato Grosso" → "MT")
-            const stateAbbr = geo.address?.['ISO3166-2-lvl4']?.split('-')[1] || state.slice(0,2).toUpperCase();
-            const label = city ? `${city}${stateAbbr ? ' · ' + stateAbbr : ''}` : state || null;
-            setSessionLocation(label);
-          } catch { /* geolocation disponível mas reverse falhou — continua sem local */ }
-        },
-        () => { /* usuário negou permissão — ok */ },
-        { timeout: 8000, maximumAge: 60000 }
-      );
+    checkinBackendIdRef.current = null;
+    await resetCheckin();
+
+    const initialPos = await captureCurrentPosition();
+
+    if (initialPos?.coords) {
+      const { latitude, longitude, accuracy } = initialPos.coords;
+      const label = await reverseGeocodeLocation(latitude, longitude);
+      if (label) setSessionLocation(label);
+
+      const dynamicGym = {
+        id: `gym_${safeKey}`,
+        lat: Number(latitude),
+        lng: Number(longitude),
+        radiusM: 120,
+      };
+
+      const started = await startGymCheckinWatch(dynamicGym);
+      if (!started) {
+        startManualCheckin();
+      }
+
+      logger.systemEvent('Check-in de treino inicializado', {
+        mode: started ? 'auto' : 'manual',
+        workoutKey: safeKey,
+        lat: Number(latitude),
+        lng: Number(longitude),
+        accuracy: Number(accuracy || 0),
+      });
+    } else {
+      setSessionLocation('Localizacao indisponivel');
+      startManualCheckin();
+      logger.warn('Check-in iniciou em fallback manual (sem GPS inicial)', { workoutKey: safeKey });
     }
     // completedExercises gerenciado internamente pelo hook useExerciseCompletion
   };
-
   const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
     if (setData) {
       setSessionSets(prev => [...prev, {
@@ -525,6 +653,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   const handleFinishSession = async () => {
     if (isTraining) {
+      try {
+        endByWorkout();
+        await stopGymCheckinWatch();
+      } catch (checkinErr) {
+        logger.warn('Falha ao encerrar check-in ao finalizar sessao', {
+          error: checkinErr?.message,
+        }, checkinErr);
+      }
+
       setLastWorkoutSummary({
         workout: {
           workout_key: String(selectedWorkoutKey || today),
@@ -548,6 +685,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       ended_at:     endedAt,
       location:     sessionLocation || null,
     };
+
     await logWorkout(enrichedWorkout, setsData);
     setShowCompletedScreen(false);
     setSessionSets([]);
@@ -1568,3 +1706,4 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     </motion.div>
   );
 }
+

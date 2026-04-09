@@ -34,3 +34,4 @@ yarn-error.log*
 # backup files
 *.bak
 *_BACKUP.*
+.env*.local
