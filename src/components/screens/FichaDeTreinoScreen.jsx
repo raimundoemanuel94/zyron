@@ -67,6 +67,7 @@ import TabCoach from '../navigation/TabCoach';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
+import { useMusic } from '../../contexts/MusicContext';
 import haptics from '../../utils/haptics';
 import { C } from '../../styles/ds';
 import { useProfile } from '../../core/profile/useProfile';
@@ -154,6 +155,7 @@ const QUICK_ICON_MAP = {
 };
 
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
+  const { currentTrack: dockTrack } = useMusic();
   // USE PROFILE: Centralized hook for profile and metrics
   const { profile, metrics, stats, isLoading: profileLoading, updateProfile } = useProfile(user?.id);
 
@@ -1057,7 +1059,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
         className="flex-1 w-full px-4 pt-1 relative z-10 overflow-y-auto"
-        style={{ paddingBottom: 'calc(144px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: dockTrack ? 'calc(144px + env(safe-area-inset-bottom))' : 'calc(72px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
 
@@ -1706,4 +1708,3 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     </motion.div>
   );
 }
-
