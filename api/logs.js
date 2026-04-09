@@ -86,11 +86,11 @@ export default async function handler(req) {
         );
       }
 
-      // Construir row para inserir
+      // Construir row para inserir (colunas: log_type e log_level)
       const row = {
         user_id: user.id,
-        type: logEntry.type,
-        level: logEntry.level,
+        log_type: logEntry.type,
+        log_level: logEntry.level,
         message: logEntry.message,
         context: logEntry.context || null,
         meta: logEntry.meta || null,
@@ -149,11 +149,11 @@ export default async function handler(req) {
         .order('created_at', { ascending: false });
 
       if (type) {
-        query = query.eq('type', type);
+        query = query.eq('log_type', type);
       }
 
       if (level) {
-        query = query.eq('level', level);
+        query = query.eq('log_level', level);
       }
 
       query = query.range(offset, offset + limit - 1);
@@ -171,19 +171,19 @@ export default async function handler(req) {
       // Calcular estatísticas
       const statsQuery = await supabase
         .from('app_logs')
-        .select('level, type', { count: 'exact' })
+        .select('log_level, log_type', { count: 'exact' })
         .eq('user_id', user.id);
 
       const allLogs = statsQuery.data || [];
       const stats = {
         total: count || 0,
-        errors: allLogs.filter(log => log.level === 'ERROR').length,
-        fatals: allLogs.filter(log => log.level === 'FATAL').length,
-        warnings: allLogs.filter(log => log.level === 'WARN').length,
-        sync: allLogs.filter(log => log.type === 'sync').length,
-        checkin: allLogs.filter(log => log.type === 'checkin').length,
-        auth: allLogs.filter(log => log.type === 'auth').length,
-        ai: allLogs.filter(log => log.type === 'ai').length,
+        errors: allLogs.filter(log => log.log_level === 'ERROR').length,
+        fatals: allLogs.filter(log => log.log_level === 'FATAL').length,
+        warnings: allLogs.filter(log => log.log_level === 'WARN').length,
+        sync: allLogs.filter(log => log.log_type === 'sync').length,
+        checkin: allLogs.filter(log => log.log_type === 'checkin').length,
+        auth: allLogs.filter(log => log.log_type === 'auth').length,
+        ai: allLogs.filter(log => log.log_type === 'ai').length,
       };
 
       return json({
