@@ -267,8 +267,9 @@ export const MusicProvider = ({ children }) => {
         const proxyResponse = await fetch(`/api/audio-stream/${track.id}`);
         
         if (proxyResponse.ok) {
-          const streamData = await proxyResponse.json();
-          if (streamData.audioUrl) {
+          const raw = await proxyResponse.json();
+          const streamData = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
+          if (streamData?.audioUrl) {
             console.log('✅ Proxy Vercel funcionou, usando áudio nativo');
             logger.info('Proxy Vercel funcionou', { 
               trackId: track.id,
@@ -310,7 +311,8 @@ export const MusicProvider = ({ children }) => {
                        // Disparar uma busca suave para a Vercel engatilhar o proxy da próxima sem pausar a tela atual
                        fetch(`/api/audio-stream/${nextItem.id}`)
                          .then(res => res.json())
-                         .then(data => {
+                         .then(raw => {
+                            const data = raw?.data && typeof raw.data === 'object' ? raw.data : raw;
                             if (data && data.audioUrl) {
                                console.log('🔄 Preloading next track:', nextItem.title);
                                const preloadAudio = new Audio(data.audioUrl);
