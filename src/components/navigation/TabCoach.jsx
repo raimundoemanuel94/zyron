@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -30,6 +30,7 @@ const GUIDED_QUESTIONS = [
 ];
 
 const MAX_QUESTION_LENGTH = 120;
+const MAX_HISTORY_ITEMS = 3;
 
 const FALLBACKS = {
   workout: {
@@ -121,19 +122,43 @@ const confidenceStyle = (confidence) => {
   return { color: C.red, border: `1px solid ${C.redBorder}`, background: C.redBg };
 };
 
+const buildRequestId = () =>
+  `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const buildRequestPayload = ({ context, question = '', label, mode }) => ({
+  context,
+  question,
+  label,
+  mode,
+  requestId: buildRequestId(),
+  askedAt: new Date().toISOString(),
+});
+
+const formatRequestTime = (value) => {
+  if (!value) return '';
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+};
+
 export default function TabCoach({ user, profile }) {
   const [activeContext, setActiveContext] = useState('workout');
-  const [requestState, setRequestState] = useState({
+  const [requestState, setRequestState] = useState(() => buildRequestPayload({
     context: 'workout',
     question: '',
     label: 'Treino',
     mode: 'context',
-  });
+  }));
   const [analysis, setAnalysis] = useState(FALLBACKS.workout);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshSeed, setRefreshSeed] = useState(0);
   const [questionInput, setQuestionInput] = useState('');
+  const [questionHistory, setQuestionHistory] = useState([]);
+  const [lastAnsweredAt, setLastAnsweredAt] = useState('');
+  const latestRequestIdRef = useRef(requestState.requestId);
 
   const currentContext = useMemo(
     () => CONTEXTS.find((item) => item.id === activeContext) || CONTEXTS[0],
@@ -142,24 +167,76 @@ export default function TabCoach({ user, profile }) {
 
   const runCoachRequest = useCallback(async (request) => {
     const fallbackKey = request.context === 'question' ? 'question' : request.context;
+    const isQuestionRequest = request.context === 'question';
+    const startedAt = request.askedAt || new Date().toISOString();
+
+    latestRequestIdRef.current = request.requestId;
+
+    if (isQuestionRequest && request.question) {
+      setQuestionHistory((current) => [
+        {
+          id: request.requestId,
+          question: request.question,
+          status: 'loading',
+          askedAt: startedAt,
+          answeredAt: '',
+          answer: '',
+        },
+        ...current.filter((item) => item.id !== request.requestId),
+      ].slice(0, MAX_HISTORY_ITEMS));
+    }
 
     setLoading(true);
     setError('');
 
     try {
       const data = await fetchCoachAnalysis(request);
-      setAnalysis({
+      const nextAnalysis = {
         answer: data.answer || FALLBACKS[fallbackKey].answer,
         reasoning: data.reasoning?.length ? data.reasoning : FALLBACKS[fallbackKey].reasoning,
         action: data.action || FALLBACKS[fallbackKey].action,
         confidence: data.confidence || FALLBACKS[fallbackKey].confidence,
-      });
+      };
+      const answeredAt = new Date().toISOString();
+
+      if (isQuestionRequest && request.question) {
+        setQuestionHistory((current) => current.map((item) => (
+          item.id === request.requestId
+            ? { ...item, status: 'done', answeredAt, answer: nextAnalysis.answer }
+            : item
+        )));
+      }
+
+      if (latestRequestIdRef.current !== request.requestId) {
+        return;
+      }
+
+      setAnalysis(nextAnalysis);
+      setLastAnsweredAt(answeredAt);
     } catch (loadError) {
       console.error('[TabCoach]', loadError);
+      const answeredAt = new Date().toISOString();
+      const nextAnalysis = FALLBACKS[fallbackKey];
+
+      if (isQuestionRequest && request.question) {
+        setQuestionHistory((current) => current.map((item) => (
+          item.id === request.requestId
+            ? { ...item, status: 'done', answeredAt, answer: nextAnalysis.answer }
+            : item
+        )));
+      }
+
+      if (latestRequestIdRef.current !== request.requestId) {
+        return;
+      }
+
       setError(loadError.message || 'Falha ao carregar coach');
-      setAnalysis(FALLBACKS[fallbackKey]);
+      setAnalysis(nextAnalysis);
+      setLastAnsweredAt(answeredAt);
     } finally {
-      setLoading(false);
+      if (latestRequestIdRef.current === request.requestId) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -172,18 +249,20 @@ export default function TabCoach({ user, profile }) {
   const CurrentIcon = requestState.context === 'question' ? MessageSquareText : currentContext.icon;
   const promptRemaining = MAX_QUESTION_LENGTH - questionInput.length;
   const confidenceUi = confidenceStyle(analysis.confidence);
+  const lastAnsweredLabel = formatRequestTime(lastAnsweredAt);
 
   const submitQuestion = (event) => {
     event?.preventDefault?.();
     const trimmed = questionInput.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed) return;
 
-    setRequestState({
+    setRequestState(buildRequestPayload({
       context: 'question',
       question: trimmed,
       label: 'Pergunta livre',
       mode: 'free',
-    });
+    }));
+    setQuestionInput('');
   };
 
   return (
@@ -290,13 +369,13 @@ export default function TabCoach({ user, profile }) {
                 key={item.label}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => {
-                  setQuestionInput(item.question);
-                  setRequestState({
+                  setQuestionInput('');
+                  setRequestState(buildRequestPayload({
                     context: 'question',
                     question: item.question,
                     label: item.label,
                     mode: 'guided',
-                  });
+                  }));
                 }}
                 className="rounded-[16px] px-3 py-3 text-left text-[11px] font-semibold"
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
@@ -327,12 +406,12 @@ export default function TabCoach({ user, profile }) {
             <motion.button
               type="submit"
               whileTap={{ scale: 0.94 }}
-              disabled={!questionInput.trim() || loading}
+              disabled={!questionInput.trim()}
               className="flex h-10 w-10 items-center justify-center rounded-[12px]"
               style={{
-                background: questionInput.trim() && !loading ? C.purpleBg : 'rgba(255,255,255,0.05)',
-                border: questionInput.trim() && !loading ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
-                color: questionInput.trim() && !loading ? '#fff' : C.textSub,
+                background: questionInput.trim() ? C.purpleBg : 'rgba(255,255,255,0.05)',
+                border: questionInput.trim() ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
+                color: questionInput.trim() ? '#fff' : C.textSub,
               }}
             >
               <SendHorizontal size={14} />
@@ -370,9 +449,32 @@ export default function TabCoach({ user, profile }) {
               </div>
             ) : null}
 
-            {requestState.context === 'question' && requestState.question ? (
-              <div className="mb-4 rounded-[16px] px-3 py-3 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.82)' }}>
-                {requestState.question}
+            {questionHistory.length ? (
+              <div className="mb-4">
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+                  Perguntas recentes
+                </p>
+                <div className="grid gap-2">
+                  {questionHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-[16px] px-3 py-3"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-[11px] font-semibold text-white">{item.question}</p>
+                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: item.status === 'loading' ? C.purple : C.textSub }}>
+                          {item.status === 'loading' ? 'Respondendo' : formatRequestTime(item.answeredAt || item.askedAt)}
+                        </span>
+                      </div>
+                      {item.answer ? (
+                        <p className="mt-2 text-[10px] font-medium leading-relaxed" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                          {item.answer}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
 
@@ -388,11 +490,18 @@ export default function TabCoach({ user, profile }) {
                   </p>
                 </div>
 
-                <div
-                  className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]"
-                  style={confidenceUi}
-                >
-                  {analysis.confidence}
+                <div className="flex items-center gap-2">
+                  {lastAnsweredLabel ? (
+                    <span className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: C.textSub }}>
+                      atualizado {lastAnsweredLabel}
+                    </span>
+                  ) : null}
+                  <div
+                    className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]"
+                    style={confidenceUi}
+                  >
+                    {analysis.confidence}
+                  </div>
                 </div>
               </div>
 
