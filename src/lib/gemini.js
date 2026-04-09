@@ -137,22 +137,40 @@ Melhores marcas:
 ${topPRs}`;
 }
 
-export const buildCoachPrompt = (summary) => `Voce e um coach fitness de alta performance. Analise somente os dados reais abaixo:
+export const buildCoachPrompt = (
+  summary,
+  {
+    question = '',
+    intentLabel = '',
+    draftAnswer = '',
+    draftReasoning = [],
+    preferredAction = '',
+  } = {},
+) => `Voce e um coach fitness de alta performance. Analise somente os dados reais abaixo:
 
 ${summary}
 
+${question ? `Pergunta do usuario: ${question}` : ''}
+${intentLabel ? `Intencao validada: ${intentLabel}` : ''}
+${draftAnswer ? `Resposta base para manter especificidade: ${draftAnswer}` : ''}
+${draftReasoning?.length ? `Raciocinio base: ${draftReasoning.join(' | ')}` : ''}
+${preferredAction ? `Acao preferida quando fizer sentido: ${preferredAction}` : ''}
+
 Regras:
+- responda somente sobre treino, recuperacao, evolucao, frequencia ou proxima sessao
 - cite o ultimo treino pelo nome quando existir
 - cite o padrao do usuario: frequencia, comparacao com a semana passada e tempo desde o ultimo treino
 - a recomendacao precisa ser concreta para a proxima sessao
 - evite frases genericas como "descanse", "continue assim" ou "mantenha consistencia"
+- se faltar dado, diga isso e oriente a proxima acao
+- nunca invente dado
 - use apenas os dados enviados
 - no maximo 3 linhas
 - cada linha deve ser curta e objetiva
 - entregue exatamente 3 linhas neste formato:
-Analise: ...
-Recomendacao: ...
-Motivacao: ...`;
+Resposta: ...
+Raciocinio: item 1 | item 2
+Acao: ...`;
 
 export async function generateGeminiText(
   prompt,
@@ -244,8 +262,8 @@ export async function sendMessageToGemini(history = [], userMessage = '', system
   });
 }
 
-export async function requestCoachAnalysis(summary) {
-  return generateGeminiText(buildCoachPrompt(summary), {
+export async function requestCoachAnalysis(summary, options = {}) {
+  return generateGeminiText(buildCoachPrompt(summary, options), {
     temperature: 0.35,
     maxOutputTokens: 180,
   });

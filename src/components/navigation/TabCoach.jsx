@@ -1,11 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Activity,
   AlertTriangle,
   Dumbbell,
+  MessageSquareText,
   RotateCcw,
+  SendHorizontal,
+  ShieldCheck,
   Sparkles,
+  Target,
   TrendingUp,
   Zap,
 } from 'lucide-react';
@@ -18,21 +22,39 @@ const CONTEXTS = [
   { id: 'recovery', label: 'Recuperacao', icon: Activity },
 ];
 
+const GUIDED_QUESTIONS = [
+  { label: 'O que treinar hoje?', question: 'O que treinar hoje?' },
+  { label: 'Posso descansar hoje?', question: 'Posso descansar hoje?' },
+  { label: 'Como estou evoluindo?', question: 'Como estou evoluindo?' },
+  { label: 'O que ajustar no proximo treino?', question: 'O que ajustar no proximo treino?' },
+];
+
+const MAX_QUESTION_LENGTH = 120;
+
 const FALLBACKS = {
   workout: {
-    message: 'Nao consegui ler seu historico agora.\nMantenha a execucao forte no proximo treino.\nVolte em instantes para atualizar a analise.',
-    insights: ['Coach temporariamente indisponivel', 'Tente novamente em alguns segundos'],
-    suggestions: ['Registrar o proximo treino ajuda a liberar uma leitura melhor'],
+    answer: 'Nao consegui fechar sua leitura de treino agora.',
+    reasoning: ['Coach temporariamente indisponivel.', 'Tente atualizar em alguns segundos.'],
+    action: 'Repita seu ultimo bloco com tecnica limpa assim que a leitura voltar.',
+    confidence: 'baixa',
   },
   progress: {
-    message: 'Sua leitura de progresso nao carregou agora.\nPriorize constancia e registre cargas reais.\nVolte em instantes para atualizar a analise.',
-    insights: ['Sem resposta da IA neste momento', 'Os dados continuam seguros no backend'],
-    suggestions: ['Mantenha as cargas atualizadas para uma analise mais precisa'],
+    answer: 'Sua leitura de progresso nao carregou agora.',
+    reasoning: ['Sem resposta do coach neste momento.', 'Os dados continuam seguros no backend.'],
+    action: 'Mantenha cargas e duracao registradas para a proxima leitura.',
+    confidence: 'baixa',
   },
   recovery: {
-    message: 'Nao consegui fechar sua leitura de recuperacao agora.\nObserve energia, sono e ritmo da semana.\nVolte em instantes para atualizar a analise.',
-    insights: ['Leitura temporariamente indisponivel', 'Os check-ins serao usados assim que a IA responder'],
-    suggestions: ['Se estiver muito cansado, reduza intensidade no proximo treino'],
+    answer: 'Nao consegui fechar sua leitura de recuperacao agora.',
+    reasoning: ['A analise de recuperacao ficou indisponivel por instantes.', 'Se precisar, atualize em alguns segundos.'],
+    action: 'Se o corpo estiver pesado, alivie intensidade no proximo treino.',
+    confidence: 'baixa',
+  },
+  question: {
+    answer: 'Posso responder so sobre treino, recuperacao, evolucao, frequencia e proxima sessao.',
+    reasoning: ['Pergunta fora do foco operacional do coach atual.'],
+    action: 'Reescreva a pergunta focando o proximo treino ou sua recuperacao.',
+    confidence: 'baixa',
   },
 };
 
@@ -45,7 +67,7 @@ const getAuthHeader = async () => {
   return `Bearer ${session.access_token}`;
 };
 
-const fetchCoachAnalysis = async (context) => {
+const fetchCoachAnalysis = async ({ context, question = '' }) => {
   const auth = await getAuthHeader();
   const response = await fetch('/api/ai/coach', {
     method: 'POST',
@@ -53,7 +75,7 @@ const fetchCoachAnalysis = async (context) => {
       'Content-Type': 'application/json',
       Authorization: auth,
     },
-    body: JSON.stringify({ context }),
+    body: JSON.stringify({ context, question }),
   });
 
   const data = await response.json().catch(() => ({}));
@@ -62,9 +84,14 @@ const fetchCoachAnalysis = async (context) => {
   }
 
   return {
-    message: data?.message || '',
-    insights: Array.isArray(data?.insights) ? data.insights : [],
-    suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
+    answer: data?.answer || data?.message || '',
+    reasoning: Array.isArray(data?.reasoning)
+      ? data.reasoning
+      : Array.isArray(data?.insights)
+        ? data.insights
+        : [],
+    action: data?.action || (Array.isArray(data?.suggestions) ? data.suggestions[0] : '') || '',
+    confidence: data?.confidence || 'baixa',
   };
 };
 
@@ -82,58 +109,82 @@ const LoadingDots = () => (
   </div>
 );
 
+const confidenceStyle = (confidence) => {
+  if (confidence === 'alta') {
+    return { color: C.neon, border: '1px solid rgba(205,255,90,0.25)', background: 'rgba(205,255,90,0.08)' };
+  }
+
+  if (confidence === 'media') {
+    return { color: '#FDC800', border: '1px solid rgba(253,200,0,0.24)', background: 'rgba(253,200,0,0.08)' };
+  }
+
+  return { color: C.red, border: `1px solid ${C.redBorder}`, background: C.redBg };
+};
+
 export default function TabCoach({ user, profile }) {
-  const [context, setContext] = useState('workout');
+  const [activeContext, setActiveContext] = useState('workout');
+  const [requestState, setRequestState] = useState({
+    context: 'workout',
+    question: '',
+    label: 'Treino',
+    mode: 'context',
+  });
   const [analysis, setAnalysis] = useState(FALLBACKS.workout);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshSeed, setRefreshSeed] = useState(0);
-
-  useEffect(() => {
-    if (!user?.id) return undefined;
-
-    let active = true;
-
-    const load = async () => {
-      setLoading(true);
-      setError('');
-
-      try {
-        const data = await fetchCoachAnalysis(context);
-        if (!active) return;
-
-        setAnalysis({
-          message: data.message || FALLBACKS[context].message,
-          insights: data.insights?.length ? data.insights : FALLBACKS[context].insights,
-          suggestions: data.suggestions?.length ? data.suggestions : FALLBACKS[context].suggestions,
-        });
-      } catch (loadError) {
-        console.error('[TabCoach]', loadError);
-        if (!active) return;
-
-        setError(loadError.message || 'Falha ao carregar coach');
-        setAnalysis(FALLBACKS[context]);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      active = false;
-    };
-  }, [context, refreshSeed, user?.id]);
+  const [questionInput, setQuestionInput] = useState('');
 
   const currentContext = useMemo(
-    () => CONTEXTS.find((item) => item.id === context) || CONTEXTS[0],
-    [context],
+    () => CONTEXTS.find((item) => item.id === activeContext) || CONTEXTS[0],
+    [activeContext],
   );
 
-  const CurrentIcon = currentContext.icon;
+  const runCoachRequest = useCallback(async (request) => {
+    const fallbackKey = request.context === 'question' ? 'question' : request.context;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const data = await fetchCoachAnalysis(request);
+      setAnalysis({
+        answer: data.answer || FALLBACKS[fallbackKey].answer,
+        reasoning: data.reasoning?.length ? data.reasoning : FALLBACKS[fallbackKey].reasoning,
+        action: data.action || FALLBACKS[fallbackKey].action,
+        confidence: data.confidence || FALLBACKS[fallbackKey].confidence,
+      });
+    } catch (loadError) {
+      console.error('[TabCoach]', loadError);
+      setError(loadError.message || 'Falha ao carregar coach');
+      setAnalysis(FALLBACKS[fallbackKey]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    runCoachRequest(requestState);
+  }, [requestState, refreshSeed, runCoachRequest, user?.id]);
+
   const firstName = profile?.name?.split(' ')?.[0] || 'Atleta';
+  const CurrentIcon = requestState.context === 'question' ? MessageSquareText : currentContext.icon;
+  const promptRemaining = MAX_QUESTION_LENGTH - questionInput.length;
+  const confidenceUi = confidenceStyle(analysis.confidence);
+
+  const submitQuestion = (event) => {
+    event?.preventDefault?.();
+    const trimmed = questionInput.trim();
+    if (!trimmed || loading) return;
+
+    setRequestState({
+      context: 'question',
+      question: trimmed,
+      label: 'Pergunta livre',
+      mode: 'free',
+    });
+  };
 
   return (
     <motion.div
@@ -160,7 +211,7 @@ export default function TabCoach({ user, profile }) {
           <div>
             <h2 className="text-[14px] font-black uppercase tracking-tight text-white">ZYRON Coach</h2>
             <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: C.purple }}>
-              Analise real do seu uso
+              Analise real e pergunta guiada
             </p>
           </div>
         </div>
@@ -181,16 +232,24 @@ export default function TabCoach({ user, profile }) {
           <motion.button
             key={id}
             whileTap={{ scale: 0.96 }}
-            onClick={() => setContext(id)}
+            onClick={() => {
+              setActiveContext(id);
+              setRequestState({
+                context: id,
+                question: '',
+                label,
+                mode: 'context',
+              });
+            }}
             className={Badge.neutral}
             style={{
               whiteSpace: 'nowrap',
-              background: context === id ? C.purpleBg : 'rgba(255,255,255,0.03)',
-              border: context === id ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
-              color: context === id ? '#fff' : C.textSub,
+              background: activeContext === id ? C.purpleBg : 'rgba(255,255,255,0.03)',
+              border: activeContext === id ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
+              color: activeContext === id ? '#fff' : C.textSub,
             }}
           >
-            <Icon size={10} style={{ color: context === id ? C.purple : C.neon }} />
+            <Icon size={10} style={{ color: activeContext === id ? C.purple : C.neon }} />
             {label}
           </motion.button>
         ))}
@@ -204,7 +263,7 @@ export default function TabCoach({ user, profile }) {
           boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
         }}
       >
-        <div className="flex items-center gap-2.5 mb-4">
+        <div className="mb-4 flex items-center gap-2.5">
           <div
             className="flex h-9 w-9 items-center justify-center rounded-[12px]"
             style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}` }}
@@ -216,10 +275,74 @@ export default function TabCoach({ user, profile }) {
               {firstName}, aqui vai sua leitura
             </p>
             <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: C.textSub }}>
-              contexto {currentContext.label}
+              {requestState.context === 'question' ? requestState.label : `contexto ${currentContext.label}`}
             </p>
           </div>
         </div>
+
+        <div className="mb-4">
+          <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+            Pergunta guiada
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {GUIDED_QUESTIONS.map((item) => (
+              <motion.button
+                key={item.label}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setQuestionInput(item.question);
+                  setRequestState({
+                    context: 'question',
+                    question: item.question,
+                    label: item.label,
+                    mode: 'guided',
+                  });
+                }}
+                className="rounded-[16px] px-3 py-3 text-left text-[11px] font-semibold"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+              >
+                {item.label}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+
+        <form onSubmit={submitQuestion} className="mb-5 rounded-[18px] p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+              Pergunta livre
+            </p>
+            <span className="text-[10px] font-semibold" style={{ color: promptRemaining < 18 ? C.red : C.textSub }}>
+              {promptRemaining}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              value={questionInput}
+              onChange={(event) => setQuestionInput(event.target.value.slice(0, MAX_QUESTION_LENGTH))}
+              placeholder="Pergunte sobre treino, recuperacao, evolucao, frequencia ou proxima sessao"
+              className="flex-1 bg-transparent text-[12px] font-medium text-white outline-none placeholder:text-neutral-600"
+            />
+            <motion.button
+              type="submit"
+              whileTap={{ scale: 0.94 }}
+              disabled={!questionInput.trim() || loading}
+              className="flex h-10 w-10 items-center justify-center rounded-[12px]"
+              style={{
+                background: questionInput.trim() && !loading ? C.purpleBg : 'rgba(255,255,255,0.05)',
+                border: questionInput.trim() && !loading ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
+                color: questionInput.trim() && !loading ? '#fff' : C.textSub,
+              }}
+            >
+              <SendHorizontal size={14} />
+            </motion.button>
+          </div>
+
+          <p className="mt-2 text-[10px] font-medium" style={{ color: C.textSub }}>
+            So vale pergunta sobre treino, recuperacao, evolucao, frequencia e proxima sessao.
+          </p>
+        </form>
 
         {loading ? (
           <div
@@ -228,7 +351,9 @@ export default function TabCoach({ user, profile }) {
           >
             <LoadingDots />
             <p className="text-[12px] font-medium" style={{ color: C.textSub }}>
-              Lendo seus treinos, check-ins e PRs...
+              {requestState.context === 'question'
+                ? 'Cruzando sua pergunta com treino, frequencia e recuperacao reais...'
+                : 'Lendo seus treinos, check-ins e PRs...'}
             </p>
           </div>
         ) : (
@@ -245,29 +370,45 @@ export default function TabCoach({ user, profile }) {
               </div>
             ) : null}
 
+            {requestState.context === 'question' && requestState.question ? (
+              <div className="mb-4 rounded-[16px] px-3 py-3 text-[11px] font-semibold" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.82)' }}>
+                {requestState.question}
+              </div>
+            ) : null}
+
             <div
               className="rounded-[20px] px-4 py-4"
               style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
-              <div className="mb-3 flex items-center gap-2">
-                <Sparkles size={14} style={{ color: C.neon }} />
-                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: C.neon }}>
-                  Resposta da IA
-                </p>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} style={{ color: C.neon }} />
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: C.neon }}>
+                    Resposta objetiva
+                  </p>
+                </div>
+
+                <div
+                  className="rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em]"
+                  style={confidenceUi}
+                >
+                  {analysis.confidence}
+                </div>
               </div>
-              <p className="whitespace-pre-wrap text-[13px] font-medium leading-relaxed text-white">
-                {analysis.message}
+
+              <p className="text-[13px] font-medium leading-relaxed text-white">
+                {analysis.answer}
               </p>
             </div>
 
             <div className="mt-4 grid gap-3">
-              {analysis.insights?.length ? (
+              {analysis.reasoning?.length ? (
                 <div>
                   <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
-                    Insights
+                    Raciocinio
                   </p>
                   <div className="grid gap-2">
-                    {analysis.insights.map((item) => (
+                    {analysis.reasoning.map((item) => (
                       <div
                         key={item}
                         className="rounded-[16px] px-3 py-3 text-[11px] font-semibold"
@@ -280,24 +421,27 @@ export default function TabCoach({ user, profile }) {
                 </div>
               ) : null}
 
-              {analysis.suggestions?.length ? (
-                <div>
-                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
-                    Sugestoes
-                  </p>
-                  <div className="grid gap-2">
-                    {analysis.suggestions.map((item) => (
-                      <div
-                        key={item}
-                        className="rounded-[16px] px-3 py-3 text-[11px] font-semibold"
-                        style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, color: '#fff' }}
-                      >
-                        {item}
-                      </div>
-                    ))}
+              <div>
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+                  Acao
+                </p>
+                <div
+                  className="rounded-[16px] px-3 py-3 text-[11px] font-semibold"
+                  style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, color: '#fff' }}
+                >
+                  <div className="flex items-start gap-2">
+                    <Target size={13} style={{ color: C.neon, marginTop: 1, flexShrink: 0 }} />
+                    <span>{analysis.action}</span>
                   </div>
                 </div>
-              ) : null}
+              </div>
+
+              <div className="rounded-[16px] px-3 py-3 text-[10px] font-semibold" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: C.textSub }}>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={12} style={{ color: C.neon }} />
+                  <span>Confianca {analysis.confidence} baseada no seu historico real.</span>
+                </div>
+              </div>
             </div>
           </>
         )}

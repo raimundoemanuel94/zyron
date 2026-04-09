@@ -9,11 +9,12 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-const VALID_CONTEXTS = ['workout', 'progress', 'recovery'];
+const VALID_CONTEXTS = ['workout', 'progress', 'recovery', 'question'];
 const WORKOUT_ORDER_FIELDS = ['ended_at', 'completed_at', 'created_at', 'started_at'];
 const DAY_MS = 86400000;
 const PERSONAL_TARGET_MIN = 3;
 const PERSONAL_TARGET_MAX = 5;
+const QUESTION_MAX_LENGTH = 120;
 
 const KNOWN_WORKOUTS = {
   0: { title: 'Descanso Ativo', focus: 'Recuperacao' },
@@ -29,11 +30,11 @@ const GENERIC_PATTERNS = [
   'continue assim',
   'mantenha consistencia',
   'mantenha a consistencia',
-  'descanse',
-  'descanso',
+  'descanse hoje',
+  'apenas descanse',
   'hidrate se',
+  'hidrate-se',
   'durma bem',
-  'nao exagere',
   'sem exageros',
 ];
 
@@ -53,6 +54,11 @@ const normalizeText = (value = '') =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+
+const containsAny = (value, tokens = []) => {
+  const normalized = normalizeText(value);
+  return tokens.some((token) => normalized.includes(token));
+};
 
 const isMissingResourceError = (error) => {
   const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
@@ -377,6 +383,129 @@ const getTrend = (workouts) => {
   return recentAverage > previousAverage ? 'subindo' : 'caindo';
 };
 
+const classifyCoachQuestion = (question = '') => {
+  const normalized = normalizeText(question);
+
+  if (!normalized) {
+    return {
+      valid: false,
+      intent: 'off_topic',
+      label: 'Pergunta fora do foco',
+      effectiveContext: 'workout',
+    };
+  }
+
+  const offTopicTokens = [
+    'dieta',
+    'nutricao',
+    'suplement',
+    'financa',
+    'dinheiro',
+    'relacion',
+    'trabalho',
+    'playlist',
+    'musica',
+    'filme',
+  ];
+
+  if (containsAny(normalized, offTopicTokens)) {
+    return {
+      valid: false,
+      intent: 'off_topic',
+      label: 'Pergunta fora do foco',
+      effectiveContext: 'workout',
+    };
+  }
+
+  const allowedTokens = [
+    'treino',
+    'treinar',
+    'recuper',
+    'descans',
+    'evolu',
+    'progres',
+    'frequenc',
+    'sessao',
+    'carga',
+    'serie',
+    'ajust',
+    'hoje',
+    'amanha',
+    'proximo',
+    'proxima',
+  ];
+
+  if (!containsAny(normalized, allowedTokens)) {
+    return {
+      valid: false,
+      intent: 'off_topic',
+      label: 'Pergunta fora do foco',
+      effectiveContext: 'workout',
+    };
+  }
+
+  if (containsAny(normalized, ['descans', 'recuper', 'cansad', 'fadiga', 'sono'])) {
+    return {
+      valid: true,
+      intent: 'rest_today',
+      label: 'Descanso hoje',
+      effectiveContext: 'recovery',
+    };
+  }
+
+  if (containsAny(normalized, ['frequenc', 'ritmo', 'constancia', 'consistencia', 'quantas vezes'])) {
+    return {
+      valid: true,
+      intent: 'frequency_check',
+      label: 'Frequencia atual',
+      effectiveContext: 'progress',
+    };
+  }
+
+  if (containsAny(normalized, ['evolu', 'progres', 'carga', 'recorde', 'melhorei'])) {
+    return {
+      valid: true,
+      intent: 'progress_status',
+      label: 'Evolucao atual',
+      effectiveContext: 'progress',
+    };
+  }
+
+  if (containsAny(normalized, ['ajust', 'proximo treino', 'proxima sessao', 'sessao seguinte'])) {
+    return {
+      valid: true,
+      intent: 'next_adjustment',
+      label: 'Ajuste na proxima sessao',
+      effectiveContext: 'workout',
+    };
+  }
+
+  if (containsAny(normalized, ['treinar hoje', 'faco hoje', 'faço hoje', 'que treino hoje', 'o que treinar hoje'])) {
+    return {
+      valid: true,
+      intent: 'workout_today',
+      label: 'Treino de hoje',
+      effectiveContext: 'workout',
+    };
+  }
+
+  if (containsAny(normalized, ['treino', 'treinar', 'sessao', 'hoje'])) {
+    return {
+      valid: true,
+      intent: 'workout_today',
+      label: 'Treino de hoje',
+      effectiveContext: 'workout',
+    };
+  }
+
+  return {
+    valid: false,
+    intent: 'off_topic',
+    label: 'Pergunta fora do foco',
+    effectiveContext: 'workout',
+  };
+};
+
 const fetchRecentWorkouts = async (supabase, userId) => {
   for (const field of WORKOUT_ORDER_FIELDS) {
     const { data, error } = await supabase
@@ -451,6 +580,64 @@ const toWorkoutLabel = (workout) => {
   return `${title} em ${date} (${duration} min)`;
 };
 
+const getNextSessionLabel = (metrics) => {
+  if (!metrics.recentWorkoutCount) return 'o proximo treino util';
+
+  switch (metrics.lastWorkoutBucket) {
+    case 'lower':
+      return metrics.daysSinceLastWorkout === 0 ? 'descanso ativo ou superior leve' : 'superior leve';
+    case 'push':
+      return 'puxada de superior';
+    case 'pull':
+      return 'empurre de superior';
+    case 'shoulders':
+      return 'pernas ou puxada de superior';
+    case 'arms':
+      return 'pernas ou empurre de superior';
+    case 'recovery':
+      return 'sessao principal do ciclo';
+    default:
+      return metrics.daysSinceLastWorkout >= 2
+        ? `retorno progressivo em ${metrics.lastWorkoutTitle.toLowerCase()}`
+        : 'sessao complementar ao ultimo treino';
+  }
+};
+
+const buildQuestionAction = ({ questionMeta, metrics }) => {
+  switch (questionMeta?.intent) {
+    case 'workout_today':
+      if (metrics.daysSinceLastWorkout === 0) {
+        return `use descanso ativo agora e volte amanha com ${metrics.nextSessionLabel}`;
+      }
+      return `hoje entre em ${metrics.nextSessionLabel} com 2 series de aproximacao antes da carga principal`;
+    case 'rest_today':
+      if (metrics.daysSinceLastWorkout === 0) {
+        return `fique no descanso ativo hoje e reabra amanha com ${metrics.nextSessionLabel}`;
+      }
+      if (metrics.daysSinceLastWorkout >= 2 && metrics.weeklyDays < metrics.personalTargetFrequency) {
+        return `nao feche descanso hoje; faca ${metrics.nextSessionLabel} com carga controlada`;
+      }
+      return `se descansar hoje, volte amanha com ${metrics.nextSessionLabel} e sem falha nas primeiras series`;
+    case 'progress_status':
+      if (metrics.trend === 'subindo') {
+        return `mantenha progressao de carga em ${metrics.lastWorkoutTitle} e suba so se a ultima serie sair limpa`;
+      }
+      return `repita ${metrics.lastWorkoutTitle} buscando 1 a 2 reps extras antes de subir carga`;
+    case 'frequency_check':
+      if (metrics.weeklyDays < metrics.personalTargetFrequency) {
+        return `encaixe mais ${metrics.personalTargetFrequency - metrics.weeklyDays} sessao(oes) nesta janela para voltar ao seu padrao`;
+      }
+      return 'mantenha a cadencia atual e preserve o mesmo intervalo entre sessoes';
+    case 'next_adjustment':
+      if (metrics.lastWorkoutBucket === 'lower') {
+        return 'no proximo treino, alivie pernas e entre em superior com tecnica limpa';
+      }
+      return `no proximo ${metrics.lastWorkoutTitle}, faca 2 series de aproximacao e suba carga so se a ultima serie sair limpa`;
+    default:
+      return '';
+  }
+};
+
 const buildPrimarySuggestion = ({ context, metrics }) => {
   const lastTitle = metrics.lastWorkoutTitle !== 'Nenhum treino recente'
     ? metrics.lastWorkoutTitle.toLowerCase()
@@ -497,11 +684,11 @@ const buildPrimarySuggestion = ({ context, metrics }) => {
   }
 
   if (metrics.lastWorkoutBucket === 'push') {
-    return 'no proximo treino, entre em puxada com carga progressiva e pausa curta';
+    return 'no proximo treino, entre em puxada de superior com carga progressiva e pausa curta';
   }
 
   if (metrics.lastWorkoutBucket === 'pull') {
-    return 'no proximo treino, volte para empurre com carga progressiva e tecnica limpa';
+    return 'no proximo treino, volte para empurre de superior com carga progressiva e tecnica limpa';
   }
 
   return `retorne com carga progressiva no proximo treino de ${lastTitle}`;
@@ -520,16 +707,17 @@ const buildSupportSuggestion = (metrics) => {
   return 'registre inicio e fim do treino para refinar a leitura das proximas sessoes';
 };
 
-const buildSmartSuggestions = ({ context, metrics }) => {
+const buildSmartSuggestions = ({ context, questionMeta, metrics }) => {
   const suggestions = [
-    buildPrimarySuggestion({ context, metrics }),
+    buildQuestionAction({ questionMeta, metrics }),
+    buildPrimarySuggestion({ context: questionMeta?.effectiveContext || context, metrics }),
     buildSupportSuggestion(metrics),
   ].filter(Boolean);
 
   return [...new Set(suggestions)].slice(0, 2);
 };
 
-const buildSummary = ({ context, workouts, checkins, prs }) => {
+const buildSummary = ({ context, questionMeta, workouts, checkins, prs }) => {
   const trackedWorkouts = sortByDateDesc(workouts).filter(hasWorkoutSignal);
   const recentWorkouts = trackedWorkouts.slice(0, 7);
   const lastWorkout = recentWorkouts[0] || null;
@@ -578,9 +766,9 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
     : 'Nenhum PR recente';
 
   const contextLine = {
-    workout: 'Foco do pedido: qualidade do treino atual.',
-    progress: 'Foco do pedido: progresso e evolucao de carga.',
-    recovery: 'Foco do pedido: recuperacao e capacidade de voltar bem.',
+    workout: 'Foco do pedido: qualidade e encaixe do proximo treino.',
+    progress: 'Foco do pedido: progresso, frequencia e evolucao de carga.',
+    recovery: 'Foco do pedido: recuperacao e melhor momento para voltar.',
   }[context];
 
   const metrics = {
@@ -605,11 +793,14 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
     patternSummary,
   };
 
-  const suggestions = buildSmartSuggestions({ context, metrics });
+  metrics.nextSessionLabel = getNextSessionLabel(metrics);
+
+  const suggestions = buildSmartSuggestions({ context, questionMeta, metrics });
 
   return {
     summaryText: [
       contextLine,
+      questionMeta?.valid ? `Pergunta validada: ${questionMeta.label}` : '',
       `Ultimo treino: ${lastWorkoutTitle} | foco ${lastWorkoutFocus}`,
       `Tempo desde o ultimo treino: ${timeSinceLastWorkout.label}`,
       `Frequencia atual: ${weeklyDays}x | meta pessoal: ${personalTargetFrequency}x | semana passada: ${previousWeekDays}x`,
@@ -620,105 +811,196 @@ const buildSummary = ({ context, workouts, checkins, prs }) => {
       `Ultimos check-ins: ${checkinSummary}`,
       `PRs: ${prSummary}`,
       `Sugestao concreta preferida: ${suggestions[0] || 'Sem sugestao suficiente ainda.'}`,
-    ].join('\n'),
-    insights: [
-      `Voce treinou ${weeklyDays}x (${frequencyStatus}) e ${comparison.short}.`,
-      lastWorkout
-        ? `Ultimo treino: ${lastWorkoutTitle}; voce esta ha ${timeSinceLastWorkout.label} sem repetir sessao.`
-        : 'Ultimo treino: ainda sem registro recente suficiente.',
-      averageDuration
-        ? `Media real de duracao: ${averageDuration} min, com tendencia ${trend}.`
-        : 'Media real de duracao: ainda sem minutos suficientes.',
-      `Meta pessoal de frequencia: ${personalTargetFrequency}x; padrao recente: ${patternSummary}`,
-    ],
+    ].filter(Boolean).join('\n'),
     suggestions,
     metrics,
   };
 };
 
-const buildCoachFallback = ({ metrics, suggestions }) => {
-  if (!metrics.recentWorkoutCount) {
-    const emptyAnalysis = 'Analise: ainda nao encontrei treinos recentes suficientes para fechar sua leitura.';
-    const emptyRecommendation = 'Recomendacao: registre o proximo treino completo com inicio e fim para eu calibrar volume, frequencia e retorno.';
-    const emptyMotivation = 'Motivacao: o primeiro treino bem registrado ja libera uma leitura bem mais util para voce.';
+const buildReasoning = ({ metrics, questionMeta }) => {
+  const reasoning = [
+    `Frequencia atual ${metrics.weeklyDays}x vs ${metrics.previousWeekDays}x na semana passada.`,
+    metrics.recentWorkoutCount
+      ? `Ultimo treino ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`
+      : 'Ainda sem historico recente suficiente.',
+    questionMeta?.effectiveContext === 'recovery' && metrics.latestCheckinLabel !== 'Sem check-ins recentes'
+      ? `Check-in recente: ${metrics.latestCheckinLabel}.`
+      : metrics.averageDuration > 0
+        ? `Media de ${metrics.averageDuration} min com tendencia ${metrics.trend}.`
+        : `Padrao recente: ${metrics.patternSummary}`,
+  ].filter(Boolean);
 
-    return {
-      sections: {
-        analysis: emptyAnalysis,
-        recommendation: emptyRecommendation,
-        motivation: emptyMotivation,
-      },
-      message: [emptyAnalysis, emptyRecommendation, emptyMotivation].join('\n'),
-      suggestions: ['registre o proximo treino completo para liberar uma leitura melhor'],
-    };
+  if ((questionMeta?.effectiveContext === 'progress' || questionMeta?.intent === 'progress_status') && metrics.hasPrs) {
+    reasoning.push('Ha PRs recentes registrados no historico.');
   }
 
-  const analysis = `Analise: voce treinou ${metrics.weeklyDays}x (${metrics.frequencyStatus}) e ${metrics.comparisonShort}. Ultimo bloco: ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`;
-  const recommendation = `Recomendacao: ${suggestions[0] || 'retorne com carga progressiva no proximo treino util.'}`;
-  const motivation = metrics.trend === 'subindo'
-    ? `Motivacao: seu padrao recente ja mostra tracao real; agora vale consolidar esse ritmo com mais uma sessao forte.`
-    : `Motivacao: o seu historico ainda sustenta boa retomada se voce encaixar a proxima sessao no timing certo.`;
+  return [...new Set(reasoning)].slice(0, 3);
+};
+
+const deriveConfidence = ({ metrics, questionMeta }) => {
+  let score = 0;
+
+  if (metrics.recentWorkoutCount >= 3) score += 2;
+  else if (metrics.recentWorkoutCount >= 1) score += 1;
+
+  if (metrics.averageDuration > 0) score += 1;
+  if (metrics.daysSinceLastWorkout !== null) score += 1;
+  if (metrics.previousWeekDays > 0) score += 1;
+
+  if ((questionMeta?.effectiveContext === 'progress' || questionMeta?.intent === 'progress_status') && metrics.hasPrs) {
+    score += 1;
+  }
+
+  if (questionMeta?.effectiveContext === 'recovery' && metrics.latestCheckinLabel !== 'Sem check-ins recentes') {
+    score += 1;
+  }
+
+  if (score >= 5) return 'alta';
+  if (score >= 3) return 'media';
+  return 'baixa';
+};
+
+const buildOffTopicResponse = () => {
+  const answer = 'Posso responder so sobre treino, recuperacao, evolucao, frequencia e proxima sessao.';
+  const reasoning = ['Pergunta fora do foco operacional do coach atual.'];
+  const action = 'Reescreva, por exemplo: "o que ajustar no proximo treino?"';
 
   return {
-    sections: {
-      analysis,
-      recommendation,
-      motivation,
-    },
-    message: [analysis, recommendation, motivation].join('\n'),
-    suggestions,
+    answer,
+    reasoning,
+    action,
+    confidence: 'baixa',
   };
 };
 
-const isGenericCoachLine = (value) => {
-  const normalized = normalizeText(value);
-  if (!normalized) return true;
+const buildContextAnswer = ({ effectiveContext, questionMeta, metrics, suggestions }) => {
+  if (!metrics.recentWorkoutCount) {
+    return 'Ainda faltam treinos recentes suficientes para fechar uma leitura confiavel agora.';
+  }
 
-  return GENERIC_PATTERNS.some((pattern) => normalized.includes(pattern));
+  switch (questionMeta?.intent) {
+    case 'workout_today':
+      if (metrics.daysSinceLastWorkout === 0) {
+        return `Hoje voce ja bateu ${metrics.lastWorkoutTitle}; o melhor encaixe agora e ${metrics.nextSessionLabel}.`;
+      }
+      return `Hoje faz mais sentido ${metrics.nextSessionLabel}, porque o ultimo treino foi ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`;
+    case 'rest_today':
+      if (metrics.daysSinceLastWorkout === 0) {
+        return `Sim, descanso completo ou no maximo ${metrics.nextSessionLabel} faz mais sentido porque ${metrics.lastWorkoutTitle} aconteceu hoje.`;
+      }
+      if (metrics.daysSinceLastWorkout >= 2 && metrics.weeklyDays < metrics.personalTargetFrequency) {
+        return `Nao parece o melhor dia para descanso completo; seu ritmo caiu para ${metrics.weeklyDays}x e voce ja esta ha ${metrics.timeSinceLastWorkoutLabel} sem treinar.`;
+      }
+      if (metrics.lastWorkoutBucket === 'lower' && metrics.daysSinceLastWorkout <= 1) {
+        return `Descanso total nao e obrigatorio hoje, mas vale tirar pernas do centro e usar ${metrics.nextSessionLabel}.`;
+      }
+      return 'Descanso completo hoje so faz sentido se sua energia estiver baixa; pelo historico, uma sessao leve ou complementar ainda cabe.';
+    case 'progress_status':
+      if (metrics.averageDuration > 0) {
+        return `Sua evolucao esta ${metrics.trend}: ${metrics.weeklyDays}x nesta janela, ${metrics.comparisonShort} e media de ${metrics.averageDuration} min.`;
+      }
+      return `Sua evolucao depende mais de frequencia agora: ${metrics.weeklyDays}x nesta janela e ${metrics.comparisonShort}.`;
+    case 'frequency_check':
+      return `Sua frequencia atual esta ${metrics.frequencyStatus}: ${metrics.weeklyDays}x nesta janela contra meta pessoal de ${metrics.personalTargetFrequency}x.`;
+    case 'next_adjustment':
+      return `No proximo ${metrics.lastWorkoutTitle}, o ajuste principal e ${suggestions[0] || 'voltar com progressao limpa e sem pressa na carga.'}`;
+    default:
+      break;
+  }
+
+  if (effectiveContext === 'progress') {
+    return `Seu bloco atual esta ${metrics.trend}: ${metrics.weeklyDays}x nesta janela e ${metrics.comparisonShort}.`;
+  }
+
+  if (effectiveContext === 'recovery') {
+    return `Sua recuperacao parece ${metrics.daysSinceLastWorkout >= 2 ? 'mais aberta' : 'apertada'} para voltar, porque o ultimo treino foi ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`;
+  }
+
+  return `Seu encaixe atual aponta para ${metrics.nextSessionLabel}, porque o ultimo treino foi ${metrics.lastWorkoutTitle} ha ${metrics.timeSinceLastWorkoutLabel}.`;
 };
 
-const normalizeCoachMessage = (raw) => {
-  const lines = raw
+const buildFallbackResponse = ({ effectiveContext, questionMeta, metrics, suggestions }) => {
+  const answer = buildContextAnswer({
+    effectiveContext,
+    questionMeta,
+    metrics,
+    suggestions,
+  });
+  const reasoning = buildReasoning({ metrics, questionMeta });
+  const action = suggestions[0] || 'registre o proximo treino completo para refinar a leitura';
+
+  return {
+    answer,
+    reasoning,
+    action,
+    confidence: deriveConfidence({ metrics, questionMeta }),
+  };
+};
+
+const normalizeCoachPayload = (raw = '') => {
+  const lines = String(raw || '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
-    .slice(0, 5);
+    .slice(0, 4);
 
-  const sections = {
-    analysis: '',
-    recommendation: '',
-    motivation: '',
+  const payload = {
+    answer: '',
+    reasoning: '',
+    action: '',
   };
 
   for (const line of lines) {
     const normalized = normalizeText(line);
 
-    if (normalized.startsWith('analise:')) {
-      sections.analysis = line.split(':').slice(1).join(':').trim();
+    if (normalized.startsWith('resposta:')) {
+      payload.answer = line.split(':').slice(1).join(':').trim();
       continue;
     }
 
-    if (normalized.startsWith('recomendacao:')) {
-      sections.recommendation = line.split(':').slice(1).join(':').trim();
+    if (normalized.startsWith('raciocinio:')) {
+      payload.reasoning = line.split(':').slice(1).join(':').trim();
       continue;
     }
 
-    if (normalized.startsWith('motivacao:')) {
-      sections.motivation = line.split(':').slice(1).join(':').trim();
+    if (normalized.startsWith('acao:')) {
+      payload.action = line.split(':').slice(1).join(':').trim();
       continue;
     }
 
-    if (!sections.analysis) {
-      sections.analysis = line;
-    } else if (!sections.recommendation) {
-      sections.recommendation = line;
-    } else if (!sections.motivation) {
-      sections.motivation = line;
+    if (!payload.answer) {
+      payload.answer = line;
+    } else if (!payload.reasoning) {
+      payload.reasoning = line;
+    } else if (!payload.action) {
+      payload.action = line;
     }
   }
 
-  return sections;
+  return payload;
 };
+
+const splitReasoningLine = (value = '') =>
+  String(value || '')
+    .split('|')
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+const isWeakCoachText = (value = '') => {
+  const normalized = normalizeText(value);
+  if (!normalized || normalized.length < 10) return true;
+
+  return GENERIC_PATTERNS.some((pattern) =>
+    normalized === pattern || normalized.startsWith(pattern),
+  );
+};
+
+const buildLegacyPayload = (structured) => ({
+  message: structured.answer,
+  insights: structured.reasoning,
+  suggestions: [structured.action].filter(Boolean),
+});
 
 export default async function handler(req) {
   if (req.method === 'OPTIONS') {
@@ -751,9 +1033,33 @@ export default async function handler(req) {
   }
 
   const context = body?.context || 'workout';
+  const rawQuestion = typeof body?.question === 'string' ? body.question.trim() : '';
+
   if (!VALID_CONTEXTS.includes(context)) {
     return json({ error: `context must be one of: ${VALID_CONTEXTS.join(', ')}` }, 400);
   }
+
+  if (context === 'question' && !rawQuestion) {
+    return json({ error: 'question is required when context is question' }, 400);
+  }
+
+  if (rawQuestion.length > QUESTION_MAX_LENGTH) {
+    return json({ error: `question must be at most ${QUESTION_MAX_LENGTH} characters` }, 400);
+  }
+
+  const questionMeta = context === 'question'
+    ? classifyCoachQuestion(rawQuestion)
+    : null;
+
+  if (questionMeta && !questionMeta.valid) {
+    const offTopic = buildOffTopicResponse();
+    return json({
+      ...offTopic,
+      ...buildLegacyPayload(offTopic),
+    });
+  }
+
+  const effectiveContext = questionMeta?.effectiveContext || context;
 
   try {
     const [workouts, checkins, prs] = await Promise.all([
@@ -762,44 +1068,58 @@ export default async function handler(req) {
       fetchRecentPrs(supabase, user.id),
     ]);
 
-    const { summaryText, insights, suggestions, metrics } = buildSummary({
-      context,
+    const { summaryText, suggestions, metrics } = buildSummary({
+      context: effectiveContext,
+      questionMeta,
       workouts,
       checkins,
       prs,
     });
 
-    const fallback = buildCoachFallback({
+    const fallback = buildFallbackResponse({
+      effectiveContext,
+      questionMeta,
       metrics,
       suggestions,
     });
 
-    try {
-      const rawMessage = await requestCoachAnalysis(summaryText);
-      const normalized = normalizeCoachMessage(rawMessage);
+    if (!metrics.recentWorkoutCount) {
+      return json({
+        ...fallback,
+        ...buildLegacyPayload(fallback),
+      });
+    }
 
-      const analysis = isGenericCoachLine(normalized.analysis)
-        ? fallback.sections.analysis
-        : `Analise: ${normalized.analysis}`;
-      const recommendation = isGenericCoachLine(normalized.recommendation)
-        ? fallback.sections.recommendation
-        : `Recomendacao: ${normalized.recommendation}`;
-      const motivation = isGenericCoachLine(normalized.motivation)
-        ? fallback.sections.motivation
-        : `Motivacao: ${normalized.motivation}`;
+    try {
+      const rawReply = await requestCoachAnalysis(summaryText, {
+        question: rawQuestion,
+        intentLabel: questionMeta?.label || effectiveContext,
+        draftAnswer: fallback.answer,
+        draftReasoning: fallback.reasoning,
+        preferredAction: fallback.action,
+      });
+
+      const normalized = normalizeCoachPayload(rawReply);
+      const aiReasoning = splitReasoningLine(normalized.reasoning)
+        .filter((item) => !isWeakCoachText(item));
+
+      const structured = {
+        answer: isWeakCoachText(normalized.answer) ? fallback.answer : normalized.answer,
+        reasoning: aiReasoning.length ? aiReasoning : fallback.reasoning,
+        action: isWeakCoachText(normalized.action) ? fallback.action : normalized.action,
+        confidence: fallback.confidence,
+      };
 
       return json({
-        message: [analysis, recommendation, motivation].join('\n'),
-        insights,
-        suggestions,
+        ...structured,
+        ...buildLegacyPayload(structured),
       });
     } catch (error) {
       console.error('[ai/coach]', error);
 
       return json({
-        message: fallback.message,
-        insights,
-        suggestions: fallback.suggestions,
+        ...fallback,
+        ...buildLegacyPayload(fallback),
       });
     }
   } catch (error) {
