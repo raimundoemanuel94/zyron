@@ -1,114 +1,139 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Zap, Send, User, AlertTriangle, Trash2, Dumbbell, Trophy } from 'lucide-react';
-import { sendMessageToGemini, buildSystemPrompt } from '../../lib/gemini';
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Activity,
+  AlertTriangle,
+  Dumbbell,
+  RotateCcw,
+  Sparkles,
+  TrendingUp,
+  Zap,
+} from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 import { C, Badge } from '../../styles/ds';
 
-const QUICK_PROMPTS = [
-  { label: '🔥 Treino de Hoje',  text: 'Me dê um resumo do meu treino de hoje e dicas para maximizar o resultado.' },
-  { label: '⚡ Aumentar Carga',  text: 'Quando e como devo aumentar minha carga para continuar progredindo?' },
-  { label: '🎯 Metas Smart',     text: 'Baseado no meu peso e objetivo, calcule minhas metas ideais de proteína, hidratação e calorias.' },
-  { label: '💧 Nutrição',        text: 'Qual a minha meta de proteína e hidratação hoje baseada no meu peso?' },
-  { label: '😴 Recuperação',     text: 'Estou cansado. Devo treinar mesmo assim ou descansar? O que fazer?' },
-  { label: '📈 Progresso',       text: 'Analise meus PRs e me diga se estou progredindo bem.' },
+const CONTEXTS = [
+  { id: 'workout', label: 'Treino', icon: Dumbbell },
+  { id: 'progress', label: 'Progresso', icon: TrendingUp },
+  { id: 'recovery', label: 'Recuperacao', icon: Activity },
 ];
 
-const TypingIndicator = () => (
-  <div className="flex items-end gap-2.5">
-    <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0"
-      style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}` }}>
-      <Zap size={13} style={{ color: C.purple }} />
-    </div>
-    <div className="flex items-center gap-1.5 px-4 py-3 rounded-[16px] rounded-bl-[4px]"
-      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-      {[0, 1, 2].map(i => (
-        <motion.div key={i} className="w-[6px] h-[6px] rounded-full"
-          style={{ background: C.purple }}
-          animate={{ y: [0, -5, 0] }}
-          transition={{ duration: 0.55, repeat: Infinity, delay: i * 0.14 }} />
-      ))}
-    </div>
+const FALLBACKS = {
+  workout: {
+    message: 'Nao consegui ler seu historico agora.\nMantenha a execucao forte no proximo treino.\nVolte em instantes para atualizar a analise.',
+    insights: ['Coach temporariamente indisponivel', 'Tente novamente em alguns segundos'],
+    suggestions: ['Registrar o proximo treino ajuda a liberar uma leitura melhor'],
+  },
+  progress: {
+    message: 'Sua leitura de progresso nao carregou agora.\nPriorize constancia e registre cargas reais.\nVolte em instantes para atualizar a analise.',
+    insights: ['Sem resposta da IA neste momento', 'Os dados continuam seguros no backend'],
+    suggestions: ['Mantenha as cargas atualizadas para uma analise mais precisa'],
+  },
+  recovery: {
+    message: 'Nao consegui fechar sua leitura de recuperacao agora.\nObserve energia, sono e ritmo da semana.\nVolte em instantes para atualizar a analise.',
+    insights: ['Leitura temporariamente indisponivel', 'Os check-ins serao usados assim que a IA responder'],
+    suggestions: ['Se estiver muito cansado, reduza intensidade no proximo treino'],
+  },
+};
+
+const getAuthHeader = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    throw new Error('Sessao invalida');
+  }
+
+  return `Bearer ${session.access_token}`;
+};
+
+const fetchCoachAnalysis = async (context) => {
+  const auth = await getAuthHeader();
+  const response = await fetch('/api/ai/coach', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: auth,
+    },
+    body: JSON.stringify({ context }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data?.error || `HTTP ${response.status}`);
+  }
+
+  return {
+    message: data?.message || '',
+    insights: Array.isArray(data?.insights) ? data.insights : [],
+    suggestions: Array.isArray(data?.suggestions) ? data.suggestions : [],
+  };
+};
+
+const LoadingDots = () => (
+  <div className="flex items-center gap-1.5">
+    {[0, 1, 2].map((index) => (
+      <motion.div
+        key={index}
+        className="h-2 w-2 rounded-full"
+        style={{ background: C.purple }}
+        animate={{ y: [0, -6, 0], opacity: [0.45, 1, 0.45] }}
+        transition={{ duration: 0.7, repeat: Infinity, delay: index * 0.12 }}
+      />
+    ))}
   </div>
 );
 
-const Message = ({ msg }) => {
-  const isUser = msg.role === 'user';
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.26 }}
-      className={`flex items-end gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0"
-        style={isUser
-          ? { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)' }
-          : { background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, boxShadow: `0 0 12px rgba(139,92,246,0.18)` }
-        }>
-        {isUser
-          ? <User size={13} style={{ color: C.textSub }} />
-          : <Zap size={13} style={{ color: C.purple }} />
+export default function TabCoach({ user, profile }) {
+  const [context, setContext] = useState('workout');
+  const [analysis, setAnalysis] = useState(FALLBACKS.workout);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshSeed, setRefreshSeed] = useState(0);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    let active = true;
+
+    const load = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const data = await fetchCoachAnalysis(context);
+        if (!active) return;
+
+        setAnalysis({
+          message: data.message || FALLBACKS[context].message,
+          insights: data.insights?.length ? data.insights : FALLBACKS[context].insights,
+          suggestions: data.suggestions?.length ? data.suggestions : FALLBACKS[context].suggestions,
+        });
+      } catch (loadError) {
+        console.error('[TabCoach]', loadError);
+        if (!active) return;
+
+        setError(loadError.message || 'Falha ao carregar coach');
+        setAnalysis(FALLBACKS[context]);
+      } finally {
+        if (active) {
+          setLoading(false);
         }
-      </div>
-      <div className="max-w-[78%] px-4 py-2.5 text-[12px] font-medium leading-relaxed whitespace-pre-wrap"
-        style={isUser
-          ? { background: C.purple, color: '#fff', borderRadius: '16px 16px 4px 16px', fontWeight: 700 }
-          : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.88)', borderRadius: '4px 16px 16px 16px' }
-        }>
-        {msg.text}
-      </div>
-    </motion.div>
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, [context, refreshSeed, user?.id]);
+
+  const currentContext = useMemo(
+    () => CONTEXTS.find((item) => item.id === context) || CONTEXTS[0],
+    [context],
   );
-};
 
-export default function TabCoach({ user, profile, metrics, prHistory, workoutData }) {
-  const [messages, setMessages] = useState([{
-    role: 'model',
-    text: `Olá, ${profile?.name?.split(' ')[0] || 'Atleta'}! ⚡ Sou o ZYRON Coach, sua IA de alta performance.\n\nEstou com acesso ao seu perfil, treino de hoje e suas metas oficiais. Me pergunte qualquer coisa!`,
-  }]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [showQuickPrompts, setShowQuickPrompts] = useState(true);
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
-
-  const systemPrompt = buildSystemPrompt(profile, metrics, prHistory, workoutData);
-
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
-
-  // Keep only last 10 exchanges (20 messages) to avoid API token limits
-  const MAX_HISTORY = 20;
-  const buildHistory = () =>
-    messages.slice(1).slice(-MAX_HISTORY).map(m => ({ role: m.role, parts: [{ text: m.text }] }));
-
-  const handleSend = async (text) => {
-    const messageText = text || input.trim();
-    if (!messageText || loading) return;
-    setInput('');
-    setError(null);
-    setShowQuickPrompts(false);
-    setMessages(prev => [...prev, { role: 'user', text: messageText }]);
-    setLoading(true);
-    try {
-      const response = await sendMessageToGemini(buildHistory(), messageText, systemPrompt);
-      setMessages(prev => [...prev, { role: 'model', text: response }]);
-    } catch (err) {
-      console.error('ZYRON Coach Error:', err);
-      setError(err.message || 'Erro ao conectar com a IA. Verifique sua API Key.');
-    } finally {
-      setLoading(false);
-      inputRef.current?.focus();
-    }
-  };
-
-  const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
-
-  const clearChat = () => {
-    setMessages([{ role: 'model', text: `Conversa reiniciada! ⚡ Como posso ajudar, ${profile?.name?.split(' ')[0] || 'Atleta'}?` }]);
-    setShowQuickPrompts(true);
-    setError(null);
-  };
+  const CurrentIcon = currentContext.icon;
+  const firstName = profile?.name?.split(' ')?.[0] || 'Atleta';
 
   return (
     <motion.div
@@ -117,137 +142,165 @@ export default function TabCoach({ user, profile, metrics, prHistory, workoutDat
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col"
+      className="flex flex-col gap-4"
       style={{ minHeight: 'calc(100dvh - 180px)' }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4 shrink-0">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-[14px]"
-            style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, boxShadow: `0 0 16px rgba(139,92,246,0.14)` }}>
-            <Zap size={17} style={{ color: C.purple }} />
+          <div
+            className="flex h-11 w-11 items-center justify-center rounded-[16px]"
+            style={{
+              background: C.purpleBg,
+              border: `1px solid ${C.purpleBorder}`,
+              boxShadow: '0 0 18px rgba(139,92,246,0.16)',
+            }}
+          >
+            <Zap size={18} style={{ color: C.purple }} />
           </div>
           <div>
-            <h2 className="text-[14px] font-black uppercase tracking-tight text-white leading-none">ZYRON Coach</h2>
-            <p className="text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5" style={{ color: C.purple }}>IA Personal Trainer</p>
+            <h2 className="text-[14px] font-black uppercase tracking-tight text-white">ZYRON Coach</h2>
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: C.purple }}>
+              Analise real do seu uso
+            </p>
           </div>
         </div>
-        <motion.button whileTap={{ scale: 0.88 }} onClick={clearChat}
-          className="flex h-8 w-8 items-center justify-center rounded-[10px]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-          title="Limpar conversa">
-          <Trash2 size={14} style={{ color: C.textSub }} />
+
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setRefreshSeed((value) => value + 1)}
+          className="flex h-9 w-9 items-center justify-center rounded-[12px]"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          title="Atualizar"
+        >
+          <RotateCcw size={14} style={{ color: C.textSub }} />
         </motion.button>
       </div>
 
-      {/* Context pills */}
-      <div className="flex gap-2 mb-3 shrink-0 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-        <span className={Badge.neutral} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <Dumbbell size={9} style={{ color: C.neon }} />
-          {workoutData?.[new Date().getDay()]?.title || 'Descanso'}
-        </span>
-        <span className={Badge.neutral} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <Trophy size={9} style={{ color: C.neon }} />
-          {Object.keys(prHistory || {}).length} PRs
-        </span>
-        <span className={Badge.neutral} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <User size={9} style={{ color: C.neon }} />
-          {profile?.bio?.weightKg || '?'}kg • {profile?.goals?.target || 'Hipertrofia'}
-        </span>
-        <span className={Badge.neutral} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-          <Zap size={9} style={{ color: C.neon }} />
-          {metrics?.caloriesGoalKcal || '?'} kcal
-        </span>
+      <div className="flex flex-wrap gap-2">
+        {CONTEXTS.map(({ id, label, icon: Icon }) => (
+          <motion.button
+            key={id}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setContext(id)}
+            className={Badge.neutral}
+            style={{
+              whiteSpace: 'nowrap',
+              background: context === id ? C.purpleBg : 'rgba(255,255,255,0.03)',
+              border: context === id ? `1px solid ${C.purpleBorder}` : '1px solid rgba(255,255,255,0.08)',
+              color: context === id ? '#fff' : C.textSub,
+            }}
+          >
+            <Icon size={10} style={{ color: context === id ? C.purple : C.neon }} />
+            {label}
+          </motion.button>
+        ))}
       </div>
 
-      {/* Error */}
-      <AnimatePresence>
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-3 flex items-start gap-2 px-3 py-2.5 rounded-[14px] shrink-0"
-            style={{ background: C.redBg, border: `1px solid ${C.redBorder}` }}
+      <div
+        className="rounded-[24px] p-5"
+        style={{
+          background: 'linear-gradient(180deg, rgba(18,18,22,0.98) 0%, rgba(10,10,12,0.98) 100%)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 18px 40px rgba(0,0,0,0.28)',
+        }}
+      >
+        <div className="flex items-center gap-2.5 mb-4">
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-[12px]"
+            style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}` }}
           >
-            <AlertTriangle size={13} style={{ color: C.red, marginTop: 1, flexShrink: 0 }} />
-            <p className="text-[11px] font-bold" style={{ color: C.red }}>{error}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Mensagens */}
-      <div className="flex-1 overflow-y-auto space-y-3 pr-0.5" style={{ scrollbarWidth: 'none' }}>
-        {/* Long conversation notice */}
-        {messages.length > MAX_HISTORY + 1 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] mb-1"
-            style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.14)' }}>
-            <Zap size={10} style={{ color: C.purple }} />
-            <p className="text-[9px] font-semibold" style={{ color: C.textSub }}>
-              Histórico longo — apenas as últimas {MAX_HISTORY} mensagens são enviadas à IA.
+            <CurrentIcon size={15} style={{ color: C.purple }} />
+          </div>
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white">
+              {firstName}, aqui vai sua leitura
+            </p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: C.textSub }}>
+              contexto {currentContext.label}
             </p>
           </div>
-        )}
-        {messages.map((msg, i) => <Message key={i} msg={msg} />)}
-        {loading && <TypingIndicator />}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Quick prompts */}
-      <AnimatePresence>
-        {showQuickPrompts && messages.length <= 1 && !loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="mt-3 shrink-0"
-          >
-            <p className="text-[8.5px] font-black uppercase tracking-[0.2em] mb-2 ml-0.5" style={{ color: C.textSub }}>
-              Perguntas rápidas
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {QUICK_PROMPTS.map((qp) => (
-                <motion.button key={qp.label} whileTap={{ scale: 0.94 }}
-                  onClick={() => handleSend(qp.text)}
-                  className="px-3 py-1.5 rounded-[10px] text-[10.5px] font-semibold transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.65)' }}>
-                  {qp.label}
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Input */}
-      <div className="mt-3 shrink-0">
-        <div className="flex items-end gap-2.5 px-3 py-2.5 rounded-[18px]"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)' }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Pergunte ao seu Coach…"
-            rows={1}
-            className="flex-1 bg-transparent text-[13px] font-medium text-white placeholder:text-neutral-600 resize-none outline-none leading-relaxed max-h-28 overflow-y-auto"
-            style={{ scrollbarWidth: 'none' }}
-          />
-          <motion.button
-            whileTap={{ scale: 0.88 }}
-            onClick={() => handleSend()}
-            disabled={!input.trim() || loading}
-            className="flex h-9 w-9 items-center justify-center rounded-[12px] shrink-0 transition-all"
-            style={{
-              background: input.trim() && !loading ? C.purple : 'rgba(255,255,255,0.05)',
-              boxShadow: input.trim() && !loading ? `0 0 12px rgba(139,92,246,0.22)` : 'none',
-            }}>
-            <Send size={14} style={{ color: input.trim() && !loading ? '#fff' : C.textSub }} />
-          </motion.button>
         </div>
-        <p className="text-center text-[8.5px] font-bold uppercase tracking-widest mt-2" style={{ color: C.textMute }}>
-          Powered by Groq AI • ZYRON Coach
-        </p>
+
+        {loading ? (
+          <div
+            className="flex min-h-[120px] flex-col justify-center gap-3 rounded-[18px] px-4 py-5"
+            style={{ background: 'rgba(255,255,255,0.03)' }}
+          >
+            <LoadingDots />
+            <p className="text-[12px] font-medium" style={{ color: C.textSub }}>
+              Lendo seus treinos, check-ins e PRs...
+            </p>
+          </div>
+        ) : (
+          <>
+            {error ? (
+              <div
+                className="mb-4 flex items-start gap-2.5 rounded-[16px] px-3 py-3"
+                style={{ background: C.redBg, border: `1px solid ${C.redBorder}` }}
+              >
+                <AlertTriangle size={14} style={{ color: C.red, marginTop: 1, flexShrink: 0 }} />
+                <p className="text-[11px] font-bold" style={{ color: C.red }}>
+                  Fallback ativo
+                </p>
+              </div>
+            ) : null}
+
+            <div
+              className="rounded-[20px] px-4 py-4"
+              style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles size={14} style={{ color: C.neon }} />
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: C.neon }}>
+                  Resposta da IA
+                </p>
+              </div>
+              <p className="whitespace-pre-wrap text-[13px] font-medium leading-relaxed text-white">
+                {analysis.message}
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {analysis.insights?.length ? (
+                <div>
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+                    Insights
+                  </p>
+                  <div className="grid gap-2">
+                    {analysis.insights.map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-[16px] px-3 py-3 text-[11px] font-semibold"
+                        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.82)' }}
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {analysis.suggestions?.length ? (
+                <div>
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>
+                    Sugestoes
+                  </p>
+                  <div className="grid gap-2">
+                    {analysis.suggestions.map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-[16px] px-3 py-3 text-[11px] font-semibold"
+                        style={{ background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, color: '#fff' }}
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </>
+        )}
       </div>
     </motion.div>
   );
