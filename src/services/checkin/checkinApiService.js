@@ -35,34 +35,33 @@ const postWithAuth = async (url, body) => {
 
 // FASE 2: payload normalizado para cada endpoint
 
+const toIsoLocal = (isoUtc) => {
+  const now = isoUtc || new Date().toISOString();
+  return new Date(new Date(now).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString();
+};
+
 /**
  * Iniciar check-in
- * @param {Object} params
- * @param {number} params.lat
- * @param {number} params.lng
- * @param {number} params.accuracy_m - deve ser <= 50
- * @param {string} params.gym_id
- * @param {string} params.timestamp - ISO string
- * @param {string} [params.client_session_id]
- * @param {string} [params.source] - 'gps' | 'network' | 'manual'
+ * Aceita payload legado e payload fase 2.
  */
-const startCheckin = ({ lat, lng, accuracy_m, gym_id, timestamp, client_session_id, source = 'gps' }) => {
-  const now = timestamp || new Date().toISOString();
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const localIso = new Date(new Date(now).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString();
+const startCheckin = (params = {}) => {
+  const startedUtc = params.timestamp || params.started_at_utc || new Date().toISOString();
+  const timezone = params.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
-  return postWithAuth('/api/checkins/start', {
-    gym_id,
-    lat,
-    lng,
-    accuracy_m,
-    source,
-    mode: 'auto',
-    timezone: tz,
-    started_at_utc: now,
-    started_at_local: localIso,
-    client_session_id: client_session_id || null,
-  });
+  const body = {
+    gym_id: params.gym_id,
+    lat: params.lat ?? params.started_lat ?? null,
+    lng: params.lng ?? params.started_lng ?? null,
+    accuracy_m: params.accuracy_m ?? params.started_accuracy_m ?? null,
+    source: params.source || 'gps',
+    mode: params.mode || 'auto',
+    timezone,
+    started_at_utc: startedUtc,
+    started_at_local: params.started_at_local || toIsoLocal(startedUtc),
+    client_session_id: params.client_session_id || null,
+  };
+
+  return postWithAuth('/api/checkins/start', body);
 };
 
 /**
@@ -75,14 +74,14 @@ const startCheckin = ({ lat, lng, accuracy_m, gym_id, timestamp, client_session_
  * @param {string} [params.timestamp] - ISO string
  * @param {string} [params.source]
  */
-const heartbeatCheckin = ({ checkin_id, lat, lng, accuracy_m, timestamp, source = 'gps' }) => {
+const heartbeatCheckin = (params = {}) => {
   return postWithAuth('/api/checkins/heartbeat', {
-    checkin_id: checkin_id || null,
-    lat,
-    lng,
-    accuracy_m,
-    source,
-    heartbeat_at_utc: timestamp || new Date().toISOString(),
+    checkin_id: params.checkin_id || null,
+    lat: params.lat ?? params.heartbeat_lat ?? null,
+    lng: params.lng ?? params.heartbeat_lng ?? null,
+    accuracy_m: params.accuracy_m ?? params.heartbeat_accuracy_m ?? null,
+    source: params.source || 'gps',
+    heartbeat_at_utc: params.timestamp || params.heartbeat_at_utc || new Date().toISOString(),
   });
 };
 
@@ -98,22 +97,21 @@ const heartbeatCheckin = ({ checkin_id, lat, lng, accuracy_m, timestamp, source 
  * @param {string} [params.timestamp]
  * @param {string} [params.source]
  */
-const endCheckin = ({ checkin_id, duration_minutes, reason = 'manual', lat, lng, accuracy_m, timestamp, source = 'gps' }) => {
-  const now = timestamp || new Date().toISOString();
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  const localIso = new Date(new Date(now).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString();
+const endCheckin = (params = {}) => {
+  const endedUtc = params.timestamp || params.ended_at_utc || new Date().toISOString();
+  const timezone = params.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
   return postWithAuth('/api/checkins/end', {
-    checkin_id: checkin_id || null,
-    lat: lat ?? null,
-    lng: lng ?? null,
-    accuracy_m: accuracy_m ?? null,
-    source,
-    timezone: tz,
-    ended_at_utc: now,
-    ended_at_local: localIso,
-    duration_minutes,
-    ended_reason: reason,
+    checkin_id: params.checkin_id || null,
+    lat: params.lat ?? params.ended_lat ?? null,
+    lng: params.lng ?? params.ended_lng ?? null,
+    accuracy_m: params.accuracy_m ?? params.ended_accuracy_m ?? null,
+    source: params.source || 'gps',
+    timezone,
+    ended_at_utc: endedUtc,
+    ended_at_local: params.ended_at_local || toIsoLocal(endedUtc),
+    duration_minutes: Number(params.duration_minutes ?? 0),
+    ended_reason: params.reason || params.ended_reason || 'manual',
   });
 };
 

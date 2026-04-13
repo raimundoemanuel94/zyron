@@ -259,15 +259,8 @@ export const validateWorkoutSyncPayload = (body) => {
     1
   );
 
-  // REQUIRED: exercises (at least 1 set)
+  // OPTIONAL: exercises (set details may be empty; workout log still syncs)
   const sets = Array.isArray(body.sets) ? body.sets : [];
-  if (sets.length === 0) {
-    throw new ValidationError(
-      'sets',
-      'At least one set must be provided'
-    );
-  }
-
   const validatedSets = sets.map((set, idx) => validateSet(set, idx));
 
   // OPTIONAL: photos
