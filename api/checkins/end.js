@@ -41,20 +41,30 @@ export default async function handler(req) {
     const body = await parseJsonBody(req);
     const payload = validateEndPayload(body);
 
-    const recordResult = await supabase
+    // FASE 2: busca por checkin_id se fornecido, senão busca ativo do usuário
+    let recordQuery = supabase
       .from('gym_checkins')
       .select('*')
-      .eq('id', payload.checkin_id)
-      .eq('user_id', user.id)
+      .eq('user_id', user.id);
+
+    if (payload.checkin_id) {
+      recordQuery = recordQuery.eq('id', payload.checkin_id);
+    } else {
+      recordQuery = recordQuery.eq('status', 'active');
+    }
+
+    const recordResult = await recordQuery
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (recordResult.error) throw recordResult.error;
     if (!recordResult.data) {
       throw new ApiError({
         code: 'CHECKIN_NOT_FOUND',
-        message: 'Check-in not found for this user',
+        message: 'No active check-in found for this user',
         status: 404,
-        details: { checkin_id: payload.checkin_id },
+        details: { checkin_id: payload.checkin_id || null },
       });
     }
 

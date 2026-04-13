@@ -202,6 +202,26 @@ const validatePhoto = (photo, index) => {
   };
 };
 
+const normalizeLocation = (rawLocation) => {
+  if (!rawLocation) return null;
+
+  if (typeof rawLocation === 'string') {
+    return validateString(rawLocation, 'location', 0, 255);
+  }
+
+  if (typeof rawLocation === 'object') {
+    const candidate = rawLocation.address ?? rawLocation.label ?? rawLocation.name ?? null;
+    if (!candidate) return null;
+    return validateString(candidate, 'location', 0, 255);
+  }
+
+  throw new ValidationError(
+    'location',
+    'location must be a string or object with address',
+    { received: typeof rawLocation }
+  );
+};
+
 /**
  * PRIMARY VALIDATION - Workout Sync Payload
  * This is the contract between client and server
@@ -255,8 +275,11 @@ export const validateWorkoutSyncPayload = (body) => {
   const validatedPhotos = photos.map((photo, idx) => validatePhoto(photo, idx));
 
   // OPTIONAL: metadata
-  const workout_name = body.workout_name ?? body.workoutName ? validateString(body.workout_name ?? body.workoutName, 'workout_name', 0, 255) : null;
-  const location = body.location ? validateString(body.location, 'location', 0, 255) : null;
+  const rawWorkoutName = body.workout_name ?? body.workoutName ?? body.workout?.workout_name ?? body.workout?.workoutName;
+  const workout_name = rawWorkoutName ? validateString(rawWorkoutName, 'workout_name', 0, 255) : null;
+  const rawWorkoutKey = body.workout_key ?? body.workout?.workout_key ?? null;
+  const workout_key = rawWorkoutKey ? validateString(rawWorkoutKey, 'workout_key', 1, 100) : null;
+  const location = normalizeLocation(body.location ?? body.workout?.location ?? null);
   const source = body.source ? validateEnum(body.source, 'source', ['web', 'mobile', 'ios', 'android']) : 'web';
 
   return {
@@ -267,6 +290,7 @@ export const validateWorkoutSyncPayload = (body) => {
     sets: validatedSets,
     photos: validatedPhotos,
     workout_name,
+    workout_key,
     location,
     source,
   };

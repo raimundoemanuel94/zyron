@@ -13,6 +13,11 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   },
 });
 
+const parseOptionalInt = (value) => {
+  const parsed = parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 const selectExistingWorkout = async (supabase, userId, payload) => {
   // Always try by sync_id first
   const bySyncId = await supabase
@@ -45,6 +50,7 @@ const writeWorkoutLog = async (supabase, userId, payload, existingLog) => {
   const row = {
     user_id: userId,
     sync_id: payload.sync_id,
+    workout_key: payload.workout_key || null,
     started_at: payload.started_at,
     ended_at: payload.ended_at,
     duration_seconds: durationSeconds,
@@ -305,8 +311,16 @@ export default async function handler(req) {
     await insertExerciseCompletions(supabase, userId, workoutLog.id, payload.sets);
     await updateExercisePRs(supabase, userId, payload.sets);
 
-    // Save photos
+    // Save photos (URL rows first)
     await upsertWorkoutPhotoRows(supabase, userId, workoutLog.id, payload.photos);
+
+    // Backward compatibility: if photos array is empty but inline payload exists, upload on server
+    if (!payload.photos?.length) {
+      const inlinePhotoPayload = body?.workout?.photo_payload || body?.photo_payload || null;
+      if (inlinePhotoPayload) {
+        await uploadInlinePhoto(supabase, userId, workoutLog.id, inlinePhotoPayload);
+      }
+    }
 
     // Update profile
     await supabase.from('profiles').update({ last_synced_at: new Date().toISOString() }).eq('id', userId);

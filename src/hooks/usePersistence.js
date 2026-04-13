@@ -332,53 +332,49 @@ export function useExerciseCompletion(userId, workoutKey) {
 
     const { supabase } = await import('../lib/supabase');
     const today = new Date().toISOString().split('T')[0];
+    const dayStart = `${today}T00:00:00.000Z`;
+    const dayEnd = `${today}T23:59:59.999Z`;
+    const isCompletedWorkoutLog = (log) => {
+      const durationMinutes = Number(log?.duration_minutes || 0);
+      const durationSeconds = Number(log?.duration_seconds || 0);
+      const hasDuration = durationMinutes > 0 || durationSeconds > 0;
+      const hasEndedAt = Boolean(log?.ended_at || log?.completed_at);
+      return hasDuration && hasEndedAt;
+    };
 
     if (isCompleting) {
-      // Create workout session if doesn't exist
-      const { data: existingSession, error: fetchError } = await supabase
+      const normalizedWorkoutKey = workoutKey == null ? null : String(workoutKey);
+      if (!normalizedWorkoutKey) return;
+
+      const { data: logs, error: fetchError } = await supabase
         .from('workout_logs')
-        .select('id')
+        .select('id,created_at,ended_at,completed_at,duration_seconds,duration_minutes')
         .eq('user_id', userId)
-        .eq('workout_key', workoutKey)
-        .gte('completed_at', `${today}T00:00:00`)
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('workout_key', normalizedWorkoutKey)
+        .gte('created_at', dayStart)
+        .lte('created_at', dayEnd)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
       if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
 
-      let sessionId = existingSession?.id;
+      const sessionId = (logs || []).find(isCompletedWorkoutLog)?.id;
 
-      // Create new session if needed
-      if (!sessionId) {
-        const { data: newSession, error: createError } = await supabase
-          .from('workout_logs')
-          .insert([{
-            user_id: userId,
-            workout_key: workoutKey,
-            duration_seconds: 0,
-            completed_at: new Date().toISOString(),
-          }])
-          .select()
-          .single();
-
-        if (createError) throw createError;
-        sessionId = newSession?.id;
-      }
+      // Nunca cria workout_log provisório durante a sessão.
+      // O log oficial é criado apenas no sync final.
+      if (!sessionId) return;
 
       // Insert exercise completion
-      if (sessionId) {
-        await supabase.from('exercise_completions').insert([{
-          session_id: sessionId,
-          user_id: userId,
-          exercise_id: exerciseId,
-          exercise_name: exerciseName,
-          reps: data.reps || null,
-          sets: data.sets || null,
-          notes: data.notes || null,
-          completed_at: new Date().toISOString(),
-        }]);
-      }
+      await supabase.from('exercise_completions').insert([{
+        session_id: sessionId,
+        user_id: userId,
+        exercise_id: exerciseId,
+        exercise_name: exerciseName,
+        reps: data.reps || null,
+        sets: data.sets || null,
+        notes: data.notes || null,
+        completed_at: new Date().toISOString(),
+      }]);
     } else {
       // Remove completion
       await supabase

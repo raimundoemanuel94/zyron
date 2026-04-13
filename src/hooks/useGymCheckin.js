@@ -12,6 +12,7 @@ import {
   setCheckinError,
   startManualSession,
 } from '../services/checkin/checkinService';
+import { checkinApi } from '../services/checkin/checkinApiService';
 import {
   getLocationPermissionState,
   requestLocationPermission,
@@ -48,6 +49,12 @@ export function useGymCheckin({
   const gymRef = useRef(gym);
   const watchRuntimeRef = useRef(null);
 
+  // FASE 2: refs para controle da API
+  const checkinDbIdRef = useRef(null);       // ID do check-in salvo no banco
+  const apiStartLockRef = useRef(false);     // evita start duplicado
+  const heartbeatIntervalRef = useRef(null); // intervalo de 2 min
+  const inactivityTimeoutRef = useRef(null); // timeout de 5 min sem GPS
+
   const updateState = useCallback((next) => {
     stateRef.current = next;
     setState(next);
@@ -82,6 +89,121 @@ export function useGymCheckin({
     if (typeof onError === 'function') onError(next.error);
   }, [onError, updateState]);
 
+  // FASE 2: limpar timers de API
+  const clearApiTimers = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    if (inactivityTimeoutRef.current) {
+      clearTimeout(inactivityTimeoutRef.current);
+      inactivityTimeoutRef.current = null;
+    }
+  }, []);
+
+  // FASE 2: reiniciar timeout de inatividade (5 min)
+  const resetInactivityTimeout = useCallback(() => {
+    if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+    inactivityTimeoutRef.current = setTimeout(() => {
+      const cur = stateRef.current;
+      if (cur.status !== CHECKIN_STATUS.ACTIVE && cur.status !== CHECKIN_STATUS.MANUAL_ACTIVE) return;
+
+      const session = cur.session;
+      const started = session?.started_at_utc ? new Date(session.started_at_utc) : new Date();
+      const duration_minutes = Math.max(0, Math.round((Date.now() - started.getTime()) / 60000));
+      const reading = cur.last_reading;
+
+      checkinApi.end({
+        checkin_id: checkinDbIdRef.current,
+        duration_minutes,
+        reason: 'inactivity',
+        lat: reading?.lat,
+        lng: reading?.lng,
+        accuracy_m: reading?.accuracy_m,
+        source: reading?.source || 'gps',
+      }).catch((err) => logger.warn('API end (inactivity) failed', { error: err?.message }));
+
+      clearApiTimers();
+      checkinDbIdRef.current = null;
+      apiStartLockRef.current = false;
+    }, 5 * 60 * 1000);
+  }, [clearApiTimers]);
+
+  // FASE 2: sincronizar evento local com API real
+  const syncWithApi = useCallback((event, reading) => {
+    if (!event) return;
+
+    if (event.type === CHECKIN_EVENT.START) {
+      if (apiStartLockRef.current) return; // evitar duplicata
+      apiStartLockRef.current = true;
+
+      const gym = gymRef.current;
+      checkinApi.start({
+        lat: reading?.lat,
+        lng: reading?.lng,
+        accuracy_m: reading?.accuracy_m,
+        gym_id: gym?.id,
+        timestamp: reading?.captured_at_utc || new Date().toISOString(),
+        source: reading?.source || 'gps',
+        client_session_id: event.session?.id || null,
+      })
+        .then((res) => {
+          checkinDbIdRef.current = res?.data?.checkin?.id || null;
+          logger.info('Checkin started in DB', { checkin_id: checkinDbIdRef.current });
+
+          // Iniciar heartbeat a cada 2 min
+          clearApiTimers();
+          heartbeatIntervalRef.current = setInterval(() => {
+            const cur = stateRef.current;
+            if (cur.status !== CHECKIN_STATUS.ACTIVE && cur.status !== CHECKIN_STATUS.MANUAL_ACTIVE) {
+              clearApiTimers();
+              return;
+            }
+            const r = cur.last_reading;
+            checkinApi.heartbeat({
+              checkin_id: checkinDbIdRef.current,
+              lat: r?.lat,
+              lng: r?.lng,
+              accuracy_m: r?.accuracy_m,
+              source: r?.source || 'gps',
+              timestamp: new Date().toISOString(),
+            }).catch((err) => logger.warn('Heartbeat API failed', { error: err?.message }));
+          }, mergedConfig.heartbeatIntervalMs || 2 * 60 * 1000);
+
+          resetInactivityTimeout();
+        })
+        .catch((err) => {
+          apiStartLockRef.current = false;
+          logger.warn('Checkin start API failed', { error: err?.message });
+        });
+    }
+
+    if (event.type === CHECKIN_EVENT.HEARTBEAT) {
+      // GPS ainda ativo → reiniciar inatividade
+      resetInactivityTimeout();
+    }
+
+    if (event.type === CHECKIN_EVENT.END) {
+      const session = event.session;
+      const started = session?.started_at_utc ? new Date(session.started_at_utc) : new Date();
+      const duration_minutes = Math.max(0, Math.round((Date.now() - started.getTime()) / 60000));
+
+      checkinApi.end({
+        checkin_id: checkinDbIdRef.current,
+        duration_minutes,
+        reason: event.reason || 'left_geofence',
+        lat: reading?.lat,
+        lng: reading?.lng,
+        accuracy_m: reading?.accuracy_m,
+        source: reading?.source || 'gps',
+      }).catch((err) => logger.warn('Checkin end API failed', { error: err?.message }));
+
+      clearApiTimers();
+      checkinDbIdRef.current = null;
+      apiStartLockRef.current = false;
+    }
+  }, [clearApiTimers, mergedConfig.heartbeatIntervalMs, resetInactivityTimeout]);
+
   const processReading = useCallback((reading) => {
     const activeGym = gymRef.current;
     if (!activeGym?.lat || !activeGym?.lng) {
@@ -99,7 +221,8 @@ export function useGymCheckin({
 
     updateState(nextState);
     emitEvent(event);
-  }, [emitEvent, mergedConfig, pushError, updateState]);
+    syncWithApi(event, assessment); // FASE 2: chamar API
+  }, [emitEvent, mergedConfig, pushError, syncWithApi, updateState]);
 
   const clearWatch = useCallback(async () => {
     try {
@@ -265,20 +388,39 @@ export function useGymCheckin({
 
   const endCheckin = useCallback((reason = 'manual') => {
     const prevSession = stateRef.current.session;
-    const next = endSession(stateRef.current, reason, stateRef.current.last_reading);
+    const reading = stateRef.current.last_reading;
+    const next = endSession(stateRef.current, reason, reading);
     updateState(next);
 
     if (prevSession) {
+      const started = prevSession.started_at_utc ? new Date(prevSession.started_at_utc) : new Date();
+      const duration_minutes = Math.max(0, Math.round((Date.now() - started.getTime()) / 60000));
+
+      // FASE 2: chamar API ao encerrar manualmente
+      checkinApi.end({
+        checkin_id: checkinDbIdRef.current,
+        duration_minutes,
+        reason,
+        lat: reading?.lat,
+        lng: reading?.lng,
+        accuracy_m: reading?.accuracy_m,
+        source: reading?.source || 'gps',
+      }).catch((err) => logger.warn('Checkin end API failed', { error: err?.message }));
+
+      clearApiTimers();
+      checkinDbIdRef.current = null;
+      apiStartLockRef.current = false;
+
       emitEvent({
         type: CHECKIN_EVENT.END,
         session: next.session,
-        reading: next.last_reading,
+        reading,
         reason,
       });
     }
 
     return next.session;
-  }, [emitEvent, updateState]);
+  }, [clearApiTimers, emitEvent, updateState]);
 
   const endByWorkout = useCallback(() => endCheckin('workout_finished'), [endCheckin]);
 
@@ -297,7 +439,8 @@ export function useGymCheckin({
 
   useEffect(() => () => {
     clearWatch();
-  }, [clearWatch]);
+    clearApiTimers();
+  }, [clearApiTimers, clearWatch]);
 
   return {
     status: state.status,

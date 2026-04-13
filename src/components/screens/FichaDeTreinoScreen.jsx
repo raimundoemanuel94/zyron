@@ -914,7 +914,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
       animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
-      className={`min-h-[100dvh] flex flex-col bg-black text-slate-100 font-sans transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}
+      className={`h-[100dvh] overflow-hidden flex flex-col bg-black text-slate-100 font-sans transition-all duration-700 ${nightMode ? 'sepia-[0.3] brightness-[0.8]' : ''}`}
     >
       
       {/* Background Decor */}
@@ -968,10 +968,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         transition={{ delay: 0.15, duration: 0.7, type: "spring", stiffness: 120, damping: 18 }}
         className="shrink-0 z-40 relative"
         style={{
-          paddingTop: 'max(22px, env(safe-area-inset-top))',
-          paddingBottom: '24px',
-          paddingLeft: '20px',
-          paddingRight: '20px',
+          paddingTop: 'max(10px, env(safe-area-inset-top))',
+          paddingBottom: '8px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
           background: 'linear-gradient(180deg, rgba(8,15,8,0.98) 0%, rgba(4,8,5,0.94) 64%, rgba(0,0,0,0) 100%)',
           borderBottomLeftRadius: '26px',
           borderBottomRightRadius: '26px',
@@ -1011,7 +1011,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={() => avatarInputRef.current?.click()}
-                className="relative h-[52px] w-[52px] rounded-full overflow-hidden group"
+                className="relative h-11 w-11 rounded-full overflow-hidden group"
                 style={{ background: 'rgba(20,20,20,0.8)' }}
               >
                 {mergedUser.avatar_url || profile?.avatarUrl ? (
@@ -1032,12 +1032,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
             {/* Texto — minimalista na aba Perfil, completo nas outras */}
             <div className="min-w-0 flex flex-col justify-center gap-[3px]">
-              <p className="text-[18px] font-black text-white leading-none tracking-tight truncate max-w-[180px]">
-                {activeTab === 'perfil' ? 'ZYRON' : mergedUser.name.split(' ')[0]}
+              <p className="text-base font-semibold text-white leading-none tracking-tight truncate max-w-[180px]">
+                {activeTab === 'perfil' ? 'ZYRON' : 'Bom dia 👋'}
               </p>
-              <p className="text-[10.5px] font-semibold leading-none tracking-[0.08em]"
-                style={{ color: 'rgba(255,255,255,0.42)' }}>
-                {activeTab === 'perfil' ? 'Perfil' : 'Pronto para treinar?'}
+              <p className="text-xs font-medium leading-none"
+                style={{ color: 'rgba(255,255,255,0.60)' }}>
+                {activeTab === 'perfil' ? 'Perfil' : mergedUser.name.split(' ')[0]}
               </p>
             </div>
           </div>
@@ -1105,7 +1105,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.8 }}
         className="flex-1 w-full px-4 pt-1 relative z-10 overflow-y-auto"
-        style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'calc(84px + env(safe-area-inset-bottom))' }}
       >
         <AnimatePresence mode="wait">
 
@@ -1118,7 +1118,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               isHydrationAlert={isHydrationAlert} handleWaterDrink={handleWaterDrink}
               setWater={setWater}
               protein={protein} proteinGoal={proteinGoal} setProtein={setProtein}
-              fullHeight={true}
               refreshKey={painelRefreshKey}
               workoutData={availableWorkouts}
             />
@@ -1299,7 +1298,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 <div className="w-8 h-[3px] rounded-full bg-white/10" />
               </div>
 
-              <div className="px-4 pb-5 pt-2 space-y-2">
+              <div className="px-4 pb-5 pt-2 space-y-2 max-h-[58vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
                 {/* Iniciar Treino — CTA principal */}
                 <motion.button
@@ -1327,63 +1326,90 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <ChevronRight size={16} className="text-neutral-950/50 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
                 </motion.button>
 
-                {/* Água & Proteína — grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    {
-                      icon: Search,
-                      label: 'Buscar musica',
-                      sub: currentTrack ? 'Adicionar faixa' : 'Escolher primeira',
-                      color: 'text-[#B4FF3C]',
-                      bg: 'bg-[#B4FF3C]/10 border-[#B4FF3C]/15',
-                      delay: 0.05,
-                      action: () => openMusicPanel('search'),
-                    },
-                    {
-                      icon: Music2,
-                      label: 'Abrir player',
-                      sub: currentTrack ? 'Controles completos' : 'Player e busca',
-                      color: 'text-violet-300',
-                      bg: 'bg-violet-500/10 border-violet-400/15',
-                      delay: 0.08,
-                      action: () => openMusicPanel('player'),
-                    },
-                    {
-                      icon: isMusicPlaying ? Pause : Play,
-                      label: 'Pausar/Continuar',
-                      sub: currentTrack ? (isMusicPlaying ? 'Pausar faixa' : 'Retomar agora') : 'Abrir para tocar',
-                      color: 'text-amber-300',
-                      bg: 'bg-amber-500/10 border-amber-400/15',
-                      delay: 0.11,
-                      action: handleMusicToggleAction,
-                    },
-                    {
-                      icon: SkipForward,
-                      label: 'Proxima faixa',
-                      sub: musicPlaylist.length > 1 ? 'Avancar fila' : 'Adicionar mais',
-                      color: 'text-cyan-300',
-                      bg: 'bg-cyan-500/10 border-cyan-400/15',
-                      delay: 0.14,
-                      action: handleMusicNextAction,
-                    },
-                  ].map(({ icon: Ic, label, sub, color, bg, delay, action }) => (
-                    <motion.button
-                      key={label}
-                      whileTap={{ scale: 0.94 }}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
-                      onClick={action}
-                      className={`flex flex-col items-start p-3.5 rounded-[16px] border ${bg} transition-all`}
-                    >
-                      <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center mb-2.5`}>
-                        <Ic size={15} className={color} />
+                {/* Musica — bloco dedicado no botao + */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05, type: 'spring', stiffness: 340, damping: 28 }}
+                  className="rounded-[18px] border border-[#B4FF3C]/20 bg-[#B4FF3C]/[0.06] p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-[#B4FF3C]/15 border border-[#B4FF3C]/25 flex items-center justify-center">
+                        <Music2 size={15} className="text-[#B4FF3C]" />
                       </div>
-                      <span className="text-white text-[10.5px] font-bold leading-tight">{label}</span>
-                      <span className={`text-[8.5px] font-medium mt-0.5 ${color} opacity-70`}>{sub}</span>
-                    </motion.button>
-                  ))}
-                </div>
+                      <div className="min-w-0">
+                        <p className="text-[10.5px] font-black uppercase tracking-wider text-white">Musica</p>
+                        <p className="text-[9px] text-[#B4FF3C]/80 truncate">
+                          {currentTrack ? `${currentTrack.title || 'Faixa atual'}${isMusicPlaying ? ' • tocando' : ' • pausado'}` : 'Sem faixa carregada'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => openMusicPanel('player')}
+                      className="shrink-0 rounded-full border border-[#B4FF3C]/25 bg-[#B4FF3C]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#B4FF3C]"
+                    >
+                      Abrir
+                    </button>
+                  </div>
+
+                  <div className="mt-2.5 grid grid-cols-2 gap-2">
+                    {[
+                      {
+                        icon: Search,
+                        label: 'Buscar musica',
+                        sub: currentTrack ? 'Adicionar faixa' : 'Escolher primeira',
+                        color: 'text-[#B4FF3C]',
+                        bg: 'bg-[#B4FF3C]/10 border-[#B4FF3C]/15',
+                        delay: 0.07,
+                        action: () => openMusicPanel('search'),
+                      },
+                      {
+                        icon: isMusicPlaying ? Pause : Play,
+                        label: 'Pausar/Continuar',
+                        sub: currentTrack ? (isMusicPlaying ? 'Pausar faixa' : 'Retomar agora') : 'Abrir para tocar',
+                        color: 'text-amber-300',
+                        bg: 'bg-amber-500/10 border-amber-400/15',
+                        delay: 0.1,
+                        action: handleMusicToggleAction,
+                      },
+                      {
+                        icon: SkipForward,
+                        label: 'Proxima faixa',
+                        sub: musicPlaylist.length > 1 ? 'Avancar fila' : 'Adicionar mais',
+                        color: 'text-cyan-300',
+                        bg: 'bg-cyan-500/10 border-cyan-400/15',
+                        delay: 0.13,
+                        action: handleMusicNextAction,
+                      },
+                      {
+                        icon: Music2,
+                        label: 'Abrir player',
+                        sub: 'Controles completos',
+                        color: 'text-violet-300',
+                        bg: 'bg-violet-500/10 border-violet-400/15',
+                        delay: 0.16,
+                        action: () => openMusicPanel('player'),
+                      },
+                    ].map(({ icon: Ic, label, sub, color, bg, delay, action }) => (
+                      <motion.button
+                        key={label}
+                        whileTap={{ scale: 0.94 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
+                        onClick={action}
+                        className={`flex flex-col items-start p-3 rounded-[14px] border ${bg} transition-all`}
+                      >
+                        <div className={`w-7 h-7 rounded-full ${bg} flex items-center justify-center mb-2`}>
+                          <Ic size={14} className={color} />
+                        </div>
+                        <span className="text-white text-[10px] font-bold leading-tight">{label}</span>
+                        <span className={`text-[8px] font-medium mt-0.5 ${color} opacity-70`}>{sub}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
 
                 <div className="grid grid-cols-2 gap-2">
                   {[

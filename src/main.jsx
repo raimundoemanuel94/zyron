@@ -1,48 +1,65 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App.jsx';
+import './index.css';
 
-// ── Service Worker Registration ────────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((reg) => {
-        // When a new SW is found (update), notify app
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
+const cleanupServiceWorkersInDev = async () => {
+  if (!('serviceWorker' in navigator) || !('caches' in window)) return;
 
-          newWorker.addEventListener('statechange', () => {
-            if (
-              newWorker.state === 'activated' &&
-              navigator.serviceWorker.controller
-            ) {
-              window.dispatchEvent(new CustomEvent('zyron:sw-update'));
-            }
-          });
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+
+    const cacheNames = await caches.keys();
+    const zyronCaches = cacheNames.filter((name) => name.startsWith('zyron-pwa'));
+    await Promise.all(zyronCaches.map((name) => caches.delete(name)));
+  } catch (err) {
+    console.warn('[SW] Dev cleanup failed:', err);
+  }
+};
+
+const registerServiceWorkerInProd = () => {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker
+    .register('/sw.js')
+    .then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+            window.dispatchEvent(new CustomEvent('zyron:sw-update'));
+          }
         });
-
-        // If a new SW took control while the page was open
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return;
-          refreshing = true;
-          // Dispatch so the app can show a "reload" prompt instead of force-reload
-          window.dispatchEvent(new CustomEvent('zyron:sw-update'));
-        });
-      })
-      .catch((err) => {
-        console.warn('[SW] Registration failed:', err);
       });
 
-    // Forward SW → page messages to the app
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'UPDATE_AVAILABLE') {
-        window.dispatchEvent(new CustomEvent('zyron:sw-update', { detail: event.data }));
-      }
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.dispatchEvent(new CustomEvent('zyron:sw-update'));
+      });
+    })
+    .catch((err) => {
+      console.warn('[SW] Registration failed:', err);
     });
+
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'UPDATE_AVAILABLE') {
+      window.dispatchEvent(new CustomEvent('zyron:sw-update', { detail: event.data }));
+    }
+  });
+};
+
+if (import.meta.env.DEV) {
+  window.addEventListener('load', () => {
+    cleanupServiceWorkersInDev();
+  });
+} else {
+  window.addEventListener('load', () => {
+    registerServiceWorkerInProd();
   });
 }
 

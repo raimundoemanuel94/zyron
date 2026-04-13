@@ -112,6 +112,7 @@ export default async function handler(req) {
       last_heartbeat_lng: payload.started_lng,
       last_heartbeat_accuracy_m: payload.started_accuracy_m,
       heartbeat_source: payload.source,
+      last_seen_at: payload.started_at_utc,
     };
 
     const insertResult = await supabase

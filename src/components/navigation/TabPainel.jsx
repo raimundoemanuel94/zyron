@@ -58,7 +58,7 @@ export default function TabPainel({
   user, today, currentWorkout, startSession,
   water, waterGoal, isHydrationAlert, handleWaterDrink,
   setWater, protein, proteinGoal, setProtein,
-  fullHeight, refreshKey, workoutData,
+  refreshKey, workoutData,
 }) {
   // ── State & Refs (todos intactos) ────────────────────────────────────────
   const [trainedDays, setTrainedDays] = useState([]);
@@ -105,20 +105,48 @@ export default function TabPainel({
     return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const getWorkoutDurationMinutes = (log = {}) => {
+    const fromMinutes = Number(log.duration_minutes);
+    if (Number.isFinite(fromMinutes) && fromMinutes > 0) {
+      return Math.round(fromMinutes);
+    }
+
+    const fromSeconds = Number(log.duration_seconds);
+    if (Number.isFinite(fromSeconds) && fromSeconds > 0) {
+      return Math.max(1, Math.round(fromSeconds / 60));
+    }
+
+    if (log.started_at && log.ended_at) {
+      const startedAtMs = new Date(log.started_at).getTime();
+      const endedAtMs = new Date(log.ended_at).getTime();
+      const deltaMs = endedAtMs - startedAtMs;
+      if (Number.isFinite(deltaMs) && deltaMs > 0) {
+        return Math.max(1, Math.round(deltaMs / 60000));
+      }
+    }
+
+    return 0;
+  };
+
+  const getWorkoutLogTimestamp = (log = {}) => (
+    log.ended_at
+    || log.completed_at
+    || log.created_at
+    || null
+  );
+
   const getWorkoutDayKey = (log) => {
-    const date = new Date(log.ended_at || log.created_at || log.completed_at);
+    const date = new Date(getWorkoutLogTimestamp(log) || Date.now());
     return `${date.toDateString()}::${String(log.workout_key || log.workout_name || 'treino')}`;
   };
 
-  const getWorkoutLogDate = (log) => new Date(log.ended_at || log.completed_at || log.created_at);
+  const getWorkoutLogDate = (log) => new Date(getWorkoutLogTimestamp(log) || Date.now());
 
-  const isFinishedWorkoutLog = (log) => (
-    Number(log.duration_seconds) > 0
-    || Number(log.duration_minutes) > 0
-    || !!log.workout_name
-    || !!log.ended_at
-    || !!log.started_at
-  );
+  const isFinishedWorkoutLog = (log = {}) => {
+    const durationMinutes = getWorkoutDurationMinutes(log);
+    const hasFinishedAt = Boolean(log.ended_at || log.completed_at);
+    return durationMinutes > 0 && hasFinishedAt;
+  };
 
   const saveMetricEdit = () => {
     const num = parseFloat(editMetricValue);
@@ -203,6 +231,8 @@ export default function TabPainel({
   const totalSets       = currentWorkout?.exercises?.reduce(
     (acc, ex) => acc + (ex.sets?.length ?? ex.defaultSets ?? 3), 0
   ) ?? 0;
+  const workoutTitle = currentWorkout?.title || 'Treino de hoje';
+  const workoutFocus = (currentWorkout?.focus || 'Hipertrofia - Empurre').replace(/\s*-\s*/g, ' • ');
 
   // ── Week strip ──────────────────────────────────────────────────────────
   const WEEK_DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -217,6 +247,12 @@ export default function TabPainel({
     if (diffDays === 0) return 'Hoje';
     if (diffDays === 1) return 'Ontem';
     return `${diffDays}d atrás`;
+  };
+
+  const formatRecentLabel = (isoDate) => {
+    const label = formatRelativeDate(isoDate);
+    const time = new Date(isoDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return `${label} • ${time}`;
   };
 
   // ────────────────────────────────────────────────────────────────────────
@@ -253,122 +289,88 @@ export default function TabPainel({
         initial="initial"
         animate="animate"
         exit={{ opacity: 0, scale: 1.01 }}
-        className={`flex flex-col gap-[clamp(8px,1.3dvh,12px)] ${fullHeight ? 'h-full' : ''}`}
+        className="flex flex-col gap-2 pb-2"
       >
+        <div className="space-y-3 pb-1">
+          <motion.div
+            variants={stagger.item}
+            whileTap={{ scale: 0.985 }}
+            className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0F1220] px-4 py-4"
+            style={{
+              boxShadow: '0 8px 22px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',
+            }}
+          >
+            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_12%_0%,rgba(205,255,90,0.12),transparent_46%)]" />
+            <div className="relative z-10">
+              <h2 className="text-xl font-black leading-tight text-white">{workoutTitle}</h2>
+              <p className="mt-1 text-xs font-medium text-zinc-500">{workoutFocus}</p>
 
-        {/* ══ 1. HERO — card horizontal estilo referência ══════════════════ */}
-        <motion.div
-          variants={stagger.item}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => startSession(today)}
-          className="relative overflow-hidden rounded-[18px] cursor-pointer shrink-0 border border-[#CDFF5A]/[0.14]"
-          style={{
-            background: 'linear-gradient(145deg, rgba(13,24,14,0.98) 0%, rgba(5,7,6,0.98) 58%, rgba(0,0,0,0.98) 100%)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.09), 0 14px 36px rgba(0,0,0,0.58), 0 0 0 1px rgba(205,255,90,0.035)'
-          }}
-        >
-          {/* Borda neon topo — sutil */}
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#CDFF5A]/35 to-transparent" />
-          {/* Atmosfera de luz verde — reduzida */}
-          <div className="pointer-events-none absolute inset-0
-            bg-[radial-gradient(ellipse_55%_80%_at_108%_45%,rgba(205,255,90,0.14),transparent_64%)]" />
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/35 to-transparent" />
-
-          {/* Layout horizontal: ícone | texto | botão */}
-          <div className="relative z-10 flex items-center gap-3.5 px-4 py-4">
-
-            {/* Ícone — círculo verde sutil */}
-            <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full
-              bg-[rgba(205,255,90,0.09)] border border-[#CDFF5A]/20
-              shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_22px_rgba(0,0,0,0.35)]">
-              <Zap size={16} className="text-[#CDFF5A]" strokeWidth={2} />
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {WEEK_DAYS.map((label, i) => {
+                  const dateNum = weekStart.getDate() + i;
+                  const isToday = i === today;
+                  const trained = trainedDays.includes(i);
+                  const isCompletedToday = isToday && trained;
+                  const isPendingToday = isToday && !trained;
+                  return (
+                    <motion.div
+                      key={label}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03, duration: 0.25 }}
+                      className={`min-w-[50px] p-2 rounded-full text-center border ${
+                        isCompletedToday
+                          ? 'bg-[#B6FF00] border-[#B6FF00] text-black'
+                          : isPendingToday
+                            ? 'border-[#B6FF00]/55 bg-[#B6FF00]/8 text-[#D8FFA1]'
+                          : trained
+                            ? 'border-[#B6FF00]/45 text-[#D8FFA1]'
+                            : 'border-white/[0.06] bg-transparent text-zinc-500'
+                      }`}
+                    >
+                      <p className="text-[9px] font-bold uppercase">{label}</p>
+                      <p className={`text-sm font-semibold ${isCompletedToday ? 'text-black' : isPendingToday ? 'text-[#E7FFAB]' : trained ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                        {dateNum}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+              </div>
             </div>
+          </motion.div>
 
-            {/* Texto central */}
-            <div className="flex-1 min-w-0">
-              <h2 className="text-[15px] font-black text-white leading-tight tracking-tight truncate">
-                {currentWorkout?.title || 'Treino do Dia'}
-              </h2>
-              <p className="text-[9px] font-semibold text-[#CDFF5A]/62 mt-1 tracking-[0.12em] uppercase">
-                Fase de hipertrofia
-              </p>
-            </div>
+          <motion.button
+            variants={stagger.item}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => startSession(today)}
+            className="mt-3 w-full rounded-xl bg-[#B6FF00] py-3 text-sm font-semibold text-black transition-transform"
+            style={{ boxShadow: '0 6px 14px rgba(182,255,0,0.16)' }}
+          >
+            Iniciar treino
+          </motion.button>
+        </div>
 
-            {/* Botão INICIAR — pulse sutil */}
-            <motion.div
-              whileTap={{ scale: 0.92 }}
-              animate={{ boxShadow: ['0 8px 22px rgba(205,255,90,0.18)', '0 8px 28px rgba(205,255,90,0.32)', '0 8px 22px rgba(205,255,90,0.18)'] }}
-              transition={{ duration: 3.4, repeat: Infinity, ease: 'easeInOut' }}
-              className="shrink-0 flex items-center justify-center rounded-full bg-[#CDFF5A] px-4 py-2 text-neutral-950 font-black uppercase tracking-[0.14em] text-[10px]"
-            >
-              INICIAR
-            </motion.div>
-
-          </div>
+        <div className="flex flex-col gap-2 pt-0">
+        <motion.div variants={stagger.item} className="flex items-center justify-between px-1">
+          <p className="text-sm font-semibold text-white">Visão geral</p>
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-zinc-500 uppercase">Hoje</p>
         </motion.div>
 
-        {/* ══ 2. WEEK STRIP ════════════════════════════════════════════════ */}
-        <motion.div variants={stagger.item}
-          className={`${CARD} px-3.5 shrink-0`}
-          style={{ paddingTop: 'clamp(10px,1.5dvh,13px)', paddingBottom: 'clamp(10px,1.5dvh,13px)' }}>
-          <div className="absolute top-0 left-[20%] right-[20%] h-[1px]
-            bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
-          {/* Label mês sutil */}
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[8px] font-black uppercase tracking-[0.25em] text-neutral-500">Esta semana</span>
-            <span className="text-[8px] font-bold text-[#CDFF5A]/58">{trainedDays.length} treinos</span>
-          </div>
-          <div className="flex items-center justify-between">
-            {WEEK_DAYS.map((label, i) => {
-              const dateNum = weekStart.getDate() + i;
-              const isToday  = i === today;
-              const trained  = trainedDays.includes(i);
-              const isPast   = i < today;
-              return (
-                <motion.div key={label}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                  whileTap={{ scale: 0.82 }}
-                  className="flex flex-col items-center gap-[5px]"
-                >
-                  {/* Label dia — hoje neon, passado mais visível */}
-                  <span className={`text-[8px] font-bold leading-none tracking-widest uppercase ${
-                    isToday ? 'text-[#CDFF5A]' : isPast ? 'text-neutral-500' : 'text-neutral-600'
-                  }`}>
-                    {label}
-                  </span>
-
-                  {/* Chip do dia */}
-                  <div className={`relative flex items-center justify-center rounded-full transition-all duration-300 ${
-                    isToday && trained ? 'bg-[#CDFF5A] shadow-[0_0_12px_rgba(205,255,90,0.34)]'
-                    : isToday          ? 'bg-[#CDFF5A] shadow-[0_0_8px_rgba(205,255,90,0.22)]'
-                    : trained          ? 'bg-white/[0.07] border border-[#CDFF5A]/30'
-                    : isPast           ? 'border border-white/[0.08]'
-                                       : 'border border-white/[0.06]'
-                  }`} style={{ width: 'clamp(26px,6.5vw,30px)', height: 'clamp(26px,6.5vw,30px)' }}>
-                    {isToday && trained ? (
-                      <CheckCircle2 size={13} strokeWidth={2.5} className="text-neutral-950" />
-                    ) : (
-                      <span className={`font-bold leading-none ${
-                        isToday  ? 'text-neutral-950'
-                        : trained ? 'text-[#CDFF5A]'
-                        : isPast  ? 'text-neutral-500'
-                                   : 'text-neutral-500'
-                      }`} style={{ fontSize: 'clamp(10px,2.6vw,12px)' }}>
-                        {dateNum}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Dot de treino concluído */}
-                  <div className={`rounded-full transition-all duration-200 ${
-                    trained && !isToday ? 'bg-[#CDFF5A]/70 shadow-[0_0_4px_rgba(205,255,90,0.5)]'
-                                       : 'bg-transparent'
-                  }`} style={{ width: 3, height: 3 }} />
-                </motion.div>
-              );
-            })}
+        <motion.div
+          variants={stagger.item}
+          className="rounded-2xl border border-white/[0.06] bg-[#0F1220] px-4 py-3"
+          style={{ boxShadow: '0 8px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03)' }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black tracking-[0.18em] uppercase text-zinc-500">Treino do dia</p>
+              <p className="mt-1 truncate text-lg font-bold text-white leading-none">{workoutTitle}</p>
+              <p className="mt-1 text-xs text-zinc-500">{workoutFocus}</p>
+            </div>
+            <div className="rounded-xl border border-white/[0.08] px-3 py-2 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">Exercícios</p>
+              <p className="text-xl font-black text-white leading-none mt-1">{exerciseCount}</p>
+            </div>
           </div>
         </motion.div>
 
@@ -411,8 +413,8 @@ export default function TabPainel({
               whileTap={{ scale: 0.98 }}
               className="relative flex flex-col justify-between overflow-hidden transition-all duration-300 group"
               style={{
-                padding: '14px 14px 12px',
-                gap: '12px',
+                padding: '12px 12px 10px',
+                gap: '8px',
                 borderRadius: '16px',
                 background: item.cardBg,
                 boxShadow: item.cardShadow,
@@ -423,12 +425,12 @@ export default function TabPainel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[10px]">
                   <div className="flex items-center justify-center rounded-full"
-                    style={{ width: '34px', height: '34px', ...item.iconStyle }}>
-                    <item.icon size={17} style={{ color: item.accentRef }} />
+                    style={{ width: '30px', height: '30px', ...item.iconStyle }}>
+                    <item.icon size={15} style={{ color: item.accentRef }} />
                   </div>
-                  <span style={{ fontSize: '12px', fontWeight: 800, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.04em' }}>{item.label}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: 'rgba(255,255,255,0.88)', letterSpacing: '0.04em' }}>{item.label}</span>
                 </div>
-                <span style={{ fontSize: '12px', fontWeight: 800, color: item.done ? '#4ade80' : item.accentRef, textShadow: item.done ? '0 0 10px rgba(74,222,128,0.3)' : 'none' }}>
+                <span style={{ fontSize: '11px', fontWeight: 800, color: item.done ? '#4ade80' : item.accentRef, textShadow: item.done ? '0 0 10px rgba(74,222,128,0.3)' : 'none' }}>
                   {Math.round(item.pct)}%
                 </span>
               </div>
@@ -445,7 +447,7 @@ export default function TabPainel({
                     onBlur={saveMetricEdit}
                     onKeyDown={e => { if (e.key === 'Enter') saveMetricEdit(); if (e.key === 'Escape') setEditingMetric(null); }}
                     className="outline-none bg-transparent border-b text-white font-black leading-none"
-                    style={{ fontSize: '28px', fontWeight: 900, width: '80px', borderColor: item.accentRef, caretColor: item.accentRef }}
+                    style={{ fontSize: '24px', fontWeight: 900, width: '72px', borderColor: item.accentRef, caretColor: item.accentRef }}
                   />
                 ) : (
                   <motion.button
@@ -455,14 +457,14 @@ export default function TabPainel({
                     transition={{ duration: 0.25, ease: [0.22,1,0.36,1] }}
                     onClick={() => openMetricEdit(item.id, item.id === 'water' ? water.toFixed(1) : Math.round(protein))}
                     className="leading-none text-white font-black"
-                    style={{ fontSize: '28px', fontWeight: 900, lineHeight: 1, background: 'transparent', border: 'none', cursor: 'text' }}
+                    style={{ fontSize: '24px', fontWeight: 900, lineHeight: 1, background: 'transparent', border: 'none', cursor: 'text' }}
                   >
                     {item.val}
                   </motion.button>
                 )}
                 <div className="flex items-baseline gap-1">
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{item.unit}</span>
-                  <span style={{ fontSize: '10px', fontWeight: 500, color: 'rgba(255,255,255,0.22)' }}>/ {item.goal}</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{item.unit}</span>
+                  <span style={{ fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.22)' }}>/ {item.goal}</span>
                 </div>
               </div>
 
@@ -496,10 +498,10 @@ export default function TabPainel({
                   onClick={item.onClick}
                   className="w-full flex items-center justify-center gap-1.5 transition-opacity duration-150"
                   style={{
-                    height: '32px',
+                    height: '28px',
                     borderRadius: '999px',
                     ...item.btnStyle,
-                    fontSize: '11px',
+                    fontSize: '10px',
                     fontWeight: 700,
                     letterSpacing: '0.04em',
                   }}
@@ -512,8 +514,67 @@ export default function TabPainel({
           ))}
         </motion.div>
 
+        {/* ══ 5. STATS DO TREINO ATUAL ════════════════════════════════════ */}
+        <motion.div variants={stagger.item} className="grid grid-cols-3 gap-[clamp(6px,1.5vw,10px)] shrink-0">
+          {[
+            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#CDFF5A', glowRgb: '205,255,90', featured: true },
+            { label: 'Exercícios',  value: exerciseCount,   unit: 'hoje', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
+            { label: 'Séries',      value: totalSets,       unit: 'total', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
+          ].map(({ label, value, unit, icon: Icon, accentColor, glowRgb, featured }) => (
+            <motion.div
+              key={label}
+              whileTap={{ scale: 0.93 }}
+              className="relative overflow-hidden flex flex-col items-center justify-center"
+              style={{
+                borderRadius: '16px',
+                background: 'rgba(13,14,17,0.96)',
+                border: `1px solid rgba(${glowRgb},0.13)`,
+                boxShadow: `0 8px 24px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.04)`,
+                paddingTop: 'clamp(6px,1.2dvh,10px)',
+                paddingBottom: 'clamp(6px,1.2dvh,10px)',
+              }}
+            >
+              {/* Glow de fundo sutil */}
+              <div className="absolute inset-0 pointer-events-none"
+                style={{ background: `radial-gradient(ellipse at 50% 100%, rgba(${glowRgb},0.10), transparent 65%)` }} />
+              {/* Linha topo destacada nos featured */}
+              {featured && (
+                <div className="absolute top-0 left-[20%] right-[20%] h-[1px]"
+                  style={{ background: `linear-gradient(90deg, transparent, rgba(${glowRgb},0.5), transparent)` }} />
+              )}
+              {/* Ícone */}
+              <div className="flex items-center justify-center rounded-full mb-[4px]"
+                style={{
+                  width: 'clamp(22px,5.4vw,26px)', height: 'clamp(22px,5.4vw,26px)',
+                  background: `rgba(${glowRgb},0.10)`,
+                  border: `1px solid rgba(${glowRgb},0.22)`,
+                }}>
+                <Icon size={10} style={{ color: accentColor }} />
+              </div>
+              {/* Label */}
+              <span className="text-[7px] font-bold uppercase tracking-[0.16em] mb-[3px] text-center px-1"
+                style={{ color: 'rgba(255,255,255,0.38)' }}>
+                {label}
+              </span>
+              {/* Valor */}
+              <motion.span
+                key={value}
+                initial={{ scale: 1.15, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.3, ease: [0.22,1,0.36,1] }}
+                className="font-black leading-none"
+                style={{ fontSize: 'clamp(12px,2.6dvh,14px)', color: '#ffffff' }}
+              >
+                {value}
+                <span className="font-medium ml-0.5"
+                  style={{ fontSize: '7px', color: `rgba(${glowRgb},0.6)` }}>{unit}</span>
+              </motion.span>
+            </motion.div>
+          ))}
+        </motion.div>
+
         {/* ══ 4. ATIVIDADE RECENTE ════════════════════════════════════════ */}
-        <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: 'clamp(12px,2dvh,15px)' }}>
+        <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: '10px 12px' }}>
           <div className="absolute top-0 left-[30%] right-[30%] h-[1px]
             bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
 
@@ -525,7 +586,7 @@ export default function TabPainel({
                  {loadingActivity ? 'Carregando…' : recentActivity.length > 0 ? 'Sincronizado' : 'Nenhum treino ainda'}
                </p>
              </div>
-             <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C]/80 bg-[#B4FF3C]/[0.07] px-2.5 py-1.5 rounded-full text-[8.5px] font-black tracking-widest uppercase border border-[#B4FF3C]/15">
+             <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C]/80 bg-[#B4FF3C]/[0.07] px-2 py-1 rounded-full text-[8px] font-black tracking-widest uppercase border border-[#B4FF3C]/15">
                Histórico
              </motion.button>
           </div>
@@ -534,7 +595,7 @@ export default function TabPainel({
           <div className="flex flex-col gap-[7px] flex-none">
             {loadingActivity ? (
               /* Skeleton loader */
-              [0, 1].map((i) => (
+              [0].map((i) => (
                 <div key={i} className="flex items-center gap-3 animate-pulse"
                   style={{ padding: '10px 12px', borderRadius: '14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <div className="w-9 h-9 rounded-[10px] bg-white/[0.06] shrink-0" />
@@ -556,7 +617,7 @@ export default function TabPainel({
               </div>
             ) : (
               /* Real activity rows */
-              recentActivity.map((log, i) => {
+              recentActivity.slice(0, 1).map((log, i) => {
                 const accent = i === 0 ? '#CDFF5A' : 'rgba(255,255,255,0.75)';
                 const bgOpacity = i === 0 ? 'linear-gradient(135deg, rgba(205,255,90,0.055), rgba(255,255,255,0.025))' : 'rgba(255,255,255,0.026)';
                 const border = i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.065)';
@@ -585,7 +646,7 @@ export default function TabPainel({
                             || 'Treino'}
                         </p>
                         <p className="text-[8.5px] text-neutral-500 font-medium mt-[3px] tracking-wide">
-                          {formatRelativeDate(log.created_at)}
+                          {formatRecentLabel(getWorkoutLogTimestamp(log) || log.created_at)}
                           {log.exercises_completed ? ` · ${log.exercises_completed} exerc.` : ''}
                         </p>
                       </div>
@@ -593,7 +654,7 @@ export default function TabPainel({
                     {/* Valor */}
                     <div className="flex items-baseline gap-[3px] shrink-0">
                       <span className="font-black leading-none" style={{ fontSize: '17px', color: accent }}>
-                        {log.duration_minutes ?? (log.duration_seconds ? Math.round(log.duration_seconds / 60) : '–')}
+                        {getWorkoutDurationMinutes(log) || '–'}
                       </span>
                       <span className="text-[8px] font-semibold text-neutral-500">min</span>
                     </div>
@@ -604,65 +665,7 @@ export default function TabPainel({
           </div>
         </motion.div>
 
-        {/* ══ 5. STATS DO TREINO ATUAL ════════════════════════════════════ */}
-        <motion.div variants={stagger.item} className="grid grid-cols-3 gap-[clamp(6px,1.5vw,10px)] shrink-0">
-          {[
-            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#CDFF5A', glowRgb: '205,255,90', featured: true },
-            { label: 'Exercícios',  value: exerciseCount,   unit: 'hoje', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
-            { label: 'Séries',      value: totalSets,       unit: 'total', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
-          ].map(({ label, value, unit, icon: Icon, accentColor, glowRgb, featured }) => (
-            <motion.div
-              key={label}
-              whileTap={{ scale: 0.93 }}
-              className="relative overflow-hidden flex flex-col items-center justify-center"
-              style={{
-                borderRadius: '16px',
-                background: 'rgba(13,14,17,0.96)',
-                border: `1px solid rgba(${glowRgb},0.13)`,
-                boxShadow: `0 8px 24px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.04)`,
-                paddingTop: 'clamp(8px,1.6dvh,12px)',
-                paddingBottom: 'clamp(8px,1.6dvh,12px)',
-              }}
-            >
-              {/* Glow de fundo sutil */}
-              <div className="absolute inset-0 pointer-events-none"
-                style={{ background: `radial-gradient(ellipse at 50% 100%, rgba(${glowRgb},0.10), transparent 65%)` }} />
-              {/* Linha topo destacada nos featured */}
-              {featured && (
-                <div className="absolute top-0 left-[20%] right-[20%] h-[1px]"
-                  style={{ background: `linear-gradient(90deg, transparent, rgba(${glowRgb},0.5), transparent)` }} />
-              )}
-              {/* Ícone */}
-              <div className="flex items-center justify-center rounded-full mb-[6px]"
-                style={{
-                  width: 'clamp(24px,6vw,28px)', height: 'clamp(24px,6vw,28px)',
-                  background: `rgba(${glowRgb},0.10)`,
-                  border: `1px solid rgba(${glowRgb},0.22)`,
-                }}>
-                <Icon size={11} style={{ color: accentColor }} />
-              </div>
-              {/* Label */}
-              <span className="text-[8px] font-bold uppercase tracking-[0.18em] mb-[4px] text-center px-1"
-                style={{ color: 'rgba(255,255,255,0.38)' }}>
-                {label}
-              </span>
-              {/* Valor */}
-              <motion.span
-                key={value}
-                initial={{ scale: 1.15, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.3, ease: [0.22,1,0.36,1] }}
-                className="font-black leading-none"
-                style={{ fontSize: 'clamp(13px,3dvh,16px)', color: '#ffffff' }}
-              >
-                {value}
-                <span className="font-medium ml-0.5"
-                  style={{ fontSize: '7px', color: `rgba(${glowRgb},0.6)` }}>{unit}</span>
-              </motion.span>
-            </motion.div>
-          ))}
-        </motion.div>
-
+        </div>
       </motion.div>
 
       {/* ══ MODAL DETALHE DO TREINO ════════════════════════════════════════ */}
@@ -742,12 +745,12 @@ export default function TabPainel({
                     </div>
                   )}
                   {/* Duração */}
-                  {selectedLog.duration_seconds > 0 && (
+                  {getWorkoutDurationMinutes(selectedLog) > 0 && (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px]"
                       style={{ background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.14)' }}>
                       <BarChart3 size={11} style={{ color: '#FB923C' }} />
                       <span className="text-[11px] font-bold" style={{ color: '#FB923C' }}>
-                        {Math.round(selectedLog.duration_seconds / 60)}min
+                        {getWorkoutDurationMinutes(selectedLog)}min
                       </span>
                     </div>
                   )}

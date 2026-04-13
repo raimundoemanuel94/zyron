@@ -35,3 +35,5 @@ yarn-error.log*
 *.bak
 *_BACKUP.*
 .env*.local
+
+.vercel

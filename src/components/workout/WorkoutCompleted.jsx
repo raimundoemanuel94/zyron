@@ -32,14 +32,27 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
           .eq('user_id', session.user.id)
           .gte('created_at', startOfWeek.toISOString());
 
+        const getDurationMinutes = (log) => {
+          const durationMinutes = Number(log?.duration_minutes || 0);
+          if (durationMinutes > 0) return durationMinutes;
+
+          const durationSeconds = Number(log?.duration_seconds || 0);
+          if (durationSeconds > 0) return Math.max(1, Math.round(durationSeconds / 60));
+
+          if (log?.started_at && log?.ended_at) {
+            const deltaMs = new Date(log.ended_at).getTime() - new Date(log.started_at).getTime();
+            if (Number.isFinite(deltaMs) && deltaMs > 0) {
+              return Math.max(1, Math.round(deltaMs / 60000));
+            }
+          }
+
+          return 0;
+        };
+
+        const isFinishedLog = (log) => getDurationMinutes(log) > 0 && Boolean(log?.ended_at || log?.completed_at);
+
         const days = data
-          ?.filter(log => (
-            Number(log.duration_seconds) > 0
-            || Number(log.duration_minutes) > 0
-            || !!log.workout_name
-            || !!log.ended_at
-            || !!log.started_at
-          ))
+          ?.filter(isFinishedLog)
           .map(log => new Date(log.ended_at || log.completed_at || log.created_at).getDay()) || [];
         const todayIdx = new Date().getDay();
         if (!days.includes(todayIdx)) days.push(todayIdx);

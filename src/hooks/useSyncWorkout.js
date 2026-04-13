@@ -81,6 +81,9 @@ const buildSyncPayload = (userId, workout, sets, syncId) => {
   const durationMinutes = Math.max(1, Math.round((Number(workout.duration_seconds) || 0) / 60));
   const photoPath = workout.photo_storage_path || workout.photoPath || null;
   const photos = photoPath ? [{ path: photoPath, fileName: workout.photo_file_name || null }] : [];
+  const workoutName = workout.workout_name || workout.workoutName || null;
+  const workoutKey = workout.workout_key != null ? String(workout.workout_key) : null;
+  const locationLabel = toAddressLabel(workout.location);
 
   return {
     // ── Root-level fields required by validateWorkoutSyncPayload ──
@@ -89,6 +92,9 @@ const buildSyncPayload = (userId, workout, sets, syncId) => {
     started_at: startedAt,
     ended_at: finishedAt,
     duration_minutes: durationMinutes,
+    workout_name: workoutName,
+    workout_key: workoutKey,
+    location: locationLabel,
     // ─────────────────────────────────────────────────────────────
     id: syncId,
     type: 'workout_log',
@@ -96,19 +102,19 @@ const buildSyncPayload = (userId, workout, sets, syncId) => {
     source: 'web',
     workout: {
       id: workout.local_id || workout.id || workout.workout_key,
-      workout_key: String(workout.workout_key),
+      workout_key: workoutKey,
       date: finishedAt.slice(0, 10),
       startedAt,
       finishedAt,
       created_at: workout.created_at || finishedAt,
       ended_at: workout.ended_at || finishedAt,
       started_at: workout.started_at || startedAt,
-      workoutName: workout.workout_name || workout.workoutName || null,
-      workout_name: workout.workout_name || workout.workoutName || null,
+      workoutName,
+      workout_name: workoutName,
       notes: workout.notes || null,
       durationMinutes: Math.round((Number(workout.duration_seconds) || 0) / 60),
       duration_seconds: Number(workout.duration_seconds) || 0,
-      location: toAddressLabel(workout.location),
+      location: locationLabel,
       photo_payload: workout.photo_payload || null,
       photo_id: workout.photo_id || null,
       photo_storage_path: photoPath,
@@ -137,9 +143,6 @@ const buildSyncPayload = (userId, workout, sets, syncId) => {
       durationMinutes: Math.round((Number(workout.duration_seconds) || 0) / 60),
       completedExercises: new Set((sets || []).map(set => set.exercise_id)).size,
       volume: (sets || []).reduce((total, set) => total + ((Number(set.weight_kg) || 0) * (Number(set.reps) || 0)), 0),
-    },
-    location: {
-      address: toAddressLabel(workout.location),
     },
     retryCount: 0,
     status: 'pending',
