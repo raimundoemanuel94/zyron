@@ -689,9 +689,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       sessionSetsRef.current = next;
       setSessionSets(next);
 
-      console.log('SET ADDED', normalizedSet);
-      console.log('SESSION SETS AFTER ADD', sessionSetsRef.current);
-      console.log('SESSION SETS COUNT AFTER ADD', sessionSetsRef.current?.length ?? 0);
+      console.log('[serie][1] setData gerado', normalizedSet);
+      console.log('[serie][1] sessionSets (state atual)', sessionSets);
+      console.log('[serie][1] sessionSets (state apos add)', next);
+      console.log('[serie][1] sessionSetsRef.current', sessionSetsRef.current);
+      console.log('[serie][1] contagem apos add', next?.length ?? 0);
 
       pushSyncDebugEvent('set-added', {
         exercise_id: id,
@@ -724,8 +726,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
       const safeSetsSnapshot = latestSets.length > 0 ? latestSets : (Array.isArray(sessionSets) ? sessionSets : []);
 
-      console.log('BEFORE FINALIZE SESSION SETS REF', sessionSetsRef.current);
-      console.log('BEFORE FINALIZE SESSION SETS COUNT', sessionSetsRef.current?.length ?? 0);
+      console.log('[serie][2] before finalize sessionSets (state)', sessionSets);
+      console.log('[serie][2] before finalize sessionSetsRef.current', sessionSetsRef.current);
+      console.log('[serie][2] before finalize contagem state', Array.isArray(sessionSets) ? sessionSets.length : 0);
+      console.log('[serie][2] before finalize contagem ref', sessionSetsRef.current?.length ?? 0);
 
       pushSyncDebugEvent('before-finalize', {
         ref_sets_count: sessionSetsRef.current?.length ?? 0,
@@ -767,8 +771,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       ? workoutData.client_sync_debug
       : {};
 
-    console.log('PRE SYNC PAYLOAD SETS', resolvedSets);
-    console.log('PRE SYNC PAYLOAD SETS COUNT', resolvedSets?.length ?? 0);
+    console.log('[serie][3] pre sync payload.sets', resolvedSets);
+    console.log('[serie][3] pre sync payload.sets.length', resolvedSets?.length ?? 0);
 
     pushSyncDebugEvent('pre-sync', {
       payload_sets_count: resolvedSets?.length ?? 0,

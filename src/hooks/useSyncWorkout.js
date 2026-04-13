@@ -317,8 +317,8 @@ export function useSyncWorkout(user) {
       sets,
     });
 
-    console.log('PRE SYNC PAYLOAD SETS', requestPayload?.sets || []);
-    console.log('PRE SYNC PAYLOAD SETS COUNT', Array.isArray(requestPayload?.sets) ? requestPayload.sets.length : 0);
+    console.log('[serie][3] pre POST /api/sync-workout payload.sets', requestPayload?.sets || []);
+    console.log('[serie][3] pre POST /api/sync-workout payload.sets.length', Array.isArray(requestPayload?.sets) ? requestPayload.sets.length : 0);
 
     logger.systemEvent('[sync-debug][front][pre-post]', {
       sync_id: syncId,
