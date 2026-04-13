@@ -10,6 +10,7 @@ export const CHECKIN_CORS_HEADERS = buildCorsHeaders({
 const SOURCE_VALUES = ['gps', 'network', 'manual'];
 const MODE_VALUES = ['auto', 'manual'];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CHECKIN_CLOCK_DRIFT_TOLERANCE_MS = 90 * 1000;
 
 // FASE 2: accuracy máxima permitida (metros)
 const MAX_ACCURACY_M = 50;
@@ -79,6 +80,46 @@ const assertIsoDate = (value, field) => {
     });
   }
   return parsed.toISOString();
+};
+
+export const normalizeClientTimestamp = (isoValue, { maxDriftMs = CHECKIN_CLOCK_DRIFT_TOLERANCE_MS } = {}) => {
+  const parsed = new Date(isoValue);
+  const parsedMs = parsed.getTime();
+  const nowMs = Date.now();
+
+  if (!Number.isFinite(parsedMs)) {
+    return {
+      iso: new Date(nowMs).toISOString(),
+      corrected: true,
+      driftMs: null,
+    };
+  }
+
+  const driftMs = parsedMs - nowMs;
+  if (Math.abs(driftMs) > maxDriftMs) {
+    return {
+      iso: new Date(nowMs).toISOString(),
+      corrected: true,
+      driftMs,
+    };
+  }
+
+  return {
+    iso: parsed.toISOString(),
+    corrected: false,
+    driftMs,
+  };
+};
+
+export const toLocalIsoFromUtc = (utcIso) => {
+  const parsed = new Date(utcIso);
+  const parsedMs = parsed.getTime();
+
+  if (!Number.isFinite(parsedMs)) {
+    return new Date().toISOString();
+  }
+
+  return new Date(parsedMs - (parsed.getTimezoneOffset() * 60000)).toISOString();
 };
 
 const assertEnum = (value, field, acceptedValues) => {

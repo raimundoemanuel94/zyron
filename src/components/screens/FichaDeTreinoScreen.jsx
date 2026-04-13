@@ -220,6 +220,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [musicPanelView, setMusicPanelView] = useState('player');
   const avatarInputRef = useRef(null);
+  const sessionSetsRef = useRef([]);
 
   // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
   const { metrics: dailyMetrics, updateMetrics } = useDailyMetrics(user?.id);
@@ -462,7 +463,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
             // completedExercises gerenciado pelo hook useExerciseCompletion — não precisa setter manual
             setSessionTime(Number(session.sessionTime) || 0);
-            setSessionSets(Array.isArray(session.sessionSets) ? session.sessionSets : []);
+            const restoredSets = Array.isArray(session.sessionSets) ? session.sessionSets : [];
+            setSessionSets(restoredSets);
+            sessionSetsRef.current = restoredSets;
             setSessionStartedAt(session.sessionStartedAt || null);
             setSessionLocation(session.sessionLocation || null);
             if (session.isTraining) setActiveTab('workout');
@@ -525,6 +528,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       fetchCustomWorkouts();
     }
   }, [user, isLoaded]);
+
+  useEffect(() => {
+    sessionSetsRef.current = Array.isArray(sessionSets) ? sessionSets : [];
+  }, [sessionSets]);
 
   // ✅ NOTE: Persistence is now handled by useDailyMetrics hook
   // which handles both Supabase sync and localStorage cache automatically
@@ -601,6 +608,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setActiveTab('workout');
     setSessionTime(0);
     setSessionStartedAt(new Date().toISOString());
+    setSessionSets([]);
+    sessionSetsRef.current = [];
 
     checkinBackendIdRef.current = null;
     await resetCheckin();
@@ -640,11 +649,20 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   };
   const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
     if (setData) {
-      setSessionSets(prev => [...prev, {
-        exercise_id: id,
-        ...setData,
-        timestamp: new Date().toISOString()
-      }]);
+      setSessionSets(prev => {
+        const normalizedSet = {
+          exercise_id: id,
+          ...setData,
+          timestamp: new Date().toISOString(),
+        };
+
+        const next = prev
+          .filter(item => !(item.exercise_id === id && Number(item.set_number) === Number(normalizedSet.set_number)))
+          .concat(normalizedSet);
+
+        sessionSetsRef.current = next;
+        return next;
+      });
     }
 
     if (isFinal) {
@@ -667,6 +685,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   const handleFinishSession = async () => {
     if (isTraining) {
+      const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
+      const safeSetsSnapshot = latestSets.length > 0 ? latestSets : (Array.isArray(sessionSets) ? sessionSets : []);
+
       try {
         endByWorkout();
         await stopGymCheckinWatch();
@@ -682,7 +703,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           duration_seconds: sessionTime,
           created_at: new Date().toISOString()
         },
-        sets: [...sessionSets]
+        sets: [...safeSetsSnapshot]
       });
       setShowCompletedScreen(true);
       setIsTraining(false);
@@ -691,6 +712,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   };
 
   const handleFinalSync = async (workoutData, setsData) => {
+    const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
+    const resolvedSets = Array.isArray(setsData) && setsData.length > 0 ? setsData : latestSets;
     const endedAt = new Date().toISOString();
     const enrichedWorkout = {
       ...workoutData,
@@ -700,8 +723,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       location:     sessionLocation || null,
     };
 
-    await logWorkout(enrichedWorkout, setsData);
+    await logWorkout(enrichedWorkout, resolvedSets);
     setShowCompletedScreen(false);
+    sessionSetsRef.current = [];
     setSessionSets([]);
     setLastWorkoutSummary(null);
     setSessionStartedAt(null);

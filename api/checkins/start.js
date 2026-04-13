@@ -7,7 +7,9 @@ import {
   authenticateUser,
   createSupabaseServiceClient,
   extractBearerToken,
+  normalizeClientTimestamp,
   parseJsonBody,
+  toLocalIsoFromUtc,
   validateStartPayload,
 } from '../_lib/checkins.js';
 
@@ -41,6 +43,20 @@ export default async function handler(req) {
     const user = await authenticateUser(supabase, token);
     const body = await parseJsonBody(req);
     const payload = validateStartPayload(body);
+    const normalizedStart = normalizeClientTimestamp(payload.started_at_utc);
+    const startedAtUtc = normalizedStart.iso;
+    const startedAtLocal = normalizedStart.corrected
+      ? toLocalIsoFromUtc(startedAtUtc)
+      : payload.started_at_local;
+
+    if (normalizedStart.corrected) {
+      log.warn('start timestamp corrected due clock drift', {
+        user_id: user.id,
+        client_started_at_utc: payload.started_at_utc,
+        server_started_at_utc: startedAtUtc,
+        drift_ms: normalizedStart.driftMs,
+      });
+    }
 
     const activeCheckinQuery = await supabase
       .from('gym_checkins')
@@ -140,18 +156,18 @@ export default async function handler(req) {
       mode: payload.mode,
       source: payload.source,
       timezone: payload.timezone,
-      started_at_utc: payload.started_at_utc,
-      started_at_local: payload.started_at_local,
+      started_at_utc: startedAtUtc,
+      started_at_local: startedAtLocal,
       started_lat: payload.started_lat,
       started_lng: payload.started_lng,
       started_accuracy_m: payload.started_accuracy_m,
       heartbeat_count: 1,
-      last_heartbeat_at_utc: payload.started_at_utc,
+      last_heartbeat_at_utc: startedAtUtc,
       last_heartbeat_lat: payload.started_lat,
       last_heartbeat_lng: payload.started_lng,
       last_heartbeat_accuracy_m: payload.started_accuracy_m,
       heartbeat_source: payload.source,
-      last_seen_at: payload.started_at_utc,
+      last_seen_at: startedAtUtc,
     };
 
     const insertResult = await supabase
@@ -168,6 +184,8 @@ export default async function handler(req) {
       gym_id: payload.gym_id,
       source: payload.source,
       mode: payload.mode,
+      clock_drift_ms: normalizedStart.driftMs,
+      clock_corrected: normalizedStart.corrected,
     });
 
     return successResponse({

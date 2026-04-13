@@ -7,7 +7,9 @@ import {
   authenticateUser,
   createSupabaseServiceClient,
   extractBearerToken,
+  normalizeClientTimestamp,
   parseJsonBody,
+  toLocalIsoFromUtc,
   validateEndPayload,
 } from '../_lib/checkins.js';
 
@@ -90,17 +92,43 @@ export default async function handler(req) {
       });
     }
 
+    const normalizedEnd = normalizeClientTimestamp(payload.ended_at_utc);
+    const endedAtUtc = normalizedEnd.iso;
+    const endedAtLocal = normalizedEnd.corrected
+      ? toLocalIsoFromUtc(endedAtUtc)
+      : payload.ended_at_local;
+
+    if (normalizedEnd.corrected) {
+      log.warn('end timestamp corrected due clock drift', {
+        user_id: user.id,
+        checkin_id: current.id,
+        client_ended_at_utc: payload.ended_at_utc,
+        server_ended_at_utc: endedAtUtc,
+        drift_ms: normalizedEnd.driftMs,
+      });
+    }
+
+    let durationMinutes = payload.duration_minutes;
+    const startedAtMs = new Date(current.started_at_utc || current.created_at).getTime();
+    const endedAtMs = new Date(endedAtUtc).getTime();
+    if (Number.isFinite(startedAtMs) && Number.isFinite(endedAtMs) && endedAtMs >= startedAtMs) {
+      const derivedDuration = Math.max(0, Math.round((endedAtMs - startedAtMs) / 60000));
+      if (!Number.isFinite(durationMinutes) || Math.abs(durationMinutes - derivedDuration) > 2) {
+        durationMinutes = derivedDuration;
+      }
+    }
+
     const updateResult = await supabase
       .from('gym_checkins')
       .update({
         status: 'ended',
-        ended_at_utc: payload.ended_at_utc,
-        ended_at_local: payload.ended_at_local,
+        ended_at_utc: endedAtUtc,
+        ended_at_local: endedAtLocal,
         ended_lat: payload.ended_lat,
         ended_lng: payload.ended_lng,
         ended_accuracy_m: payload.ended_accuracy_m,
         ended_reason: payload.ended_reason,
-        duration_minutes: payload.duration_minutes,
+        duration_minutes: durationMinutes,
         end_source: payload.source,
         timezone: payload.timezone,
       })
@@ -114,8 +142,10 @@ export default async function handler(req) {
     log.info('checkin ended', {
       user_id: user.id,
       checkin_id: current.id,
-      duration_minutes: payload.duration_minutes,
+      duration_minutes: durationMinutes,
       ended_reason: payload.ended_reason,
+      clock_drift_ms: normalizedEnd.driftMs,
+      clock_corrected: normalizedEnd.corrected,
     });
 
     return successResponse({
@@ -149,4 +179,3 @@ export default async function handler(req) {
     });
   }
 }
-
