@@ -75,7 +75,7 @@ export default async function handler(req) {
             ended_at_local: endedAtLocal,
             ended_reason: 'stale_replaced',
             duration_minutes: activeAgeMinutes,
-            end_source: 'system',
+            end_source: 'manual',
           })
           .eq('id', activeCheckin.id)
           .eq('user_id', user.id);
