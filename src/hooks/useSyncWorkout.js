@@ -75,7 +75,7 @@ const toAddressLabel = (location) => {
   return location.address || null;
 };
 
-const buildSyncPayload = (userId, workout, sets, syncId) => {
+const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkout.argument.sets') => {
   const finishedAt = workout.ended_at || workout.finishedAt || workout.created_at || new Date().toISOString();
   const startedAt = workout.started_at || workout.startedAt || finishedAt;
   const durationMinutes = Math.max(1, Math.round((Number(workout.duration_seconds) || 0) / 60));
@@ -95,6 +95,11 @@ const buildSyncPayload = (userId, workout, sets, syncId) => {
     workout_name: workoutName,
     workout_key: workoutKey,
     location: locationLabel,
+    sets_origin: setsOrigin,
+    client_sync_debug: {
+      sets_origin: setsOrigin,
+      built_at: new Date().toISOString(),
+    },
     // ─────────────────────────────────────────────────────────────
     id: syncId,
     type: 'workout_log',
@@ -282,13 +287,47 @@ export function useSyncWorkout(user) {
   }, []);
 
   const sendViaServer = useCallback(async (item, session) => {
+    const sets = Array.isArray(item?.sets) ? item.sets : [];
+    const syncId = item?.sync_id || item?.syncId || item?.id || null;
+    const startedAt = item?.started_at || item?.startedAt || item?.workout?.started_at || item?.workout?.startedAt || null;
+    const endedAt = item?.ended_at || item?.endedAt || item?.workout?.ended_at || item?.workout?.finishedAt || item?.workout?.endedAt || null;
+    const setsOrigin = item?.client_sync_debug?.sets_origin || item?.sets_origin || 'syncQueue.item.sets_or_unknown';
+    const inspectedAt = new Date().toISOString();
+
+    const requestPayload = {
+      ...item,
+      client_sync_debug: {
+        ...(item?.client_sync_debug || {}),
+        sets_origin: setsOrigin,
+        sets_count: sets.length,
+        inspected_at: inspectedAt,
+      },
+    };
+
+    console.log('[sync-debug][front][pre-post]', {
+      sync_id: syncId,
+      started_at: startedAt,
+      ended_at: endedAt,
+      sets_count: sets.length,
+      sets_origin: setsOrigin,
+      sets,
+    });
+
+    logger.systemEvent('[sync-debug][front][pre-post]', {
+      sync_id: syncId,
+      started_at: startedAt,
+      ended_at: endedAt,
+      sets_count: sets.length,
+      sets_origin: setsOrigin,
+    });
+
     const response = await fetch('/api/sync-workout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(item),
+      body: JSON.stringify(requestPayload),
     });
 
     const result = await response.json().catch(() => ({}));
@@ -423,7 +462,7 @@ export function useSyncWorkout(user) {
     const cleanWorkout = sanitizeWorkoutState(workout);
     const cleanSets = sanitizeWorkoutState(sets);
     const syncId = crypto.randomUUID();
-    const payload = buildSyncPayload(user?.id || null, cleanWorkout, cleanSets, syncId);
+    const payload = buildSyncPayload(user?.id || null, cleanWorkout, cleanSets, syncId, 'logWorkout.argument.sets');
     let payloadToSend = payload;
 
     if (!navigator.onLine) {

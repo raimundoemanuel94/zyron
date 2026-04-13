@@ -329,6 +329,17 @@ export default async function handler(req) {
       return json({ error: 'Invalid JSON in request body' }, 400);
     }
 
+    const incomingSyncId = body?.sync_id ?? body?.syncId ?? null;
+    const incomingSets = Array.isArray(body?.sets) ? body.sets : [];
+    console.warn('[sync-debug][backend][incoming]', {
+      sync_id: incomingSyncId,
+      started_at: body?.started_at ?? body?.startedAt ?? null,
+      ended_at: body?.ended_at ?? body?.endedAt ?? null,
+      sets_count: incomingSets.length,
+      first_set: incomingSets[0] || null,
+      client_sync_debug: body?.client_sync_debug ?? null,
+    });
+
     // Strict validation - no fallbacks
     let payload;
     try {
