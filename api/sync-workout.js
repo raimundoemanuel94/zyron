@@ -18,6 +18,75 @@ const parseOptionalInt = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const CLOCK_DRIFT_TOLERANCE_MS = 90 * 1000;
+
+const normalizeClientTimestamp = (isoValue, toleranceMs = CLOCK_DRIFT_TOLERANCE_MS) => {
+  const parsed = new Date(isoValue);
+  const parsedMs = parsed.getTime();
+  const nowMs = Date.now();
+
+  if (!Number.isFinite(parsedMs)) {
+    return {
+      iso: new Date(nowMs).toISOString(),
+      corrected: true,
+      driftMs: null,
+    };
+  }
+
+  const driftMs = parsedMs - nowMs;
+  if (Math.abs(driftMs) > toleranceMs) {
+    return {
+      iso: new Date(nowMs).toISOString(),
+      corrected: true,
+      driftMs,
+    };
+  }
+
+  return {
+    iso: parsed.toISOString(),
+    corrected: false,
+    driftMs,
+  };
+};
+
+const normalizeWorkoutTiming = (payload) => {
+  const normalizedStart = normalizeClientTimestamp(payload.started_at);
+  const normalizedEnd = normalizeClientTimestamp(payload.ended_at);
+
+  let startedAt = normalizedStart.iso;
+  let endedAt = normalizedEnd.iso;
+
+  const startMs = new Date(startedAt).getTime();
+  const endMs = new Date(endedAt).getTime();
+  const requestedDurationSeconds = Math.max(60, Number(payload.duration_minutes || 1) * 60);
+
+  if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs < startMs) {
+    endedAt = new Date(startMs + requestedDurationSeconds * 1000).toISOString();
+  }
+
+  const normalizedStartMs = new Date(startedAt).getTime();
+  const normalizedEndMs = new Date(endedAt).getTime();
+  const derivedDurationSeconds = (
+    Number.isFinite(normalizedStartMs)
+    && Number.isFinite(normalizedEndMs)
+    && normalizedEndMs >= normalizedStartMs
+  )
+    ? Math.max(1, Math.round((normalizedEndMs - normalizedStartMs) / 1000))
+    : requestedDurationSeconds;
+
+  return {
+    ...payload,
+    started_at: startedAt,
+    ended_at: endedAt,
+    duration_minutes: Math.max(1, Math.round(derivedDurationSeconds / 60)),
+    duration_seconds: derivedDurationSeconds,
+    _clock: {
+      start: normalizedStart,
+      end: normalizedEnd,
+    },
+  };
+};
+
 const selectExistingWorkout = async (supabase, userId, payload) => {
   // Always try by sync_id first
   const bySyncId = await supabase
@@ -45,7 +114,9 @@ const selectExistingWorkout = async (supabase, userId, payload) => {
 };
 
 const writeWorkoutLog = async (supabase, userId, payload, existingLog) => {
-  const durationSeconds = payload.duration_minutes * 60;
+  const durationSeconds = Number(payload.duration_seconds) > 0
+    ? Number(payload.duration_seconds)
+    : payload.duration_minutes * 60;
 
   const row = {
     user_id: userId,
@@ -261,7 +332,7 @@ export default async function handler(req) {
     // Strict validation - no fallbacks
     let payload;
     try {
-      payload = validateWorkoutSyncPayload(body);
+      payload = normalizeWorkoutTiming(validateWorkoutSyncPayload(body));
     } catch (e) {
       if (e instanceof ValidationError) {
         return json({
@@ -283,6 +354,21 @@ export default async function handler(req) {
     }
 
     const userId = user.id;
+
+    if (payload._clock?.start?.corrected || payload._clock?.end?.corrected) {
+      console.warn('[sync-workout] timestamp corrected due clock drift', {
+        sync_id: payload.sync_id,
+        start_drift_ms: payload._clock?.start?.driftMs ?? null,
+        end_drift_ms: payload._clock?.end?.driftMs ?? null,
+      });
+    }
+
+    if (!payload.sets?.length) {
+      console.warn('[sync-workout] empty sets payload', {
+        sync_id: payload.sync_id,
+        workout_key: payload.workout_key,
+      });
+    }
 
     // Check if already synced
     const { existingLog, matchedBySyncId } = await selectExistingWorkout(supabase, userId, payload);

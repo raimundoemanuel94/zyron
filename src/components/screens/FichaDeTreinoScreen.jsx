@@ -649,20 +649,19 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   };
   const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
     if (setData) {
-      setSessionSets(prev => {
-        const normalizedSet = {
-          exercise_id: id,
-          ...setData,
-          timestamp: new Date().toISOString(),
-        };
+      const normalizedSet = {
+        exercise_id: id,
+        ...setData,
+        timestamp: new Date().toISOString(),
+      };
 
-        const next = prev
-          .filter(item => !(item.exercise_id === id && Number(item.set_number) === Number(normalizedSet.set_number)))
-          .concat(normalizedSet);
+      const base = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
+      const next = base
+        .filter(item => !(item.exercise_id === id && Number(item.set_number) === Number(normalizedSet.set_number)))
+        .concat(normalizedSet);
 
-        sessionSetsRef.current = next;
-        return next;
-      });
+      sessionSetsRef.current = next;
+      setSessionSets(next);
     }
 
     if (isFinal) {
