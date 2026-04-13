@@ -33,6 +33,19 @@ const getDefaultReps = (repsRange) => {
   return match ? match[0] : '';
 };
 
+const resolveLoadNumber = (rawLoad) => {
+  if (rawLoad === null || rawLoad === undefined || rawLoad === '') return 0;
+
+  if (typeof rawLoad === 'object') {
+    if (rawLoad && Number.isFinite(Number(rawLoad.kg))) return Number(rawLoad.kg);
+    if (rawLoad && Number.isFinite(Number(rawLoad.value))) return Number(rawLoad.value);
+    return 0;
+  }
+
+  const numeric = Number(rawLoad);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
 export default function WorkoutCard({
   ex,
   completed,
@@ -65,6 +78,10 @@ export default function WorkoutCard({
   const [setStatus, setSetStatus] = useState('completed');
   const [setError, setSetError] = useState('');
   const totalSets = parseInt(ex.sets, 10) || 1;
+  const normalizedLoad = resolveLoadNumber(load);
+  const loadInputValue = load === null || load === undefined
+    ? ''
+    : (typeof load === 'object' ? String(load?.kg ?? '') : String(load));
   const cardRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -95,7 +112,7 @@ export default function WorkoutCard({
 
   const getValidatedSetData = () => {
     const repsValue = parseInt(actualReps, 10);
-    const weightValue = parseFloat(load);
+    const weightValue = resolveLoadNumber(load);
     const rpeValue = rpe === '' ? null : parseInt(rpe, 10);
     const rirValue = rir === '' ? null : parseInt(rir, 10);
     const restValue = parseInt(restSeconds, 10);
@@ -104,7 +121,7 @@ export default function WorkoutCard({
       return { error: 'Informe as reps reais desta serie.' };
     }
 
-    if (!Number.isFinite(weightValue) || weightValue < 0) {
+    if (weightValue < 0) {
       return { error: 'Confirme a carga usada.' };
     }
 
@@ -148,6 +165,13 @@ export default function WorkoutCard({
     const { data, error } = getValidatedSetData();
 
     if (error) {
+      console.warn('[serie][1][validation-blocked]', {
+        exercise_id: ex.id,
+        error,
+        active_set: activeSet,
+        actual_reps: actualReps,
+        load_input: load,
+      });
       setSetError(error);
       setIsExpanded(true);
       haptics.medium();
@@ -321,7 +345,7 @@ export default function WorkoutCard({
             </h3>
             <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
               <span className="text-[10px] font-bold text-neutral-500">{ex.sets}Ã—{ex.reps}</span>
-              <span className="text-[10px] font-black text-yellow-400">{load || '0'} kg</span>
+              <span className="text-[10px] font-black text-yellow-400">{normalizedLoad} kg</span>
               <span className="text-[10px] font-bold text-neutral-600">{ex.rest || 60}s descanso</span>
               {prHistoryLoad && (
                 <span className="text-[10px] font-bold text-neutral-600">PR: {prHistoryLoad}kg</span>
@@ -473,7 +497,7 @@ export default function WorkoutCard({
                         min="0"
                         step="0.5"
                         inputMode="decimal"
-                        value={load || ''}
+                        value={loadInputValue}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           setSetError('');

@@ -736,6 +736,18 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         ref_sets: Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [],
       });
 
+      const hasExercisesInWorkout = Array.isArray(currentWorkout?.exercises) && currentWorkout.exercises.length > 0;
+      if (hasExercisesInWorkout && safeSetsSnapshot.length === 0) {
+        pushSyncDebugEvent('finalize-blocked-no-sets', {
+          workout_key: String(selectedWorkoutKey || today),
+          exercises_count: currentWorkout.exercises.length,
+        });
+        setToastMessage({ icon: '!', text: 'Registre ao menos 1 serie antes de finalizar' });
+        setTimeout(() => setToastMessage(null), 2800);
+        haptics.medium();
+        return;
+      }
+
       try {
         endByWorkout();
         await stopGymCheckinWatch();
