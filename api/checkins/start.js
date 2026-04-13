@@ -18,6 +18,7 @@ export const config = {
 export default async function handler(req) {
   const requestId = createRequestId();
   const log = createApiLogger({ scope: 'checkins/start', requestId });
+  const staleThresholdMinutes = 180;
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CHECKIN_CORS_HEADERS });
@@ -52,7 +53,45 @@ export default async function handler(req) {
 
     if (activeCheckinQuery.error) throw activeCheckinQuery.error;
 
-    const activeCheckin = activeCheckinQuery.data || null;
+    let activeCheckin = activeCheckinQuery.data || null;
+    if (activeCheckin) {
+      const nowMs = Date.now();
+      const startedAtIso = activeCheckin.started_at_utc || activeCheckin.created_at || null;
+      const startedAtMs = startedAtIso ? new Date(startedAtIso).getTime() : null;
+      const activeAgeMinutes = Number.isFinite(startedAtMs)
+        ? Math.max(0, Math.round((nowMs - startedAtMs) / 60000))
+        : 0;
+      const isStaleActive = activeAgeMinutes >= staleThresholdMinutes;
+
+      if (isStaleActive) {
+        const endedAtUtc = new Date().toISOString();
+        const endedAtLocal = new Date(new Date(endedAtUtc).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString();
+
+        const staleCloseResult = await supabase
+          .from('gym_checkins')
+          .update({
+            status: 'ended',
+            ended_at_utc: endedAtUtc,
+            ended_at_local: endedAtLocal,
+            ended_reason: 'stale_replaced',
+            duration_minutes: activeAgeMinutes,
+            end_source: 'system',
+          })
+          .eq('id', activeCheckin.id)
+          .eq('user_id', user.id);
+
+        if (staleCloseResult.error) throw staleCloseResult.error;
+
+        log.warn('stale active checkin auto-closed before new start', {
+          user_id: user.id,
+          stale_checkin_id: activeCheckin.id,
+          stale_age_minutes: activeAgeMinutes,
+        });
+
+        activeCheckin = null;
+      }
+    }
+
     if (activeCheckin) {
       if (
         payload.client_session_id
@@ -162,4 +201,3 @@ export default async function handler(req) {
     });
   }
 }
-
