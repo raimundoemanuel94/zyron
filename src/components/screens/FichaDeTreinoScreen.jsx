@@ -221,6 +221,23 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [musicPanelView, setMusicPanelView] = useState('player');
   const avatarInputRef = useRef(null);
   const sessionSetsRef = useRef([]);
+  const syncDebugRef = useRef({ events: [] });
+
+  const pushSyncDebugEvent = useCallback((stage, data = {}) => {
+    const prevEvents = Array.isArray(syncDebugRef.current?.events) ? syncDebugRef.current.events : [];
+    const event = {
+      stage,
+      at: new Date().toISOString(),
+      ...data,
+    };
+
+    syncDebugRef.current = {
+      ...syncDebugRef.current,
+      events: [...prevEvents.slice(-29), event],
+      last_stage: stage,
+      updated_at: event.at,
+    };
+  }, []);
 
   // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
   const { metrics: dailyMetrics, updateMetrics } = useDailyMetrics(user?.id);
@@ -610,6 +627,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setSessionStartedAt(new Date().toISOString());
     setSessionSets([]);
     sessionSetsRef.current = [];
+    syncDebugRef.current = {
+      events: [{
+        stage: 'session-start',
+        at: new Date().toISOString(),
+        workout_key: safeKey,
+      }],
+      last_stage: 'session-start',
+      updated_at: new Date().toISOString(),
+    };
 
     checkinBackendIdRef.current = null;
     await resetCheckin();
@@ -662,6 +688,17 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
       sessionSetsRef.current = next;
       setSessionSets(next);
+
+      console.log('SET ADDED', normalizedSet);
+      console.log('SESSION SETS AFTER ADD', sessionSetsRef.current);
+      console.log('SESSION SETS COUNT AFTER ADD', sessionSetsRef.current?.length ?? 0);
+
+      pushSyncDebugEvent('set-added', {
+        exercise_id: id,
+        set_number: normalizedSet.set_number ?? null,
+        sets_count: sessionSetsRef.current?.length ?? 0,
+        set_data: normalizedSet,
+      });
     }
 
     if (isFinal) {
@@ -687,6 +724,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
       const safeSetsSnapshot = latestSets.length > 0 ? latestSets : (Array.isArray(sessionSets) ? sessionSets : []);
 
+      console.log('BEFORE FINALIZE SESSION SETS REF', sessionSetsRef.current);
+      console.log('BEFORE FINALIZE SESSION SETS COUNT', sessionSetsRef.current?.length ?? 0);
+
+      pushSyncDebugEvent('before-finalize', {
+        ref_sets_count: sessionSetsRef.current?.length ?? 0,
+        ref_sets: Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [],
+      });
+
       try {
         endByWorkout();
         await stopGymCheckinWatch();
@@ -700,7 +745,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         workout: {
           workout_key: String(selectedWorkoutKey || today),
           duration_seconds: sessionTime,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          client_sync_debug: {
+            ...syncDebugRef.current,
+            before_finalize_sets_count: safeSetsSnapshot.length,
+            before_finalize_sets: safeSetsSnapshot,
+          },
         },
         sets: [...safeSetsSnapshot]
       });
@@ -713,6 +763,21 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const handleFinalSync = async (workoutData, setsData) => {
     const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
     const resolvedSets = Array.isArray(setsData) && setsData.length > 0 ? setsData : latestSets;
+    const debugFromWorkout = (workoutData?.client_sync_debug && typeof workoutData.client_sync_debug === 'object')
+      ? workoutData.client_sync_debug
+      : {};
+
+    console.log('PRE SYNC PAYLOAD SETS', resolvedSets);
+    console.log('PRE SYNC PAYLOAD SETS COUNT', resolvedSets?.length ?? 0);
+
+    pushSyncDebugEvent('pre-sync', {
+      payload_sets_count: resolvedSets?.length ?? 0,
+      payload_sets: resolvedSets,
+      source_resolution: Array.isArray(setsData) && setsData.length > 0
+        ? 'workoutCompleted.setsData'
+        : 'sessionSetsRef.current',
+    });
+
     const endedAt = new Date().toISOString();
     const enrichedWorkout = {
       ...workoutData,
@@ -720,12 +785,21 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       started_at:   sessionStartedAt || workoutData.created_at || endedAt,
       ended_at:     endedAt,
       location:     sessionLocation || null,
+      client_sync_debug: {
+        ...debugFromWorkout,
+        ...syncDebugRef.current,
+        pre_sync_payload_sets_count: resolvedSets?.length ?? 0,
+        pre_sync_payload_sets: resolvedSets,
+        ref_sets_count_at_sync: latestSets?.length ?? 0,
+        ref_sets_at_sync: latestSets,
+      },
     };
 
     await logWorkout(enrichedWorkout, resolvedSets);
     setShowCompletedScreen(false);
     sessionSetsRef.current = [];
     setSessionSets([]);
+    syncDebugRef.current = { events: [] };
     setLastWorkoutSummary(null);
     setSessionStartedAt(null);
     setSessionLocation(null);

@@ -84,6 +84,9 @@ const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkou
   const workoutName = workout.workout_name || workout.workoutName || null;
   const workoutKey = workout.workout_key != null ? String(workout.workout_key) : null;
   const locationLabel = toAddressLabel(workout.location);
+  const incomingClientDebug = (workout?.client_sync_debug && typeof workout.client_sync_debug === 'object')
+    ? workout.client_sync_debug
+    : {};
 
   return {
     // ── Root-level fields required by validateWorkoutSyncPayload ──
@@ -97,6 +100,7 @@ const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkou
     location: locationLabel,
     sets_origin: setsOrigin,
     client_sync_debug: {
+      ...incomingClientDebug,
       sets_origin: setsOrigin,
       built_at: new Date().toISOString(),
     },
@@ -312,6 +316,9 @@ export function useSyncWorkout(user) {
       sets_origin: setsOrigin,
       sets,
     });
+
+    console.log('PRE SYNC PAYLOAD SETS', requestPayload?.sets || []);
+    console.log('PRE SYNC PAYLOAD SETS COUNT', Array.isArray(requestPayload?.sets) ? requestPayload.sets.length : 0);
 
     logger.systemEvent('[sync-debug][front][pre-post]', {
       sync_id: syncId,
