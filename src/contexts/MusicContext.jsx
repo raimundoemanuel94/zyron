@@ -93,6 +93,7 @@ export const MusicProvider = ({ children }) => {
         height: '0',
         width: '0',
         videoId: '',
+        host: 'https://www.youtube.com',
         playerVars: {
           autoplay: 0,
           controls: 0,
@@ -102,6 +103,7 @@ export const MusicProvider = ({ children }) => {
           rel: 0,
           showinfo: 0,
           iv_load_policy: 3,
+          origin: window.location.origin,
         },
         events: {
           onReady: (event) => {

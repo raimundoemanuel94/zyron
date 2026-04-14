@@ -237,6 +237,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const handleAvatarUpdate = (newUrl) => updateProfile({ avatarUrl: newUrl });
 
   // DECLARE STATE FIRST — Before any hooks that depend on these values
+  const today = new Date().getDay();
   const [selectedWorkoutKey, setSelectedWorkoutKey] = useState(null);
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
@@ -573,7 +574,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   }, [user, profile]);
 
   // Auto-day detection (Default)
-  const today = new Date().getDay();
   const currentWorkout = selectedWorkoutKey !== null ? availableWorkouts[selectedWorkoutKey] : availableWorkouts[today];
 
   // Load from localStorage
