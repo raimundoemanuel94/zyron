@@ -27,6 +27,7 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+dev-server*.log
 
 # vercel
 .vercel
@@ -34,6 +35,7 @@ yarn-error.log*
 # backup files
 *.bak
 *_BACKUP.*
+backup-fase*/
 .env*.local
 
 .vercel
