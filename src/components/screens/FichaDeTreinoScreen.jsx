@@ -73,6 +73,7 @@ import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
 import { useMusic } from '../../contexts/MusicContext';
 import haptics from '../../utils/haptics';
+import logger from '../../utils/logger';
 import { C } from '../../styles/ds';
 import { useProfile } from '../../core/profile/useProfile';
 import { useExerciseCompletion, useDailyMetrics } from '../../hooks/usePersistence';

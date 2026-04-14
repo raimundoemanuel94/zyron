@@ -189,7 +189,8 @@ export default function WorkoutCard({
     });
 
     if (userId) {
-      persistLoad(ex.id, ex.name, data.weight_kg, null).catch(err => console.error('Failed to persist load:', err));
+      Promise.resolve(persistLoad(ex.id, ex.name, data.weight_kg, null))
+        .catch(err => console.error('Failed to persist load:', err));
     }
 
     const isFinalSet = data.set_number >= totalSets;
