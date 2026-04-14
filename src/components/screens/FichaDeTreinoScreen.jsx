@@ -80,6 +80,7 @@ import { useExerciseCompletion, useDailyMetrics } from '../../hooks/usePersisten
 import { usePreferences } from '../../hooks/usePreferences';
 import NotificationSheet from '../NotificationSheet';
 import { checkinApi } from '../../services/checkin/checkinApiService';
+import { cardioApi } from '../../services/cardio/cardioApiService';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -159,6 +160,51 @@ const QUICK_ICON_MAP = {
   Target
 };
 
+const CARDIO_CONTEXT_REGEX = /\(([^)]+)\)/;
+
+const parseCardioPrescription = (rawCardio) => {
+  const raw = typeof rawCardio === 'string' ? rawCardio.trim() : '';
+  if (!raw) {
+    return {
+      cardio_type: 'cardio',
+      context: 'pós-treino',
+      prescription: null,
+    };
+  }
+
+  const contextMatch = raw.match(CARDIO_CONTEXT_REGEX);
+  const context = contextMatch?.[1]?.trim() || null;
+  const withoutContext = raw.replace(CARDIO_CONTEXT_REGEX, '').trim();
+  const typeGuess = withoutContext.split(/\d/)[0]?.trim() || withoutContext;
+  const normalizedType = typeGuess.replace(/\s{2,}/g, ' ').trim();
+
+  return {
+    cardio_type: normalizedType || withoutContext || 'cardio',
+    context: context || 'pós-treino',
+    prescription: raw,
+  };
+};
+
+const toIsoOrNull = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+};
+
+const deriveDurationSeconds = (startedAt, endedAt, fallback = 0) => {
+  const startMs = startedAt ? new Date(startedAt).getTime() : null;
+  const endMs = endedAt ? new Date(endedAt).getTime() : null;
+  if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+    return Math.max(1, Math.round((endMs - startMs) / 1000));
+  }
+  const parsedFallback = Number(fallback);
+  if (Number.isFinite(parsedFallback) && parsedFallback >= 0) {
+    return Math.round(parsedFallback);
+  }
+  return 0;
+};
+
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const {
     currentTrack,
@@ -217,11 +263,16 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [activeNotification, setActiveNotification] = useState(null);
   const [painelRefreshKey, setPainelRefreshKey] = useState(0);
   const [sessionStartedAt, setSessionStartedAt] = useState(null);
+  const [sessionSyncId, setSessionSyncId] = useState(null);
   const [sessionLocation, setSessionLocation] = useState(null);
+  const [isPendingWorkoutSync, setIsPendingWorkoutSync] = useState(false);
+  const [cardioSession, setCardioSession] = useState(null);
+  const [isCardioSyncing, setIsCardioSyncing] = useState(false);
   const [musicPanelOpen, setMusicPanelOpen] = useState(false);
   const [musicPanelView, setMusicPanelView] = useState('player');
   const avatarInputRef = useRef(null);
   const sessionSetsRef = useRef([]);
+  const cardioSessionRef = useRef(null);
   const syncDebugRef = useRef({ events: [] });
 
   const pushSyncDebugEvent = useCallback((stage, data = {}) => {
@@ -239,6 +290,75 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       updated_at: event.at,
     };
   }, []);
+
+  const commitSessionSets = useCallback((nextSets) => {
+    const normalized = Array.isArray(nextSets) ? nextSets : [];
+    sessionSetsRef.current = normalized;
+    setSessionSets(normalized);
+    return normalized;
+  }, []);
+
+  const commitCardioSession = useCallback((nextCardio) => {
+    const normalized = nextCardio && typeof nextCardio === 'object'
+      ? sanitizeWorkoutState(nextCardio)
+      : null;
+    cardioSessionRef.current = normalized;
+    setCardioSession(normalized);
+    return normalized;
+  }, []);
+
+  const normalizeCardioForSync = useCallback((candidate, fallbackEndedAt = null) => {
+    if (!candidate || typeof candidate !== 'object') return null;
+
+    const startedAt = toIsoOrNull(candidate.started_at || candidate.startedAt);
+    const endedAt = toIsoOrNull(candidate.ended_at || candidate.endedAt || fallbackEndedAt);
+    const hasSignal = Boolean(
+      candidate.cardio_log_id
+      || candidate.id
+      || startedAt
+      || endedAt
+      || Number(candidate.duration_seconds || 0) > 0
+    );
+
+    if (!hasSignal) return null;
+
+    const status = String(
+      candidate.status || (endedAt ? 'completed' : 'active')
+    ).toLowerCase();
+
+    return {
+      cardio_log_id: candidate.cardio_log_id || candidate.id || null,
+      session_id: candidate.session_id || sessionSyncId || null,
+      workout_sync_id: candidate.workout_sync_id || sessionSyncId || null,
+      workout_log_id: candidate.workout_log_id || null,
+      workout_key: String(candidate.workout_key || selectedWorkoutKey || today || ''),
+      cardio_type: String(candidate.cardio_type || 'cardio').trim(),
+      context: candidate.context || null,
+      started_at: startedAt,
+      ended_at: endedAt,
+      duration_seconds: deriveDurationSeconds(
+        startedAt,
+        endedAt,
+        candidate.duration_seconds ?? candidate.durationSeconds ?? 0
+      ),
+      status,
+      source: candidate.source || 'workout_session',
+      prescription: candidate.prescription || null,
+    };
+  }, [selectedWorkoutKey, sessionSyncId, today]);
+
+  const clearWorkoutSessionState = useCallback(() => {
+    commitSessionSets([]);
+    commitCardioSession(null);
+    syncDebugRef.current = { events: [] };
+    setLastWorkoutSummary(null);
+    setSessionStartedAt(null);
+    setSessionSyncId(null);
+    setSessionLocation(null);
+    setIsCardioSyncing(false);
+    setIsPendingWorkoutSync(false);
+    localStorage.removeItem('gym_active_session');
+  }, [commitCardioSession, commitSessionSets]);
 
   // Persistence hooks — all data backed by Supabase (NOW can use selectedWorkoutKey)
   const { metrics: dailyMetrics, updateMetrics } = useDailyMetrics(user?.id);
@@ -482,10 +602,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             // completedExercises gerenciado pelo hook useExerciseCompletion — não precisa setter manual
             setSessionTime(Number(session.sessionTime) || 0);
             const restoredSets = Array.isArray(session.sessionSets) ? session.sessionSets : [];
-            setSessionSets(restoredSets);
-            sessionSetsRef.current = restoredSets;
+            commitSessionSets(restoredSets);
             setSessionStartedAt(session.sessionStartedAt || null);
+            setSessionSyncId(session.sessionSyncId || session.session_sync_id || null);
             setSessionLocation(session.sessionLocation || null);
+            commitCardioSession(session.cardioSession || session.cardio || null);
+            setIsPendingWorkoutSync(Boolean(session.pending_sync));
             if (session.isTraining) setActiveTab('workout');
           }
         }
@@ -547,10 +669,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   }, [user, isLoaded]);
 
-  useEffect(() => {
-    sessionSetsRef.current = Array.isArray(sessionSets) ? sessionSets : [];
-  }, [sessionSets]);
-
   // ✅ NOTE: Persistence is now handled by useDailyMetrics hook
   // which handles both Supabase sync and localStorage cache automatically
   // This useEffect was removed to avoid duplicate sync calls and race conditions
@@ -559,19 +677,22 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   // Save Session Persistence
   useEffect(() => {
     if (!isLoaded) return;
-    if (isTraining) {
+    if (isTraining || isPendingWorkoutSync) {
       try {
         const todayStr = new Date().toDateString();
         // NUCLEAR CLEANING: Use the new sanitizer utility to prevent circularity
         const rawSession = {
-          date: new Date().toDateString(),
+          date: todayStr,
           isTraining,
+          pending_sync: isPendingWorkoutSync,
           selectedWorkoutKey,
           completedExercises,
           sessionTime,
           sessionSets,
           sessionStartedAt,
-          sessionLocation
+          sessionSyncId,
+          sessionLocation,
+          cardioSession,
         };
         
         const cleanSession = sanitizeWorkoutState(rawSession);
@@ -582,7 +703,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     } else {
       localStorage.removeItem('gym_active_session');
     }
-  }, [isTraining, selectedWorkoutKey, completedExercises, sessionTime, sessionSets, sessionStartedAt, sessionLocation, isLoaded]);
+  }, [isTraining, isPendingWorkoutSync, selectedWorkoutKey, completedExercises, sessionTime, sessionSets, sessionStartedAt, sessionSyncId, sessionLocation, cardioSession, isLoaded]);
 
   // Session Timer Logic
   useEffect(() => {
@@ -625,17 +746,40 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     setSelectedWorkoutKey(safeKey);
     setActiveTab('workout');
     setSessionTime(0);
-    setSessionStartedAt(new Date().toISOString());
-    setSessionSets([]);
-    sessionSetsRef.current = [];
+    const startedAtIso = new Date().toISOString();
+    const generatedSyncId = crypto.randomUUID();
+    const workoutDefinition = availableWorkouts?.[safeKey] || null;
+    const cardioPreset = parseCardioPrescription(workoutDefinition?.cardio || null);
+    setSessionStartedAt(startedAtIso);
+    setSessionSyncId(generatedSyncId);
+    commitSessionSets([]);
+    commitCardioSession(workoutDefinition?.cardio
+      ? {
+          cardio_log_id: null,
+          session_id: generatedSyncId,
+          workout_sync_id: generatedSyncId,
+          workout_key: String(safeKey),
+          cardio_type: cardioPreset.cardio_type,
+          context: cardioPreset.context,
+          prescription: cardioPreset.prescription,
+          started_at: null,
+          ended_at: null,
+          duration_seconds: 0,
+          status: 'idle',
+          source: 'workout_session',
+        }
+      : null);
+    setIsCardioSyncing(false);
+    setIsPendingWorkoutSync(false);
     syncDebugRef.current = {
       events: [{
         stage: 'session-start',
-        at: new Date().toISOString(),
+        at: startedAtIso,
         workout_key: safeKey,
+        sync_id: generatedSyncId,
       }],
       last_stage: 'session-start',
-      updated_at: new Date().toISOString(),
+      updated_at: startedAtIso,
     };
 
     checkinBackendIdRef.current = null;
@@ -674,35 +818,187 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
     // completedExercises gerenciado internamente pelo hook useExerciseCompletion
   };
-  const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
-    if (setData) {
-      const normalizedSet = {
-        exercise_id: id,
-        ...setData,
-        timestamp: new Date().toISOString(),
-      };
+  const captureSessionSet = useCallback((exerciseId, setData) => {
+    if (!setData) return null;
 
-      const base = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
-      const next = base
-        .filter(item => !(item.exercise_id === id && Number(item.set_number) === Number(normalizedSet.set_number)))
-        .concat(normalizedSet);
+    const normalizedSet = {
+      exercise_id: exerciseId,
+      ...setData,
+      timestamp: new Date().toISOString(),
+    };
 
-      sessionSetsRef.current = next;
-      setSessionSets(next);
+    const base = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
+    const next = base
+      .filter(item => !(item.exercise_id === exerciseId && Number(item.set_number) === Number(normalizedSet.set_number)))
+      .concat(normalizedSet);
 
-      console.log('[serie][1] setData gerado', normalizedSet);
-      console.log('[serie][1] sessionSets (state atual)', sessionSets);
-      console.log('[serie][1] sessionSets (state apos add)', next);
-      console.log('[serie][1] sessionSetsRef.current', sessionSetsRef.current);
-      console.log('[serie][1] contagem apos add', next?.length ?? 0);
+    const committedSets = commitSessionSets(next);
 
-      pushSyncDebugEvent('set-added', {
-        exercise_id: id,
-        set_number: normalizedSet.set_number ?? null,
-        sets_count: sessionSetsRef.current?.length ?? 0,
-        set_data: normalizedSet,
+    console.log('[serie][1] setData gerado', normalizedSet);
+    console.log('[serie][1] sessionSets (state atual)', sessionSets);
+    console.log('[serie][1] sessionSets (state apos add)', committedSets);
+    console.log('[serie][1] sessionSetsRef.current', sessionSetsRef.current);
+    console.log('[serie][1] contagem apos add', committedSets?.length ?? 0);
+
+    pushSyncDebugEvent('set-added', {
+      exercise_id: exerciseId,
+      set_number: normalizedSet.set_number ?? null,
+      sets_count: committedSets?.length ?? 0,
+      set_data: normalizedSet,
+    });
+
+    return normalizedSet;
+  }, [commitSessionSets, pushSyncDebugEvent, sessionSets]);
+
+  const handleStartCardio = useCallback(async () => {
+    if (!isTraining || isCardioSyncing) return cardioSessionRef.current;
+
+    const currentCardio = cardioSessionRef.current || {};
+    if (currentCardio?.status === 'active') return currentCardio;
+
+    const fallbackWorkoutKey = String(selectedWorkoutKey ?? today);
+    const fallbackSyncId = sessionSyncId || crypto.randomUUID();
+    if (!sessionSyncId) setSessionSyncId(fallbackSyncId);
+
+    const parsed = parseCardioPrescription(currentWorkout?.cardio || currentCardio?.prescription || currentCardio?.cardio_type || 'cardio');
+    const startedAtIso = new Date().toISOString();
+
+    setIsCardioSyncing(true);
+    try {
+      const result = await cardioApi.start({
+        session_id: currentCardio.session_id || fallbackSyncId,
+        workout_sync_id: currentCardio.workout_sync_id || fallbackSyncId,
+        workout_key: currentCardio.workout_key || fallbackWorkoutKey,
+        cardio_type: currentCardio.cardio_type || parsed.cardio_type,
+        context: currentCardio.context || parsed.context,
+        started_at: startedAtIso,
+        source: 'workout_session',
       });
+
+      const backendCardio = result?.data?.cardio || result?.cardio || null;
+      const committed = commitCardioSession({
+        ...currentCardio,
+        ...backendCardio,
+        session_id: backendCardio?.session_id || currentCardio.session_id || fallbackSyncId,
+        workout_sync_id: backendCardio?.workout_sync_id || currentCardio.workout_sync_id || fallbackSyncId,
+        workout_key: backendCardio?.workout_key || currentCardio.workout_key || fallbackWorkoutKey,
+        cardio_type: backendCardio?.cardio_type || currentCardio.cardio_type || parsed.cardio_type,
+        context: backendCardio?.context || currentCardio.context || parsed.context,
+        prescription: currentCardio.prescription || parsed.prescription,
+        started_at: backendCardio?.started_at || startedAtIso,
+        ended_at: null,
+        duration_seconds: 0,
+        status: 'active',
+        source: backendCardio?.source || currentCardio.source || 'workout_session',
+      });
+
+      pushSyncDebugEvent('cardio-started', {
+        cardio_log_id: committed?.cardio_log_id || committed?.id || null,
+        session_id: committed?.session_id || null,
+        workout_sync_id: committed?.workout_sync_id || null,
+      });
+
+      return committed;
+    } catch (err) {
+      logger.warn('Falha ao iniciar cardio log', {
+        error: err?.message,
+      }, err);
+      setToastMessage({ icon: '!', text: 'Não foi possível iniciar o cardio agora' });
+      setTimeout(() => setToastMessage(null), 2600);
+      return null;
+    } finally {
+      setIsCardioSyncing(false);
     }
+  }, [
+    commitCardioSession,
+    currentWorkout?.cardio,
+    isCardioSyncing,
+    isTraining,
+    pushSyncDebugEvent,
+    selectedWorkoutKey,
+    sessionSyncId,
+    today,
+  ]);
+
+  const handleStopCardio = useCallback(async ({ reason = 'manual', silent = false, force = false } = {}) => {
+    const currentCardio = cardioSessionRef.current;
+    if (!currentCardio || currentCardio.status !== 'active') {
+      return normalizeCardioForSync(currentCardio);
+    }
+
+    const endedAtIso = new Date().toISOString();
+    const durationSeconds = deriveDurationSeconds(
+      currentCardio.started_at,
+      endedAtIso,
+      currentCardio.duration_seconds ?? 0
+    );
+    const targetStatus = reason === 'cancel' ? 'cancelled' : 'completed';
+
+    setIsCardioSyncing(true);
+    try {
+      const result = await cardioApi.end({
+        cardio_log_id: currentCardio.cardio_log_id || currentCardio.id || null,
+        session_id: currentCardio.session_id || sessionSyncId,
+        workout_sync_id: currentCardio.workout_sync_id || sessionSyncId,
+        cardio_type: currentCardio.cardio_type,
+        context: currentCardio.context,
+        started_at: currentCardio.started_at,
+        ended_at: endedAtIso,
+        duration_seconds: durationSeconds,
+        status: targetStatus,
+        source: 'workout_session',
+      });
+
+      const backendCardio = result?.data?.cardio || result?.cardio || null;
+      const committed = commitCardioSession({
+        ...currentCardio,
+        ...backendCardio,
+        cardio_log_id: backendCardio?.id || backendCardio?.cardio_log_id || currentCardio.cardio_log_id || null,
+        ended_at: backendCardio?.ended_at || endedAtIso,
+        duration_seconds: Number(backendCardio?.duration_seconds ?? durationSeconds),
+        status: backendCardio?.status || targetStatus,
+      });
+
+      pushSyncDebugEvent('cardio-ended', {
+        cardio_log_id: committed?.cardio_log_id || committed?.id || null,
+        duration_seconds: committed?.duration_seconds || 0,
+        status: committed?.status || targetStatus,
+      });
+
+      return committed;
+    } catch (err) {
+      logger.warn('Falha ao finalizar cardio log', {
+        error: err?.message,
+        fallback: force,
+      }, err);
+
+      const fallback = commitCardioSession({
+        ...currentCardio,
+        ended_at: endedAtIso,
+        duration_seconds: durationSeconds,
+        status: targetStatus,
+      });
+
+      pushSyncDebugEvent('cardio-ended-local-fallback', {
+        cardio_log_id: fallback?.cardio_log_id || fallback?.id || null,
+        duration_seconds: fallback?.duration_seconds || 0,
+        status: fallback?.status || targetStatus,
+      });
+
+      if (!silent && !force) {
+        setToastMessage({ icon: '!', text: 'Cardio salvo localmente. Vai sincronizar no fim do treino.' });
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+
+      return fallback;
+    } finally {
+      setIsCardioSyncing(false);
+    }
+  }, [commitCardioSession, normalizeCardioForSync, pushSyncDebugEvent, sessionSyncId]);
+
+  const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
+    const capturedSet = captureSessionSet(id, setData);
+    const effectiveSetData = capturedSet || setData;
 
     if (isFinal) {
       // Get exercise name from current workout
@@ -711,21 +1007,22 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
       // Persist to Supabase via hook
       await toggleExerciseCompletion(id, exerciseName, {
-        reps: setData?.reps,
-        sets: setData?.set_number || setData?.sets,
-        notes: setData?.status === 'failed' ? 'Falha registrada na serie' : null,
+        reps: effectiveSetData?.reps,
+        sets: effectiveSetData?.set_number || effectiveSetData?.sets,
+        notes: effectiveSetData?.status === 'failed' ? 'Falha registrada na serie' : null,
       });
     }
 
-    const restSeconds = Number(setData?.rest_seconds);
+    const restSeconds = Number(effectiveSetData?.rest_seconds);
     const exerciseRest = Number(currentWorkout?.exercises?.find(ex => ex.id === id)?.rest);
     setRestTimer(Number.isFinite(restSeconds) ? restSeconds : (Number.isFinite(exerciseRest) ? exerciseRest : 60));
   };
 
   const handleFinishSession = async () => {
     if (isTraining) {
-      const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
-      const safeSetsSnapshot = latestSets.length > 0 ? latestSets : (Array.isArray(sessionSets) ? sessionSets : []);
+      const safeSetsSnapshot = Array.isArray(sessionSetsRef.current) ? [...sessionSetsRef.current] : [];
+      const effectiveSyncId = sessionSyncId || crypto.randomUUID();
+      if (!sessionSyncId) setSessionSyncId(effectiveSyncId);
 
       console.log('[serie][2] before finalize sessionSets (state)', sessionSets);
       console.log('[serie][2] before finalize sessionSetsRef.current', sessionSetsRef.current);
@@ -749,6 +1046,22 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         return;
       }
 
+      let finalizedCardio = cardioSessionRef.current;
+      if (finalizedCardio?.status === 'active') {
+        finalizedCardio = await handleStopCardio({
+          reason: 'workout_finished',
+          silent: true,
+          force: true,
+        });
+      }
+      const cardioSnapshot = normalizeCardioForSync(finalizedCardio, new Date().toISOString());
+
+      pushSyncDebugEvent('before-finalize-cardio', {
+        cardio_status: cardioSnapshot?.status || null,
+        cardio_duration_seconds: cardioSnapshot?.duration_seconds || 0,
+        cardio_log_id: cardioSnapshot?.cardio_log_id || null,
+      });
+
       try {
         endByWorkout();
         await stopGymCheckinWatch();
@@ -760,26 +1073,28 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
       setLastWorkoutSummary({
         workout: {
+          sync_id: effectiveSyncId,
           workout_key: String(selectedWorkoutKey || today),
           duration_seconds: sessionTime,
           created_at: new Date().toISOString(),
+          cardio: cardioSnapshot,
           client_sync_debug: {
             ...syncDebugRef.current,
             before_finalize_sets_count: safeSetsSnapshot.length,
             before_finalize_sets: safeSetsSnapshot,
+            before_finalize_cardio: cardioSnapshot,
           },
         },
         sets: [...safeSetsSnapshot]
       });
+      setIsPendingWorkoutSync(true);
       setShowCompletedScreen(true);
       setIsTraining(false);
-      localStorage.removeItem('gym_active_session');
     }
   };
 
-  const handleFinalSync = async (workoutData, setsData) => {
-    const latestSets = Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current : [];
-    const resolvedSets = Array.isArray(setsData) && setsData.length > 0 ? setsData : latestSets;
+  const handleFinalSync = async (workoutData) => {
+    const resolvedSets = Array.isArray(sessionSetsRef.current) ? [...sessionSetsRef.current] : [];
     const debugFromWorkout = (workoutData?.client_sync_debug && typeof workoutData.client_sync_debug === 'object')
       ? workoutData.client_sync_debug
       : {};
@@ -790,36 +1105,48 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     pushSyncDebugEvent('pre-sync', {
       payload_sets_count: resolvedSets?.length ?? 0,
       payload_sets: resolvedSets,
-      source_resolution: Array.isArray(setsData) && setsData.length > 0
-        ? 'workoutCompleted.setsData'
-        : 'sessionSetsRef.current',
+      source_resolution: 'sessionSetsRef.current',
     });
 
     const endedAt = new Date().toISOString();
+    const resolvedSyncId = workoutData?.sync_id || workoutData?.syncId || sessionSyncId || crypto.randomUUID();
+    const cardioSnapshot = normalizeCardioForSync(workoutData?.cardio || cardioSessionRef.current, endedAt);
     const enrichedWorkout = {
       ...workoutData,
+      sync_id: resolvedSyncId,
       workout_name: currentWorkout?.title || null,
       started_at:   sessionStartedAt || workoutData.created_at || endedAt,
       ended_at:     endedAt,
       location:     sessionLocation || null,
+      cardio:       cardioSnapshot,
       client_sync_debug: {
         ...debugFromWorkout,
         ...syncDebugRef.current,
         pre_sync_payload_sets_count: resolvedSets?.length ?? 0,
         pre_sync_payload_sets: resolvedSets,
-        ref_sets_count_at_sync: latestSets?.length ?? 0,
-        ref_sets_at_sync: latestSets,
+        ref_sets_count_at_sync: resolvedSets?.length ?? 0,
+        ref_sets_at_sync: resolvedSets,
+        cardio_snapshot: cardioSnapshot,
       },
     };
 
-    await logWorkout(enrichedWorkout, resolvedSets);
+    const syncResult = await logWorkout(enrichedWorkout, resolvedSets);
+    const isConfirmedSync = syncResult?.status === 'synced'
+      || (import.meta.env.DEV && syncResult?.status === 'synced_legacy');
+
+    if (!isConfirmedSync) {
+      pushSyncDebugEvent('sync-not-confirmed', {
+        status: syncResult?.status || 'unknown',
+        sync_id: syncResult?.syncId || null,
+      });
+      setToastMessage({ icon: '!', text: 'Sync pendente: tente novamente em alguns segundos' });
+      setTimeout(() => setToastMessage(null), 3000);
+      haptics.medium();
+      return;
+    }
+
     setShowCompletedScreen(false);
-    sessionSetsRef.current = [];
-    setSessionSets([]);
-    syncDebugRef.current = { events: [] };
-    setLastWorkoutSummary(null);
-    setSessionStartedAt(null);
-    setSessionLocation(null);
+    clearWorkoutSessionState();
     // Dispara re-fetch no TabPainel para atualizar week strip com dia de hoje
     setPainelRefreshKey(k => k + 1);
   };
@@ -974,28 +1301,34 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const isActive = activeTab === id;
     return (
       <motion.button
-        whileTap={{ scale: 0.88 }}
+        whileTap={{ scale: 0.9 }}
         onClick={() => {
           if (id === 'sidebar') { haptics.light(); setSidebarOpen(true); return; }
           if (id) { haptics.light(); setActiveTab(String(id)); }
         }}
-        className="relative flex flex-col items-center justify-center gap-1 px-3 py-2 select-none"
-        style={{ minWidth: 56 }}
+        className="relative flex flex-col items-center justify-center gap-1 px-3.5 py-2 select-none transition-all duration-200"
+        style={{ minWidth: 58 }}
       >
         {/* Ícone */}
-        <div className="relative flex items-center justify-center w-6 h-6">
+        <div className="relative flex items-center justify-center w-7 h-7">
+          {isActive && (
+            <span
+              className="absolute inset-0 rounded-[10px] bg-[#B4FF3C]/15 border border-[#B4FF3C]/35"
+              style={{ boxShadow: '0 0 10px rgba(180,255,60,0.18)' }}
+            />
+          )}
           <Icon
-            size={20}
-            strokeWidth={isActive ? 2.2 : 1.6}
+            size={18}
+            strokeWidth={isActive ? 2.15 : 1.8}
             className={`transition-all duration-200 ${
-              isActive ? 'text-[#B4FF3C]' : 'text-neutral-500'
+              isActive ? 'text-[#B4FF3C]' : 'text-neutral-400'
             }`}
           />
         </div>
 
         {/* Label */}
-        <span className={`text-[8.5px] font-medium leading-none tracking-wide transition-colors duration-200 ${
-          isActive ? 'text-[#B4FF3C]' : 'text-neutral-600'
+        <span className={`text-[9.5px] font-medium leading-none tracking-wide transition-colors duration-200 ${
+          isActive ? 'text-[#D8FF83]' : 'text-neutral-500'
         }`}>
           {label}
         </span>
@@ -1004,8 +1337,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         {isActive && (
           <motion.div
             layoutId="nav-dot-indicator"
-            className="absolute -bottom-0.5 h-[3px] w-[3px] rounded-full bg-[#B4FF3C]"
-            style={{ boxShadow: '0 0 6px rgba(180,255,60,0.9)' }}
+            className="absolute -bottom-0.5 h-[3px] w-[4px] rounded-full bg-[#B4FF3C]"
+            style={{ boxShadow: '0 0 6px rgba(180,255,60,0.55)' }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
           />
         )}
@@ -1261,6 +1594,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 activePrimaryMuscles={[]}
                 activeMuscles={[]}
                 userId={user?.id}
+                cardioSession={cardioSession}
+                onStartCardio={handleStartCardio}
+                onStopCardio={handleStopCardio}
+                isCardioSyncing={isCardioSyncing}
               />
             </MusclePumpWrapper>
           )}
@@ -1613,17 +1950,17 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.45, type: 'spring', stiffness: 160, damping: 26 }}
         className="fixed bottom-0 left-0 w-full z-[50] flex justify-center pointer-events-none"
-        style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
+        style={{ paddingBottom: 'max(9px, env(safe-area-inset-bottom))' }}
       >
         {/* Gradiente de fundo que conecta a nav ao app */}
-        <div className="absolute bottom-0 left-0 w-full h-[140px] bg-linear-to-t from-black via-black/88 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-full h-[110px] bg-linear-to-t from-black via-black/72 to-transparent pointer-events-none" />
 
-        <div className="pointer-events-auto relative w-[94%] max-w-[430px]">
+        <div className="pointer-events-auto relative w-[93%] max-w-[430px]">
 
           {/* ── FAB — encaixado no topo da concha ── */}
-          <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-28px' }}>
+          <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-22px' }}>
             {/* Sombra circular no fundo persistente */}
-            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-14 blur-xl" style={{ width: 60, height: 60, top: -5, left: -5 }} />
+            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-7 blur-md" style={{ width: 58, height: 58, top: -4, left: -4 }} />
             <motion.button
               animate={{ rotate: fabOpen ? 45 : 0 }}
               whileTap={{ scale: 0.87 }}
@@ -1632,26 +1969,26 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 if (window.navigator?.vibrate) window.navigator.vibrate(fabOpen ? 15 : 30);
                 setFabOpen(f => !f);
               }}
-              className={`relative flex h-[56px] w-[56px] items-center justify-center rounded-full border-4 border-black transition-colors duration-200 ${
+              className={`relative flex h-[54px] w-[54px] items-center justify-center rounded-full border-2 transition-colors duration-200 ${
                 fabOpen ? 'bg-[rgba(28,28,30,1)]' : 'bg-[#B4FF3C]'
               }`}
               style={fabOpen
-                ? { boxShadow: '0 4px 20px rgba(0,0,0,0.9)' }
-                : { boxShadow: '0 0 22px rgba(180,255,60,0.32), 0 10px 26px rgba(0,0,0,0.72)' }
+                ? { borderColor: 'rgba(255,255,255,0.12)', boxShadow: '0 3px 12px rgba(0,0,0,0.64)' }
+                : { borderColor: 'rgba(255,255,255,0.18)', boxShadow: '0 0 9px rgba(180,255,60,0.14), 0 6px 14px rgba(0,0,0,0.5)' }
               }
             >
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
               {showMusicIndicator && (
                 <>
                   <div
-                    className="absolute top-[7px] right-[7px] h-2.5 w-2.5 rounded-full bg-[#B4FF3C] z-10"
-                    style={{ boxShadow: '0 0 10px rgba(180,255,60,0.95)' }}
+                    className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full bg-[#B4FF3C] z-10"
+                    style={{ boxShadow: '0 0 6px rgba(180,255,60,0.55)' }}
                   />
-                  <div className="absolute top-[5px] right-[5px] h-3.5 w-3.5 rounded-full bg-[#B4FF3C]/35 animate-ping" />
+                  <div className="absolute top-[5px] right-[5px] h-3 w-3 rounded-full bg-[#B4FF3C]/20 animate-ping" />
                 </>
               )}
               <Plus
-                size={24}
+                size={22}
                 strokeWidth={2.8}
                 className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-[#B4FF3C]' : 'text-neutral-950'}`}
               />
@@ -1659,7 +1996,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           </div>
 
           {/* ── A CONCHA — barra com recorte côncavo no centro ── */}
-          <div className="relative" style={{ filter: 'drop-shadow(0 -8px 24px rgba(0,0,0,0.55))' }}>
+          <div className="relative" style={{ filter: 'drop-shadow(0 -4px 12px rgba(0,0,0,0.38))' }}>
             {/* SVG da forma côncava — mais fechada e orgânica */}
             <svg
               viewBox="0 0 420 68"
@@ -1682,31 +2019,31 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   L0,18
                   C0,8 9.5,0 20,0 Z
                 `}
-                fill="rgba(14,15,17,0.985)"
+                fill="rgba(14,15,17,0.97)"
               />
 
               {/* Linha de borda topo — 2 metades, respeitando o vazio do FAB */}
-              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.075)" strokeWidth="1" fill="none" />
-              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.075)" strokeWidth="1" fill="none" />
+              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
+              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
 
               {/* Brilho neon sutil nas duas metades */}
-              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.12)" strokeWidth="0.8" fill="none" />
-              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.12)" strokeWidth="0.8" fill="none" />
+              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.09)" strokeWidth="0.8" fill="none" />
+              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.09)" strokeWidth="0.8" fill="none" />
 
               {/* Curva do recorte — suave highlight */}
               <path
                 d="M170,4 C174,12 178,32 210,34 C242,32 246,12 250,4"
-                stroke="rgba(255,255,255,0.05)" strokeWidth="1.2" fill="none"
+                stroke="rgba(255,255,255,0.04)" strokeWidth="1.2" fill="none"
               />
             </svg>
 
             {/* Backdrop blur aplicado na forma */}
-            <div className="absolute inset-0 -z-10 pointer-events-none backdrop-blur-2xl" />
+            <div className="absolute inset-0 -z-10 pointer-events-none backdrop-blur-xl" />
 
             {/* ── 4 NavButtons posicionados sobre o SVG ── */}
             <div className="absolute inset-0 flex items-center justify-between px-4" style={{ paddingBottom: '2px' }}>
               <NavButton id="painel"  icon={LayoutDashboard} label="Home"    />
-              <NavButton id="workout" icon={Dumbbell}        label="Workout" />
+              <NavButton id="workout" icon={Dumbbell}        label="Treino" />
               {/* Espaço central — coincide exatamente com o recorte SVG */}
               <div className="w-[50px] shrink-0" />
               <NavButton id="coach"   icon={MessageSquare}   label="Coach"   />

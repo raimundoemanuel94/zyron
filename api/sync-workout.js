@@ -215,6 +215,135 @@ const insertSetLogs = async (supabase, userId, workoutLogId, sets) => {
   if (error) throw error;
 };
 
+const upsertCardioLog = async (supabase, userId, workoutLog, payload, body) => {
+  const cardio = payload?.cardio || null;
+  if (!cardio) return null;
+
+  const startedAt = cardio.started_at || payload.started_at;
+  const endedAt = cardio.ended_at || payload.ended_at || null;
+  const durationSeconds = Number(cardio.duration_seconds);
+  const resolvedDuration = Number.isFinite(durationSeconds) && durationSeconds >= 0
+    ? Math.round(durationSeconds)
+    : (() => {
+        const startMs = startedAt ? new Date(startedAt).getTime() : null;
+        const endMs = endedAt ? new Date(endedAt).getTime() : null;
+        if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+          return Math.max(1, Math.round((endMs - startMs) / 1000));
+        }
+        return 0;
+      })();
+
+  const row = {
+    user_id: userId,
+    workout_log_id: workoutLog.id,
+    workout_sync_id: cardio.workout_sync_id || payload.sync_id || workoutLog.sync_id || null,
+    session_id: cardio.session_id || cardio.workout_sync_id || payload.sync_id || workoutLog.sync_id || null,
+    workout_key: cardio.workout_key || payload.workout_key || workoutLog.workout_key || null,
+    cardio_type: cardio.cardio_type,
+    context: cardio.context || null,
+    started_at: startedAt,
+    ended_at: endedAt,
+    duration_seconds: resolvedDuration,
+    status: cardio.status || (endedAt ? 'completed' : 'active'),
+    source: cardio.source || payload.source || 'workout_sync',
+    synced_at: new Date().toISOString(),
+  };
+
+  if (row.status !== 'active' && !row.ended_at) {
+    row.ended_at = payload.ended_at;
+  }
+  if ((!row.duration_seconds || row.duration_seconds <= 0) && row.started_at && row.ended_at) {
+    const startMs = new Date(row.started_at).getTime();
+    const endMs = new Date(row.ended_at).getTime();
+    if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+      row.duration_seconds = Math.max(1, Math.round((endMs - startMs) / 1000));
+    }
+  }
+
+  const requestById = cardio.cardio_log_id
+    ? supabase
+      .from('cardio_logs')
+      .update(row)
+      .eq('id', cardio.cardio_log_id)
+      .eq('user_id', userId)
+      .select('*')
+      .maybeSingle()
+    : null;
+
+  if (requestById) {
+    const updateResult = await requestById;
+    if (!updateResult.error && updateResult.data) {
+      return updateResult.data;
+    }
+    if (updateResult.error) {
+      console.warn('[sync-workout] cardio update by id failed', {
+        sync_id: payload.sync_id,
+        cardio_log_id: cardio.cardio_log_id,
+        error: updateResult.error?.message,
+      });
+    }
+  }
+
+  const fallbackLookup = await supabase
+    .from('cardio_logs')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('workout_sync_id', row.workout_sync_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (fallbackLookup.error) {
+    console.warn('[sync-workout] cardio lookup fallback failed', {
+      sync_id: payload.sync_id,
+      error: fallbackLookup.error?.message,
+    });
+  }
+
+  if (!fallbackLookup.error && fallbackLookup.data?.id) {
+    const bySyncUpdate = await supabase
+      .from('cardio_logs')
+      .update(row)
+      .eq('id', fallbackLookup.data.id)
+      .eq('user_id', userId)
+      .select('*')
+      .maybeSingle();
+
+    if (!bySyncUpdate.error && bySyncUpdate.data) {
+      return bySyncUpdate.data;
+    }
+
+    if (bySyncUpdate.error) {
+      console.warn('[sync-workout] cardio update by workout_sync_id failed', {
+        sync_id: payload.sync_id,
+        cardio_log_id: fallbackLookup.data.id,
+        error: bySyncUpdate.error?.message,
+      });
+    }
+  }
+
+  const insertPayload = cardio.cardio_log_id
+    ? { ...row, id: cardio.cardio_log_id }
+    : row;
+
+  const insertResult = await supabase
+    .from('cardio_logs')
+    .insert(insertPayload)
+    .select('*')
+    .single();
+
+  if (insertResult.error) {
+    console.warn('[sync-workout] cardio insert failed', {
+      sync_id: payload.sync_id,
+      error: insertResult.error?.message,
+      cardio_payload: body?.cardio || null,
+    });
+    return null;
+  }
+
+  return insertResult.data;
+};
+
 const insertExerciseCompletions = async (supabase, userId, workoutLogId, sets) => {
   const exerciseMap = new Map();
   sets.forEach(set => {
@@ -385,11 +514,24 @@ export default async function handler(req) {
     const { existingLog, matchedBySyncId } = await selectExistingWorkout(supabase, userId, payload);
 
     if (matchedBySyncId) {
+      const cardioLog = await upsertCardioLog(
+        supabase,
+        userId,
+        {
+          ...existingLog,
+          sync_id: payload.sync_id,
+          workout_key: payload.workout_key,
+        },
+        payload,
+        body
+      );
+
       return json({
         success: true,
         sync_id: payload.sync_id,
         workout_id: existingLog.id,
         message: 'Workout already synced',
+        cardio_log_id: cardioLog?.id || null,
       });
     }
 
@@ -407,6 +549,7 @@ export default async function handler(req) {
     await insertSetLogs(supabase, userId, workoutLog.id, payload.sets);
     await insertExerciseCompletions(supabase, userId, workoutLog.id, payload.sets);
     await updateExercisePRs(supabase, userId, payload.sets);
+    const cardioLog = await upsertCardioLog(supabase, userId, workoutLog, payload, body);
 
     // Save photos (URL rows first)
     await upsertWorkoutPhotoRows(supabase, userId, workoutLog.id, payload.photos);
@@ -428,6 +571,7 @@ export default async function handler(req) {
       workout_id: workoutLog.id,
       message: 'Workout synced successfully',
       synced_at: new Date().toISOString(),
+      cardio_log_id: cardioLog?.id || null,
     });
   } catch (error) {
     console.error('[Sync-Workout] Fatal Error:', error);

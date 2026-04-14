@@ -13,7 +13,61 @@ const parseResponse = async (response) => {
   return json;
 };
 
+const isLocalDevCheckinRoute = (url) =>
+  import.meta.env.DEV && typeof url === 'string' && url.startsWith('/api/checkins/');
+const USE_LOCAL_CHECKIN_HTTP_IN_DEV = import.meta.env.VITE_LOCAL_CHECKIN_HTTP === 'true';
+
+const buildLocalDevFallback = (url, body = {}) => {
+  const nowIso = new Date().toISOString();
+  if (url === '/api/checkins/start') {
+    return {
+      local_only: true,
+      ok: true,
+      data: {
+        checkin: {
+          id: body.client_session_id || `local-checkin-${Date.now()}`,
+          started_at_utc: body.started_at_utc || nowIso,
+          source: body.source || 'gps',
+          mode: body.mode || 'auto',
+        },
+      },
+    };
+  }
+
+  if (url === '/api/checkins/heartbeat') {
+    return {
+      local_only: true,
+      ok: true,
+      data: {
+        heartbeat_at_utc: body.heartbeat_at_utc || nowIso,
+      },
+    };
+  }
+
+  if (url === '/api/checkins/end') {
+    return {
+      local_only: true,
+      ok: true,
+      data: {
+        ended_at_utc: body.ended_at_utc || nowIso,
+        duration_minutes: Number(body.duration_minutes || 0),
+      },
+    };
+  }
+
+  return {
+    local_only: true,
+    ok: true,
+    data: {},
+  };
+};
+
 const postWithAuth = async (url, body) => {
+  if (isLocalDevCheckinRoute(url) && !USE_LOCAL_CHECKIN_HTTP_IN_DEV) {
+    console.info(`[checkinApi] modo local ativo para ${url} (sem request HTTP no npm run dev)`);
+    return buildLocalDevFallback(url, body);
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) {
     const err = new Error('Sessao invalida para check-in');
@@ -21,16 +75,32 @@ const postWithAuth = async (url, body) => {
     throw err;
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify(body),
-  });
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify(body),
+    });
 
-  return parseResponse(response);
+    try {
+      return await parseResponse(response);
+    } catch (error) {
+      if (error?.status === 404 && isLocalDevCheckinRoute(url)) {
+        console.warn(`[checkinApi] local fallback ativo para ${url} (endpoint indisponível no npm run dev)`);
+        return buildLocalDevFallback(url, body);
+      }
+      throw error;
+    }
+  } catch (networkError) {
+    if (isLocalDevCheckinRoute(url)) {
+      console.warn(`[checkinApi] local fallback ativo para ${url} (falha de rede local)`);
+      return buildLocalDevFallback(url, body);
+    }
+    throw networkError;
+  }
 };
 
 // FASE 2: payload normalizado para cada endpoint

@@ -5,7 +5,7 @@ import { db as zyronDB } from '../utils/db';
 import { sanitizeWorkoutState } from '../utils/sanitizer';
 import { profileService } from '../core/profile/profileService';
 
-const SHOULD_USE_SERVER_SYNC = import.meta.env.PROD || import.meta.env.VITE_USE_SERVER_SYNC === 'true';
+const SHOULD_USE_SERVER_SYNC = import.meta.env.VITE_USE_SERVER_SYNC !== 'false';
 const ALLOW_CLIENT_SYNC_FALLBACK = import.meta.env.DEV || import.meta.env.VITE_ALLOW_CLIENT_SYNC_FALLBACK === 'true';
 
 const getLocalDayBounds = (isoDate) => {
@@ -75,6 +75,84 @@ const toAddressLabel = (location) => {
   return location.address || null;
 };
 
+const CARDIO_STATUS_VALUES = new Set(['idle', 'active', 'completed', 'cancelled', 'aborted']);
+
+const toIsoOrNull = (value) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+};
+
+const deriveDurationSeconds = (startedAt, endedAt, fallbackSeconds = 0) => {
+  const startMs = startedAt ? new Date(startedAt).getTime() : null;
+  const endMs = endedAt ? new Date(endedAt).getTime() : null;
+  if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+    return Math.max(1, Math.round((endMs - startMs) / 1000));
+  }
+  const parsedFallback = Number(fallbackSeconds);
+  return Number.isFinite(parsedFallback) && parsedFallback >= 0
+    ? Math.round(parsedFallback)
+    : 0;
+};
+
+const normalizeCardioForSyncPayload = (cardioCandidate, {
+  fallbackSyncId = null,
+  fallbackWorkoutKey = null,
+  fallbackStartedAt = null,
+  fallbackEndedAt = null,
+} = {}) => {
+  if (!cardioCandidate || typeof cardioCandidate !== 'object') return null;
+
+  const startedAt = toIsoOrNull(cardioCandidate.started_at || cardioCandidate.startedAt || fallbackStartedAt);
+  const endedAt = toIsoOrNull(cardioCandidate.ended_at || cardioCandidate.endedAt || fallbackEndedAt);
+  const hasSignal = Boolean(
+    cardioCandidate.cardio_log_id
+    || cardioCandidate.id
+    || startedAt
+    || endedAt
+    || Number(cardioCandidate.duration_seconds || cardioCandidate.durationSeconds || 0) > 0
+  );
+
+  if (!hasSignal) return null;
+
+  const rawType = String(
+    cardioCandidate.cardio_type
+    || cardioCandidate.type
+    || cardioCandidate.cardioType
+    || cardioCandidate.name
+    || cardioCandidate.label
+    || 'cardio'
+  ).trim();
+
+  const rawContext = cardioCandidate.context == null
+    ? null
+    : String(cardioCandidate.context).trim();
+
+  const fallbackStatus = endedAt ? 'completed' : 'active';
+  const requestedStatus = String(cardioCandidate.status || '').toLowerCase();
+  const status = CARDIO_STATUS_VALUES.has(requestedStatus) ? requestedStatus : fallbackStatus;
+
+  return {
+    cardio_log_id: cardioCandidate.cardio_log_id || cardioCandidate.id || null,
+    session_id: cardioCandidate.session_id || cardioCandidate.sessionId || fallbackSyncId || null,
+    workout_sync_id: cardioCandidate.workout_sync_id || cardioCandidate.workoutSyncId || fallbackSyncId || null,
+    workout_log_id: cardioCandidate.workout_log_id || cardioCandidate.workoutLogId || null,
+    workout_key: cardioCandidate.workout_key || cardioCandidate.workoutKey || fallbackWorkoutKey || null,
+    cardio_type: rawType || 'cardio',
+    context: rawContext || null,
+    started_at: startedAt,
+    ended_at: endedAt,
+    duration_seconds: deriveDurationSeconds(
+      startedAt,
+      endedAt,
+      cardioCandidate.duration_seconds ?? cardioCandidate.durationSeconds ?? 0
+    ),
+    status,
+    source: cardioCandidate.source || 'workout_session',
+  };
+};
+
 const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkout.argument.sets') => {
   const finishedAt = workout.ended_at || workout.finishedAt || workout.created_at || new Date().toISOString();
   const startedAt = workout.started_at || workout.startedAt || finishedAt;
@@ -84,6 +162,15 @@ const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkou
   const workoutName = workout.workout_name || workout.workoutName || null;
   const workoutKey = workout.workout_key != null ? String(workout.workout_key) : null;
   const locationLabel = toAddressLabel(workout.location);
+  const normalizedCardio = normalizeCardioForSyncPayload(
+    workout?.cardio || null,
+    {
+      fallbackSyncId: syncId,
+      fallbackWorkoutKey: workoutKey,
+      fallbackStartedAt: startedAt,
+      fallbackEndedAt: finishedAt,
+    }
+  );
   const incomingClientDebug = (workout?.client_sync_debug && typeof workout.client_sync_debug === 'object')
     ? workout.client_sync_debug
     : {};
@@ -98,6 +185,7 @@ const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkou
     workout_name: workoutName,
     workout_key: workoutKey,
     location: locationLabel,
+    cardio: normalizedCardio,
     sets_origin: setsOrigin,
     client_sync_debug: {
       ...incomingClientDebug,
@@ -127,6 +215,7 @@ const buildSyncPayload = (userId, workout, sets, syncId, setsOrigin = 'logWorkou
       photo_payload: workout.photo_payload || null,
       photo_id: workout.photo_id || null,
       photo_storage_path: photoPath,
+      cardio: normalizedCardio,
     },
     sets: (sets || []).map((set, index) => ({
       exerciseId: set.exercise_id,
@@ -268,6 +357,66 @@ const createDirectSyncProcessor = async (item, session) => {
     }
   }
 
+  const normalizedCardio = normalizeCardioForSyncPayload(
+    item?.cardio || item?.workout?.cardio || null,
+    {
+      fallbackSyncId: item?.sync_id || item?.syncId || item?.id || null,
+      fallbackWorkoutKey: workoutKey,
+      fallbackStartedAt: item?.workout?.started_at || item?.workout?.startedAt || item?.started_at || null,
+      fallbackEndedAt: item?.workout?.ended_at || item?.workout?.finishedAt || item?.ended_at || null,
+    }
+  );
+
+  if (normalizedCardio) {
+    const cardioRow = {
+      user_id: userId,
+      workout_log_id: workoutLog.id,
+      workout_sync_id: normalizedCardio.workout_sync_id || item?.sync_id || item?.syncId || item?.id || null,
+      session_id: normalizedCardio.session_id || normalizedCardio.workout_sync_id || item?.sync_id || item?.syncId || item?.id || null,
+      workout_key: normalizedCardio.workout_key || workoutKey,
+      cardio_type: normalizedCardio.cardio_type,
+      context: normalizedCardio.context,
+      started_at: normalizedCardio.started_at || item?.workout?.started_at || item?.started_at || new Date().toISOString(),
+      ended_at: normalizedCardio.ended_at || item?.workout?.ended_at || item?.ended_at || null,
+      duration_seconds: normalizedCardio.duration_seconds || 0,
+      status: normalizedCardio.status || (normalizedCardio.ended_at ? 'completed' : 'active'),
+      source: normalizedCardio.source || 'workout_sync',
+      synced_at: new Date().toISOString(),
+    };
+
+    if (cardioRow.ended_at && (!cardioRow.duration_seconds || cardioRow.duration_seconds <= 0)) {
+      cardioRow.duration_seconds = deriveDurationSeconds(cardioRow.started_at, cardioRow.ended_at, cardioRow.duration_seconds);
+    }
+
+    try {
+      if (normalizedCardio.cardio_log_id) {
+        const updateResult = await supabase
+          .from('cardio_logs')
+          .update(cardioRow)
+          .eq('id', normalizedCardio.cardio_log_id)
+          .eq('user_id', userId);
+
+        if (updateResult.error) {
+          logger.warn('Falha ao atualizar cardio_logs no fallback direto', {
+            cardioLogId: normalizedCardio.cardio_log_id,
+            workoutLogId: workoutLog.id,
+          }, updateResult.error);
+        }
+      } else {
+        const insertResult = await supabase.from('cardio_logs').insert(cardioRow);
+        if (insertResult.error) {
+          logger.warn('Falha ao inserir cardio_logs no fallback direto', {
+            workoutLogId: workoutLog.id,
+          }, insertResult.error);
+        }
+      }
+    } catch (cardioErr) {
+      logger.warn('Erro inesperado ao persistir cardio no fallback direto', {
+        workoutLogId: workoutLog.id,
+      }, cardioErr);
+    }
+  }
+
   await profileService.updateLastSynced(userId);
 };
 
@@ -348,7 +497,14 @@ export function useSyncWorkout(user) {
   const processWithOfficialSync = useCallback(async (item, session) => {
     if (SHOULD_USE_SERVER_SYNC) {
       try {
-        return await sendViaServer(item, session);
+        const serverResult = await sendViaServer(item, session);
+        const normalizedServerResult = (serverResult && typeof serverResult === 'object')
+          ? serverResult
+          : { data: serverResult };
+        return {
+          ...normalizedServerResult,
+          __syncTransport: 'server',
+        };
       } catch (serverErr) {
         if (!ALLOW_CLIENT_SYNC_FALLBACK) throw serverErr;
         logger.warn('Server sync indisponivel; usando fallback legado no client', { syncId: item.syncId || item.id }, serverErr);
@@ -356,7 +512,11 @@ export function useSyncWorkout(user) {
     }
 
     await createDirectSyncProcessor(item, session);
-    return { success: true, message: 'Workout synced through legacy fallback' };
+    return {
+      success: true,
+      message: 'Workout synced through legacy fallback',
+      __syncTransport: 'legacy',
+    };
   }, [sendViaServer]);
 
   const performSync = useCallback(async () => {
@@ -468,7 +628,8 @@ export function useSyncWorkout(user) {
   const logWorkout = useCallback(async (workout, sets) => {
     const cleanWorkout = sanitizeWorkoutState(workout);
     const cleanSets = sanitizeWorkoutState(sets);
-    const syncId = crypto.randomUUID();
+    const existingSyncId = cleanWorkout?.sync_id || cleanWorkout?.syncId || cleanWorkout?.workout_sync_id || null;
+    const syncId = existingSyncId || crypto.randomUUID();
     const payload = buildSyncPayload(user?.id || null, cleanWorkout, cleanSets, syncId, 'logWorkout.argument.sets');
     let payloadToSend = payload;
 
@@ -495,11 +656,15 @@ export function useSyncWorkout(user) {
         }
       }
 
-      await processWithOfficialSync(payloadToSend, session);
+      const syncResponse = await processWithOfficialSync(payloadToSend, session);
+      const syncMode = syncResponse?.__syncTransport === 'server'
+        ? 'server'
+        : 'legacy_fallback';
+      const syncStatus = syncMode === 'server' ? 'synced' : 'synced_legacy';
 
       if (payload.workout.photo_id) await zyronDB.deletePhoto(payload.workout.photo_id);
-      logger.systemEvent('Treino enviado para nuvem com sucesso', { syncId, mode: SHOULD_USE_SERVER_SYNC ? 'server' : 'fallback' });
-      return { success: true, status: 'synced', syncId };
+      logger.systemEvent('Treino enviado para nuvem com sucesso', { syncId, mode: syncMode });
+      return { success: true, status: syncStatus, syncId, mode: syncMode };
     } catch (err) {
       logger.warn('Erro na sincronizacao imediata, enfileirando...', { syncId }, err);
       const queuedPayload = payloadToSend || payload;

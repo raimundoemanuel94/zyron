@@ -149,6 +149,11 @@ const validateEnum = (value, fieldName = 'field', validValues = []) => {
   return value;
 };
 
+const validateOptionalIdentifier = (value, fieldName = 'id', maxLen = 120) => {
+  if (value === null || value === undefined || value === '') return null;
+  return validateString(String(value), fieldName, 1, maxLen);
+};
+
 /**
  * Validate a complete set (exercise attempt)
  */
@@ -199,6 +204,56 @@ const validatePhoto = (photo, index) => {
 
   return {
     storage_path: validateString(path, `photos[${index}].path`, 1, 500),
+  };
+};
+
+const validateCardio = (cardio) => {
+  if (!cardio || typeof cardio !== 'object') {
+    throw new ValidationError('cardio', 'cardio must be an object');
+  }
+
+  const started_at = validateISOString(cardio.started_at ?? cardio.startedAt, 'cardio.started_at');
+  const endedRaw = cardio.ended_at ?? cardio.endedAt ?? null;
+  const ended_at = endedRaw ? validateISOString(endedRaw, 'cardio.ended_at') : null;
+  const rawDuration = cardio.duration_seconds ?? cardio.durationSeconds ?? null;
+  const duration_seconds = rawDuration == null
+    ? null
+    : validateInteger(rawDuration, 'cardio.duration_seconds', 0);
+  const rawStatus = String(cardio.status || (ended_at ? 'completed' : 'active')).toLowerCase();
+  const status = validateEnum(rawStatus, 'cardio.status', ['idle', 'active', 'completed', 'cancelled', 'aborted']);
+
+  const startMs = new Date(started_at).getTime();
+  const endMs = ended_at ? new Date(ended_at).getTime() : null;
+  if (ended_at && Number.isFinite(startMs) && Number.isFinite(endMs) && endMs < startMs) {
+    throw new ValidationError(
+      'cardio.timing',
+      'cardio.ended_at must be after cardio.started_at',
+      { started_at, ended_at }
+    );
+  }
+
+  const resolvedDuration = Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs
+    ? Math.max(1, Math.round((endMs - startMs) / 1000))
+    : (duration_seconds ?? 0);
+
+  return {
+    cardio_log_id: validateOptionalIdentifier(cardio.cardio_log_id ?? cardio.id ?? null, 'cardio.cardio_log_id', 120),
+    session_id: validateOptionalIdentifier(cardio.session_id ?? cardio.sessionId ?? null, 'cardio.session_id', 160),
+    workout_sync_id: validateOptionalIdentifier(cardio.workout_sync_id ?? cardio.workoutSyncId ?? null, 'cardio.workout_sync_id', 160),
+    workout_log_id: validateOptionalIdentifier(cardio.workout_log_id ?? cardio.workoutLogId ?? null, 'cardio.workout_log_id', 120),
+    workout_key: validateOptionalIdentifier(cardio.workout_key ?? cardio.workoutKey ?? null, 'cardio.workout_key', 120),
+    cardio_type: validateString(
+      cardio.cardio_type ?? cardio.cardioType ?? cardio.type ?? cardio.name ?? 'cardio',
+      'cardio.cardio_type',
+      1,
+      120
+    ),
+    context: cardio.context == null ? null : validateString(cardio.context, 'cardio.context', 1, 120),
+    started_at,
+    ended_at,
+    duration_seconds: resolvedDuration,
+    status,
+    source: cardio.source == null ? 'workout_session' : validateString(cardio.source, 'cardio.source', 1, 40),
   };
 };
 
@@ -274,6 +329,7 @@ export const validateWorkoutSyncPayload = (body) => {
   const workout_key = rawWorkoutKey ? validateString(rawWorkoutKey, 'workout_key', 1, 100) : null;
   const location = normalizeLocation(body.location ?? body.workout?.location ?? null);
   const source = body.source ? validateEnum(body.source, 'source', ['web', 'mobile', 'ios', 'android']) : 'web';
+  const cardio = body.cardio ? validateCardio(body.cardio) : null;
 
   return {
     sync_id,
@@ -286,6 +342,7 @@ export const validateWorkoutSyncPayload = (body) => {
     workout_key,
     location,
     source,
+    cardio,
   };
 };
 

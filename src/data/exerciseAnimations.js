@@ -9,13 +9,13 @@
  *   ↑ SEM /images/ no meio
  */
 
-import { getAnimationUrl } from '../config/animationConfig';
+import { getAnimationUrl, getAnimationFallbackUrl } from '../config/animationConfig';
 
 export const gif = (dbId) => ({
   frame0:   getAnimationUrl(dbId, 0),
   frame1:   getAnimationUrl(dbId, 1),
-  frame0fb: getAnimationUrl(dbId, 0), // Simplificado: usa a mesma URL estável
-  frame1fb: getAnimationUrl(dbId, 1),
+  frame0fb: getAnimationFallbackUrl(dbId, 0),
+  frame1fb: getAnimationFallbackUrl(dbId, 1),
 });
 
 export const EXERCISE_ANIMATIONS = {

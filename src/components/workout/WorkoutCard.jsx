@@ -1,23 +1,25 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, ChevronUp } from 'lucide-react';
+import { Play, ChevronUp, Check, Sparkles } from 'lucide-react';
 import haptics from '../../utils/haptics';
 import ExerciseAnimation from './ExerciseAnimation';
 import { EXERCISE_ANIMATIONS, DEFAULT_ANIMATION } from '../../data/exerciseAnimations';
 import { useExerciseLoads } from '../../hooks/usePersistence';
 
+const ENABLE_EXERCISE_VISUAL_GUIDE = import.meta.env.VITE_ENABLE_EXERCISE_VISUAL_GUIDE === 'true';
+
 // Cores por grupo muscular - visual hierarchy
 const MUSCLE_COLORS = {
-  'Peito':      { badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-  'Costas':     { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
-  'Perna':      { badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-  'BÃ­ceps':     { badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
-  'TrÃ­ceps':    { badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
-  'Ombro':      { badge: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
-  'AbdÃ´men':    { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
-  'Panturrilha':{ badge: 'bg-teal-500/15 text-teal-400 border-teal-500/30' },
-  'AntebraÃ§o':  { badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30' },
-  'GlÃºteos':    { badge: 'bg-pink-500/15 text-pink-400 border-pink-500/30' },
+  'Peito':      { badge: 'bg-amber-500/10 text-amber-300 border-amber-500/18' },
+  'Costas':     { badge: 'bg-blue-500/10 text-blue-300 border-blue-500/18' },
+  'Perna':      { badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/18' },
+  'Bíceps':     { badge: 'bg-purple-500/10 text-purple-300 border-purple-500/18' },
+  'Tríceps':    { badge: 'bg-rose-500/10 text-rose-300 border-rose-500/18' },
+  'Ombro':      { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/18' },
+  'Abdômen':    { badge: 'bg-orange-500/10 text-orange-300 border-orange-500/18' },
+  'Panturrilha':{ badge: 'bg-teal-500/10 text-teal-300 border-teal-500/18' },
+  'Antebraço':  { badge: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/18' },
+  'Glúteos':    { badge: 'bg-pink-500/10 text-pink-300 border-pink-500/18' },
 };
 
 const clampNumber = (value, min, max) => {
@@ -118,7 +120,7 @@ export default function WorkoutCard({
     const restValue = parseInt(restSeconds, 10);
 
     if (!Number.isFinite(repsValue) || repsValue <= 0) {
-      return { error: 'Informe as reps reais desta serie.' };
+      return { error: 'Informe as reps reais desta série.' };
     }
 
     if (weightValue < 0) {
@@ -251,12 +253,13 @@ export default function WorkoutCard({
     <motion.div
       layout
       ref={cardRef}
-      className={`relative bg-neutral-950 backdrop-blur-md border transition-all duration-300 overflow-hidden ${
+      whileHover={!isExpanded ? { scale: 1.005 } : undefined}
+      className={`relative bg-neutral-950/95 backdrop-blur-sm border transition-all duration-200 overflow-hidden ${
         completed
-          ? 'border-emerald-500/30 opacity-70 rounded-2xl'
+          ? 'border-emerald-300/38 bg-emerald-500/[0.045] rounded-2xl'
           : isExpanded
-            ? 'border-yellow-400/55 rounded-[22px] shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_24px_rgba(253,224,71,0.08)] z-10'
-            : 'border-white/7 hover:border-yellow-400/25 rounded-2xl'
+            ? 'border-yellow-400/26 rounded-[22px] shadow-[0_6px_14px_rgba(0,0,0,0.2)] z-10'
+            : 'border-white/7 hover:border-yellow-400/14 rounded-2xl'
       }`}
       style={{
         background: isExpanded
@@ -292,17 +295,17 @@ export default function WorkoutCard({
               transition={{ repeat: Infinity, duration: 1 }}
               className="text-5xl mb-2"
             >
-              ðŸ†
+              PR
             </motion.div>
             <span className="text-2xl font-black italic text-emerald-400 uppercase tracking-widest">NOVO RECORDE!</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* â”€â”€â”€ COLLAPSED STATE â€” Compact Horizontal Row â”€â”€â”€ */}
+      {/* COLLAPSED STATE - Compact Horizontal Row */}
       {!isExpanded && (
-        <div className="relative grid grid-cols-[1fr_auto] items-center gap-3 p-4">
-          <div className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[#F4FF3A]/70" />
+        <div className="relative grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-5">
+          <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full bg-[#F4FF3A]/55" />
           {/* Thumbnail animado */}
           <div
             className="hidden relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer group/thumb border border-white/10 bg-neutral-900 shadow-inner"
@@ -328,28 +331,33 @@ export default function WorkoutCard({
             </div>
           </div>
 
-          {/* InformaÃ§Ãµes do exercÃ­cio */}
-          <div className="min-w-0 pl-2">
+          {/* Informações do exercício */}
+          <div className="min-w-0 pl-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
+              <span className={`text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.06em] border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
                 {ex.group}
               </span>
-              <span className="rounded-full border border-white/8 bg-white/[0.04] px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-white/35">
+              <span className="rounded-full border border-white/12 bg-white/[0.03] px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-white/75">
                 {activeSet}/{ex.sets}
               </span>
               {completed && (
-                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">âœ“ Completo</span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/55 bg-emerald-400/16 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-emerald-100">
+                  <Check size={12} />
+                  Completo
+                </span>
               )}
             </div>
-            <h3 className="text-[16px] font-black uppercase tracking-tight text-white leading-[0.95] truncate">
+            <h3 className="text-[20px] font-black tracking-tight text-white leading-[1.1] truncate">
               {ex.name}
             </h3>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-              <span className="text-[10px] font-bold text-neutral-500">{ex.sets}Ã—{ex.reps}</span>
-              <span className="text-[10px] font-black text-yellow-400">{normalizedLoad} kg</span>
-              <span className="text-[10px] font-bold text-neutral-600">{ex.rest || 60}s descanso</span>
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
+              <span className="text-[13px] font-semibold text-white/86">{ex.sets} x {ex.reps}</span>
+              <span className="text-[13px] font-black text-yellow-300">{normalizedLoad} kg</span>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="text-[12px] font-semibold text-white/56">{ex.rest || 60}s descanso</span>
               {prHistoryLoad && (
-                <span className="text-[10px] font-bold text-neutral-600">PR: {prHistoryLoad}kg</span>
+                <span className="text-[12px] font-semibold text-white/56">PR {prHistoryLoad}kg</span>
               )}
             </div>
           </div>
@@ -362,8 +370,9 @@ export default function WorkoutCard({
                 setIsExpanded(true);
                 cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
-              className="shrink-0 rounded-full border border-[#F4FF3A]/28 bg-[#F4FF3A]/10 px-4 py-2.5 text-[8px] font-black uppercase tracking-widest text-[#F4FF3A] transition-all hover:bg-[#F4FF3A]/16"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-[#F4FF3A]/28 bg-[#F4FF3A]/10 px-4 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-[#F4FF3A] transition-all duration-200 hover:bg-[#F4FF3A]/14"
             >
+              <Sparkles size={14} />
               Registrar
             </button>
           )}
@@ -372,23 +381,28 @@ export default function WorkoutCard({
 
       {/* Expanded state: series logger */}
       {isExpanded && (
-        <div className="flex flex-col p-4 pb-2">
+        <div className="flex flex-col p-6 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className={`text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                <span className={`text-[12px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.06em] border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
                   {ex.group}
                 </span>
-                <span className="rounded-full border border-[#F4FF3A]/22 bg-[#F4FF3A]/8 px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-[#F4FF3A]">
-                  Serie {activeSet}/{ex.sets}
+                <span className="rounded-full border border-[#F4FF3A]/22 bg-[#F4FF3A]/8 px-2.5 py-1 text-[12px] font-black uppercase tracking-[0.06em] text-[#F4FF3A]">
+                  Série {activeSet}/{ex.sets}
                 </span>
               </div>
-              <h3 className="truncate text-[20px] font-black uppercase leading-[0.95] tracking-tight text-white">
+              <h3 className="truncate text-[22px] font-black leading-[1.02] tracking-tight text-white">
                 {ex.name}
               </h3>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-white/38">
-                Alvo {ex.reps} reps - descanso {ex.rest || 60}s
-              </p>
+              <div className="mt-1 flex items-center gap-5 text-[13px]">
+                <span className="font-semibold text-white/84">{ex.sets} x {ex.reps}</span>
+                <span className="font-black text-yellow-300">{normalizedLoad} kg</span>
+              </div>
+              <div className="mt-1 flex items-center gap-4 text-[12px] font-semibold text-white/56">
+                <span>Descanso {ex.rest || 60}s</span>
+                {prHistoryLoad ? <span>PR {prHistoryLoad}kg</span> : null}
+              </div>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); setIsExpanded(false); setShowVideo(false); }}
@@ -413,16 +427,18 @@ export default function WorkoutCard({
                 />
               ))}
             </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
-              className="rounded-full border border-white/8 bg-black/30 px-3 py-1.5 text-[8px] font-black uppercase tracking-widest text-white/45 transition-all hover:text-[#F4FF3A]"
-            >
-              {showVideo ? 'Fechar tecnica' : 'Tecnica'}
-            </button>
+            {ENABLE_EXERCISE_VISUAL_GUIDE && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
+                className="rounded-full border border-white/14 bg-black/25 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/80 transition-all duration-200 hover:text-[#F4FF3A]"
+              >
+                {showVideo ? 'Fechar técnica' : 'Técnica'}
+              </button>
+            )}
           </div>
 
           <AnimatePresence>
-            {showVideo && (
+            {ENABLE_EXERCISE_VISUAL_GUIDE && showVideo && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
@@ -444,9 +460,9 @@ export default function WorkoutCard({
                   />
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
-                    className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 text-[9px] font-black uppercase tracking-widest text-white/45"
+                    className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 text-[12px] font-black uppercase tracking-[0.06em] text-white/80"
                   >
-                    Tecnica visual ativa
+                    Técnica visual ativa
                   </button>
                 </div>
               </motion.div>
@@ -468,9 +484,9 @@ export default function WorkoutCard({
               <div className="rounded-2xl border border-[#F4FF3A]/18 bg-[#F4FF3A]/[0.035] p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[8px] font-black uppercase tracking-widest text-[#F4FF3A]/75">Serie atual</p>
-                    <p className="mt-1 text-sm font-black uppercase tracking-tight text-white">
-                      Serie {activeSet} de {totalSets}
+                    <p className="text-[12px] font-black uppercase tracking-[0.06em] text-[#F4FF3A]/85">Série atual</p>
+                    <p className="mt-1 text-[14px] font-black uppercase tracking-tight text-white">
+                      Série {activeSet} de {totalSets}
                     </p>
                   </div>
                   <button
@@ -479,7 +495,7 @@ export default function WorkoutCard({
                       e.stopPropagation();
                       setSetStatus(prev => prev === 'completed' ? 'failed' : 'completed');
                     }}
-                    className={`rounded-full border px-3 py-1.5 text-[9px] font-black uppercase tracking-widest transition-all ${
+                    className={`rounded-full border px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] transition-all duration-200 ${
                       setStatus === 'failed'
                         ? 'border-red-400/50 bg-red-500/16 text-red-200'
                         : 'border-emerald-400/35 bg-emerald-400/10 text-emerald-300'
@@ -491,7 +507,7 @@ export default function WorkoutCard({
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="rounded-xl border border-white/10 bg-black/35 px-3 py-2">
-                    <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Carga usada</span>
+                    <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-white/72">Carga usada</span>
                     <div className="mt-1 flex items-baseline gap-1">
                       <input
                         type="number"
@@ -507,12 +523,12 @@ export default function WorkoutCard({
                         placeholder="0"
                         className="w-full bg-transparent text-xl font-black text-white outline-none"
                       />
-                      <span className="text-[10px] font-black text-[#F4FF3A]">kg</span>
+                      <span className="text-[12px] font-black text-[#F4FF3A]">kg</span>
                     </div>
                   </label>
 
                   <label className="rounded-xl border border-white/10 bg-black/35 px-3 py-2">
-                    <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Reps feitas</span>
+                    <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-white/72">Reps feitas</span>
                     <input
                       type="number"
                       min="0"
@@ -532,8 +548,8 @@ export default function WorkoutCard({
 
               <div className="rounded-2xl border border-white/8 bg-black/25 px-3 py-2">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[8px] font-black uppercase tracking-widest text-white/35">Series do exercicio</span>
-                  <span className="text-[8px] font-black uppercase tracking-widest text-white/25">
+                  <span className="text-[12px] font-black uppercase tracking-[0.06em] text-white/72">Séries do exercício</span>
+                  <span className="text-[12px] font-black uppercase tracking-[0.06em] text-white/60">
                     {loggedSets.length}/{totalSets} salvas
                   </span>
                 </div>
@@ -556,11 +572,11 @@ export default function WorkoutCard({
                                 : 'border-white/8 bg-white/[0.025]'
                         }`}
                       >
-                        <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">S{setNumber}</span>
-                        <span className="mt-1 block text-[10px] font-black text-white/70">
+                        <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-white/72">S{setNumber}</span>
+                        <span className="mt-1 block text-[12px] font-black text-white/85">
                           {logged ? `${logged.weight_kg}kg x ${logged.reps}` : isActiveSet ? 'Agora' : 'A fazer'}
                         </span>
-                        <span className={`mt-1 block text-[8px] font-black uppercase tracking-widest ${
+                        <span className={`mt-1 block text-[12px] font-black uppercase tracking-[0.06em] ${
                           logged?.status === 'failed'
                             ? 'text-red-300'
                             : logged
@@ -580,7 +596,7 @@ export default function WorkoutCard({
 
               <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.025] px-3 py-2">
                 <label>
-                  <span className="block text-[8px] font-black uppercase tracking-widest text-white/35">Descanso apos a serie</span>
+                    <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-white/72">Descanso após a série</span>
                   <div className="mt-1 flex items-baseline gap-1">
                     <input
                       type="number"
@@ -594,7 +610,7 @@ export default function WorkoutCard({
                       }}
                       className="w-20 bg-transparent text-base font-black text-white outline-none"
                     />
-                    <span className="text-[10px] font-black uppercase text-[#F4FF3A]">s</span>
+                    <span className="text-[12px] font-black uppercase text-[#F4FF3A]">s</span>
                   </div>
                 </label>
 
@@ -608,7 +624,7 @@ export default function WorkoutCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setShowAdvanced(prev => !prev); }}
-                className="w-full rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-left text-[9px] font-black uppercase tracking-widest text-white/40 transition-all hover:text-[#F4FF3A]"
+                className="w-full rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-left text-[12px] font-black uppercase tracking-[0.06em] text-white/75 transition-all duration-200 hover:text-[#F4FF3A]"
               >
                 {showAdvanced ? 'Ocultar detalhes' : '+ Detalhes: RPE / RIR'}
               </button>
@@ -622,7 +638,7 @@ export default function WorkoutCard({
                     className="grid grid-cols-2 gap-2 overflow-hidden"
                   >
                     <label className="rounded-xl bg-white/[0.035] border border-white/8 px-3 py-2">
-                      <span className="block text-[8px] font-black uppercase tracking-widest text-neutral-500">RPE opcional</span>
+                      <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-neutral-400">RPE opcional</span>
                       <input
                         type="number"
                         min="1"
@@ -640,7 +656,7 @@ export default function WorkoutCard({
                     </label>
 
                     <label className="rounded-xl bg-white/[0.035] border border-white/8 px-3 py-2">
-                      <span className="block text-[8px] font-black uppercase tracking-widest text-neutral-500">RIR opcional</span>
+                      <span className="block text-[12px] font-black uppercase tracking-[0.06em] text-neutral-400">RIR opcional</span>
                       <input
                         type="number"
                         min="0"
@@ -661,34 +677,35 @@ export default function WorkoutCard({
               </AnimatePresence>
 
               {(isNewPR || prHistoryLoad) && (
-                <p className={`rounded-xl border px-3 py-2 text-[9px] font-black uppercase tracking-wider ${
+                <p className={`rounded-xl border px-3 py-2 text-[12px] font-black uppercase tracking-[0.06em] ${
                   isNewPR
                     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                     : 'border-white/8 bg-white/[0.025] text-white/35'
                 }`}
                 >
-                  {isNewPR ? 'Novo PR de carga neste exercicio.' : `Carga anterior: ${prHistoryLoad}kg`}
+                  {isNewPR ? 'Novo PR de carga neste exercício.' : `Carga anterior: ${prHistoryLoad}kg`}
                 </p>
               )}
 
               {setError && (
-                <p className="rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-red-300">
+                <p className="rounded-xl border border-red-500/30 bg-red-950/30 px-3 py-2 text-[12px] font-bold uppercase tracking-[0.06em] text-red-300">
                   {setError}
                 </p>
               )}
 
               <motion.button
                 layout
+                whileHover={{ scale: 1.01 }}
                 onClick={(e) => {
                   handleToggleSet(e);
                   if (!isRunning) {
                     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                   }
                 }}
-                className={`w-full h-12 rounded-2xl flex items-center justify-between px-4 transition-all duration-300 font-black ${
+                className={`w-full h-14 rounded-2xl flex items-center justify-between px-4 transition-all duration-200 font-black ${
                   isRunning
-                    ? 'bg-[#F4FF3A] text-neutral-950'
-                    : 'bg-[#F4FF3A]/12 text-[#F4FF3A] border border-[#F4FF3A]/35 hover:bg-[#F4FF3A]/18'
+                    ? 'bg-emerald-400 text-neutral-950 border border-emerald-300 shadow-[0_0_14px_rgba(74,222,128,0.25)]'
+                    : 'bg-[#11140b] text-[#F4FF3A] border-2 border-[#F4FF3A]/55 hover:bg-[#171d0f]'
                 }`}
               >
                 <div className="flex items-center gap-3 leading-none">
@@ -698,20 +715,21 @@ export default function WorkoutCard({
                     <Play className="shrink-0 fill-[#F4FF3A] text-[#F4FF3A]" size={16} />
                   )}
                   <div className="text-left">
-                    <span className={`block text-[8px] font-black uppercase tracking-widest ${isRunning ? 'text-neutral-700' : 'text-white/35'}`}>
-                      Serie {activeSet} de {totalSets}
+                    <span className={`block text-[12px] font-black uppercase tracking-[0.06em] ${isRunning ? 'text-neutral-800' : 'text-white/75'}`}>
+                      Série {activeSet} de {totalSets}
                     </span>
-                    <span className="text-[12px] font-black uppercase tracking-widest">
-                      {isRunning ? 'Finalizar serie' : 'Iniciar serie'}
+                    <span className="text-[14px] font-black uppercase tracking-[0.06em]">
+                      {isRunning ? 'Concluir série' : 'Iniciar série'}
                     </span>
                   </div>
                 </div>
 
                 {!isRunning && (
-                  <span className="text-[9px] font-black uppercase tracking-widest text-white/35">
+                  <span className="text-[12px] font-black uppercase tracking-[0.06em] text-white/72">
                     {setStatus === 'failed' ? 'Falha' : 'Feita'}
                   </span>
                 )}
+                {isRunning && <Check size={18} className="text-neutral-900" />}
               </motion.button>
             </div>
           </motion.div>
