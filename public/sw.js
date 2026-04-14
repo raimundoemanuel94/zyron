@@ -1,11 +1,11 @@
 /**
- * ZYRON Service Worker v5.0.0
+ * ZYRON Service Worker v5.1.0
  * 
  * Estratégia: Network-first para assets dinâmicos, cache-first para estáticos.
  * SEM reloads automáticos. SEM heartbeat. SEM loops.
  * Detecta update e AVISA o cliente — o usuário decide quando atualizar.
  */
-const CACHE_NAME = 'zyron-pwa-v5.0.0';
+const CACHE_NAME = 'zyron-pwa-v5.1.0';
 
 const STATIC_ASSETS = [
   '/',
@@ -70,6 +70,22 @@ self.addEventListener('fetch', (event) => {
 
   // API routes: sempre network (sem cache)
   if (url.pathname.startsWith('/api/')) return;
+
+  // Navegação HTML: network-first para reduzir risco de shell antigo.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
 
   // JS/CSS: Network-first (pega sempre do servidor, fallback pro cache)
   if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {

@@ -128,6 +128,37 @@ function App() {
     setViewManager('app');
   };
 
+  const handleApplyUpdate = async () => {
+    try {
+      if (!('serviceWorker' in navigator)) {
+        window.location.reload();
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration?.waiting) {
+        window.location.reload();
+        return;
+      }
+
+      let refreshed = false;
+      const refreshNow = () => {
+        if (refreshed) return;
+        refreshed = true;
+        window.location.reload();
+      };
+
+      navigator.serviceWorker.addEventListener('controllerchange', refreshNow, { once: true });
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+      // Fallback to prevent stale UI if controllerchange is delayed.
+      window.setTimeout(refreshNow, 2500);
+    } catch (err) {
+      console.warn('[SW] Failed to apply update:', err);
+      window.location.reload();
+    }
+  };
+
   const renderUnauthenticatedArea = () => {
     if (showOnboarding) {
       return (
@@ -220,7 +251,7 @@ function App() {
               Nova versão disponível
             </span>
             <button
-              onClick={() => window.location.reload()}
+              onClick={handleApplyUpdate}
               style={{
                 background: '#cdff5a',
                 color: '#000',
