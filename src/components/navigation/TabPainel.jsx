@@ -32,6 +32,7 @@ function useCountUp(target, duration = 900) {
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const CARD = 'relative overflow-hidden rounded-[18px] bg-[rgba(13,14,16,0.96)] border border-white/[0.065] shadow-[0_10px_34px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)]';
 const NEON = '#CDFF5A';
+const FALLBACK_TIME_ZONE = 'America/Cuiaba';
 
 // ─── Stagger ──────────────────────────────────────────────────────────────────
 const stagger = {
@@ -55,7 +56,8 @@ const getWorkoutIcon = (title = '') => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function TabPainel({
-  user, today, currentWorkout, startSession,
+  user, today, currentWorkout,
+  onOpenWorkout,
   water, waterGoal, isHydrationAlert, handleWaterDrink,
   setWater, protein, proteinGoal, setProtein,
   refreshKey, workoutData,
@@ -100,9 +102,54 @@ export default function TabPainel({
     finally { setLoadingDetail(false); }
   };
 
-  const formatHour = (iso) => {
+  const displayTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_TIME_ZONE;
+
+  const getDatePartsInTimeZone = (dateLike, timeZone = displayTimeZone) => {
+    if (!dateLike) return null;
+    const date = new Date(dateLike);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+
+    const getPart = (type) => parts.find((part) => part.type === type)?.value;
+    const year = Number(getPart('year'));
+    const month = Number(getPart('month'));
+    const day = Number(getPart('day'));
+
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+
+    return { year, month, day };
+  };
+
+  const getDayIndexInTimeZone = (dateLike, timeZone = displayTimeZone) => {
+    const parts = getDatePartsInTimeZone(dateLike, timeZone);
+    if (!parts) return null;
+    const utcDayStart = Date.UTC(parts.year, parts.month - 1, parts.day);
+    return Math.floor(utcDayStart / 86400000);
+  };
+
+  const getWeekDayInTimeZone = (dateLike, timeZone = displayTimeZone) => {
+    const parts = getDatePartsInTimeZone(dateLike, timeZone);
+    if (!parts) return null;
+    return new Date(Date.UTC(parts.year, parts.month - 1, parts.day)).getUTCDay();
+  };
+
+  const formatHour = (iso, timeZone = displayTimeZone) => {
     if (!iso) return '--:--';
-    return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return '--:--';
+    return date.toLocaleTimeString('pt-BR', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const getWorkoutDurationMinutes = (log = {}) => {
@@ -136,11 +183,9 @@ export default function TabPainel({
   );
 
   const getWorkoutDayKey = (log) => {
-    const date = new Date(getWorkoutLogTimestamp(log) || Date.now());
-    return `${date.toDateString()}::${String(log.workout_key || log.workout_name || 'treino')}`;
+    const dayIndex = getDayIndexInTimeZone(getWorkoutLogTimestamp(log) || Date.now());
+    return `${String(dayIndex ?? 'sem-data')}::${String(log.workout_key || log.workout_name || 'treino')}`;
   };
-
-  const getWorkoutLogDate = (log) => new Date(getWorkoutLogTimestamp(log) || Date.now());
 
   const isFinishedWorkoutLog = (log = {}) => {
     const durationMinutes = getWorkoutDurationMinutes(log);
@@ -184,7 +229,13 @@ export default function TabPainel({
       if (error) return;
       if (data?.length > 0) {
         const finishedLogs = data.filter(isFinishedWorkoutLog);
-        setTrainedDays([...new Set(finishedLogs.map(log => getWorkoutLogDate(log).getDay()))]);
+        setTrainedDays(
+          [...new Set(
+            finishedLogs
+              .map((log) => getWeekDayInTimeZone(getWorkoutLogTimestamp(log) || log.created_at))
+              .filter((weekday) => Number.isInteger(weekday))
+          )]
+        );
       } else {
         setTrainedDays([]);
       }
@@ -197,15 +248,30 @@ export default function TabPainel({
     try {
       const { data, error } = await supabase
         .from('workout_logs')
-        .select('*')
+        .select('id,user_id,workout_key,workout_name,created_at,completed_at,started_at,ended_at,duration_minutes,duration_seconds,exercises_completed,location,status,sync_id')
         .eq('user_id', user.id)
+        .eq('status', 'synced')
         .order('created_at', { ascending: false })
-        .limit(24);
-      if (!error && data) {
+        .limit(60);
+
+      if (error) {
+        setRecentActivity([]);
+        return;
+      }
+
+      if (data) {
+        const finishedLogs = data
+          .filter(isFinishedWorkoutLog)
+          .sort((a, b) => {
+            const left = new Date(getWorkoutLogTimestamp(a) || a.created_at || 0).getTime();
+            const right = new Date(getWorkoutLogTimestamp(b) || b.created_at || 0).getTime();
+            return right - left;
+          });
+
         const uniqueByWorkoutDay = [];
         const seen = new Set();
 
-        for (const log of data.filter(isFinishedWorkoutLog)) {
+        for (const log of finishedLogs) {
           const key = getWorkoutDayKey(log);
           if (seen.has(key)) continue;
           seen.add(key);
@@ -215,7 +281,9 @@ export default function TabPainel({
 
         setRecentActivity(uniqueByWorkoutDay);
       }
-    } catch (_) { /* silenced */ }
+    } catch (_) {
+      setRecentActivity([]);
+    }
     finally { setLoadingActivity(false); }
   };
 
@@ -241,17 +309,22 @@ export default function TabPainel({
 
   // ── Format relative date ────────────────────────────────────────────────
   const formatRelativeDate = (isoDate) => {
-    const d = new Date(isoDate);
-    const now = new Date();
-    const diffDays = Math.floor((now - d) / 86400000);
-    if (diffDays === 0) return 'Hoje';
+    const logDayIndex = getDayIndexInTimeZone(isoDate, displayTimeZone);
+    const nowDayIndex = getDayIndexInTimeZone(Date.now(), displayTimeZone);
+
+    if (!Number.isInteger(logDayIndex) || !Number.isInteger(nowDayIndex)) {
+      return 'Hoje';
+    }
+
+    const diffDays = nowDayIndex - logDayIndex;
+    if (diffDays <= 0) return 'Hoje';
     if (diffDays === 1) return 'Ontem';
     return `${diffDays}d atrás`;
   };
 
   const formatRecentLabel = (isoDate) => {
     const label = formatRelativeDate(isoDate);
-    const time = new Date(isoDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const time = formatHour(isoDate, displayTimeZone);
     return `${label} • ${time}`;
   };
 
@@ -342,11 +415,11 @@ export default function TabPainel({
           <motion.button
             variants={stagger.item}
             whileTap={{ scale: 0.97 }}
-            onClick={() => startSession(today)}
-            className="mt-3 w-full rounded-xl bg-[#B6FF00] py-3 text-sm font-semibold text-black transition-transform"
-            style={{ boxShadow: '0 6px 14px rgba(182,255,0,0.16)' }}
+            onClick={() => onOpenWorkout?.(today)}
+            className="mt-3 w-full rounded-xl border border-[#B6FF00]/35 bg-[#B6FF00]/8 py-3 text-sm font-semibold text-[#E8FFAD] transition-transform"
+            style={{ boxShadow: '0 6px 14px rgba(182,255,0,0.09)' }}
           >
-            Iniciar treino
+            Ver treino de hoje
           </motion.button>
         </div>
 
@@ -631,22 +704,18 @@ export default function TabPainel({
                   >
                     {/* Ícone */}
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
-                        style={{ background: i === 0 ? 'rgba(205,255,90,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.07)'}` }}>
-                        {getWorkoutIcon(
-                          log.workout_name
-                          || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
-                        )}
+                        <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
+                          style={{ background: i === 0 ? 'rgba(205,255,90,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.07)'}` }}>
+                        {getWorkoutIcon(log.workout_name || 'Treino')}
                       </div>
                       {/* Texto */}
                       <div>
                         <p className="text-[11.5px] font-bold text-white leading-none">
-                          {log.workout_name
-                            || (workoutData && log.workout_key != null ? workoutData[log.workout_key]?.title : null)
-                            || 'Treino'}
+                          {log.workout_name || 'Treino registrado'}
                         </p>
                         <p className="text-[8.5px] text-neutral-500 font-medium mt-[3px] tracking-wide">
                           {formatRecentLabel(getWorkoutLogTimestamp(log) || log.created_at)}
+                          {log.location ? ` • ${log.location}` : ''}
                           {log.exercises_completed ? ` · ${log.exercises_completed} exerc.` : ''}
                         </p>
                       </div>
@@ -711,9 +780,7 @@ export default function TabPainel({
                       Detalhe do Treino
                     </p>
                     <h3 className="text-[20px] font-black text-white leading-tight">
-                      {selectedLog.workout_name
-                        || (workoutData?.[selectedLog.workout_key]?.title)
-                        || 'Treino'}
+                      {selectedLog.workout_name || 'Treino registrado'}
                     </h3>
                   </div>
                   <motion.button

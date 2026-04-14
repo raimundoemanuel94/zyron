@@ -205,6 +205,14 @@ const deriveDurationSeconds = (startedAt, endedAt, fallback = 0) => {
   return 0;
 };
 
+const SESSION_PHASE = Object.freeze({
+  IDLE: 'idle',
+  ARMING: 'arming',
+  ACTIVE: 'active',
+  COMPLETED: 'completed',
+  INTERRUPTED: 'interrupted',
+});
+
 export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const {
     currentTrack,
@@ -242,6 +250,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('painel');
   const [perfilTab, setPerfilTab] = useState('geral');
   const [isTraining, setIsTraining] = useState(false);
+  const [sessionPhase, setSessionPhase] = useState(SESSION_PHASE.IDLE);
+  const [armingWorkout, setArmingWorkout] = useState(null);
+  const [interruptedSession, setInterruptedSession] = useState(null);
   const [sessionTime, setSessionTime] = useState(0);
   const [videoModal, setVideoModal] = useState(null); // Keep for painel preview
   const [expandedVideo, setExpandedVideo] = useState(null); // For inline workout videos
@@ -352,6 +363,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     commitSessionSets([]);
     commitCardioSession(null);
     syncDebugRef.current = { events: [] };
+    setIsTraining(false);
+    setSessionPhase(SESSION_PHASE.IDLE);
+    setArmingWorkout(null);
+    setInterruptedSession(null);
+    setSessionTime(0);
+    setShowCompletedScreen(false);
     setLastWorkoutSummary(null);
     setSessionStartedAt(null);
     setSessionSyncId(null);
@@ -443,85 +460,30 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   // ZYRON SYNC ENGINE: Offline-first persistence
   const { logWorkout, isOnline, syncPending } = useSyncWorkout(user);
-  const checkinBackendIdRef = useRef(null);
+  const orphanCheckinRecoveryDoneRef = useRef(false);
 
-  const handleCheckinEvent = useCallback(async (event) => {
-    if (!event?.type || !user?.id) return;
+  const handleCheckinEvent = useCallback((event) => {
+    if (!event?.type) return;
 
-    try {
-      if (event.type === 'CHECKIN_START') {
-        const session = event.session;
-        const result = await checkinApi.start({
-          client_session_id: session?.id || null,
-          gym_id: session?.gym_id || 'workout_default',
-          source: session?.source || 'gps',
-          mode: session?.mode || 'auto',
-          timezone: session?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-          started_at_utc: session?.started_at_utc || new Date().toISOString(),
-          started_at_local: session?.started_at_local || new Date().toISOString(),
-          started_lat: session?.started_lat ?? null,
-          started_lng: session?.started_lng ?? null,
-          started_accuracy_m: session?.started_accuracy_m ?? null,
-        });
+    pushSyncDebugEvent('checkin-event', {
+      event_type: event.type,
+      reason: event?.reason || null,
+      captured_at_utc: event?.reading?.captured_at_utc || null,
+      source: event?.reading?.source || event?.session?.source || null,
+    });
 
-        const backendId = result?.data?.checkin?.id || null;
-        if (backendId) checkinBackendIdRef.current = backendId;
-        logger.systemEvent('Check-in iniciado', { backendId, mode: session?.mode, source: session?.source });
-        return;
-      }
-
-      if (event.type === 'CHECKIN_HEARTBEAT') {
-        const checkinId = checkinBackendIdRef.current;
-        if (!checkinId) return;
-
-        await checkinApi.heartbeat({
-          checkin_id: checkinId,
-          heartbeat_at_utc: event?.reading?.captured_at_utc || new Date().toISOString(),
-          source: event?.reading?.source || event?.session?.source || 'gps',
-          heartbeat_lat: event?.reading?.lat ?? null,
-          heartbeat_lng: event?.reading?.lng ?? null,
-          heartbeat_accuracy_m: event?.reading?.accuracy_m ?? null,
-        });
-        return;
-      }
-
-      if (event.type === 'CHECKIN_END') {
-        const checkinId = checkinBackendIdRef.current;
-        if (!checkinId) return;
-
-        const session = event.session || {};
-        await checkinApi.end({
-          checkin_id: checkinId,
-          ended_at_utc: session.ended_at_utc || new Date().toISOString(),
-          ended_at_local: session.ended_at_local || new Date().toISOString(),
-          timezone: session.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-          duration_minutes: Number(session.duration_minutes || 0),
-          ended_reason: event.reason || session.ended_reason || 'manual',
-          source: event?.reading?.source || session.source || 'manual',
-          ended_lat: session.ended_lat ?? event?.reading?.lat ?? null,
-          ended_lng: session.ended_lng ?? event?.reading?.lng ?? null,
-          ended_accuracy_m: session.ended_accuracy_m ?? event?.reading?.accuracy_m ?? null,
-        });
-
-        logger.systemEvent('Check-in finalizado', {
-          checkinId,
-          durationMinutes: session.duration_minutes || 0,
-          reason: event.reason || session.ended_reason || 'manual',
-        });
-        checkinBackendIdRef.current = null;
-      }
-    } catch (err) {
-      logger.warn('Falha na integracao de check-in', {
-        eventType: event?.type,
-        error: err?.message,
-      }, err);
-    }
-  }, [user?.id]);
+    logger.systemEvent('Check-in event observado na sessao', {
+      event_type: event.type,
+      user_id: user?.id || null,
+      reason: event?.reason || null,
+    });
+  }, [pushSyncDebugEvent, user?.id]);
 
   const {
     startWatch: startGymCheckinWatch,
     stopWatch: stopGymCheckinWatch,
     startManualCheckin,
+    endCheckin,
     endByWorkout,
     resetCheckin,
   } = useGymCheckin({
@@ -530,6 +492,43 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     onEvent: handleCheckinEvent,
     onError: (err) => logger.warn('Check-in runtime error', err || {}),
   });
+
+  useEffect(() => {
+    if (!isLoaded || !user?.id || orphanCheckinRecoveryDoneRef.current) return;
+    orphanCheckinRecoveryDoneRef.current = true;
+
+    if (isTraining || isPendingWorkoutSync) return;
+
+    (async () => {
+      try {
+        const endedAtUtc = new Date().toISOString();
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Cuiaba';
+        const recovery = await checkinApi.end({
+          checkin_id: null,
+          ended_at_utc: endedAtUtc,
+          timezone,
+          source: 'manual',
+          duration_minutes: 0,
+          reason: 'orphan_cleanup',
+        });
+
+        const endedCheckin = recovery?.data?.checkin;
+        if (endedCheckin?.id) {
+          logger.warn('Check-in órfão encerrado automaticamente na abertura do app', {
+            checkin_id: endedCheckin.id,
+            reason: endedCheckin.ended_reason || 'orphan_cleanup',
+          });
+        }
+      } catch (err) {
+        const notFound = err?.status === 404 || err?.code === 'CHECKIN_NOT_FOUND';
+        if (!notFound) {
+          logger.warn('Falha ao tentar limpar check-in órfão na abertura', {
+            error: err?.message,
+          }, err);
+        }
+      }
+    })();
+  }, [isLoaded, isPendingWorkoutSync, isTraining, user?.id]);
 
   const captureCurrentPosition = useCallback(() => new Promise((resolve) => {
     if (!navigator.geolocation) {
@@ -592,23 +591,95 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     if (savedVersion !== CURRENT_VERSION) {
       localStorage.removeItem('gym_active_session');
       localStorage.setItem('gym_version', CURRENT_VERSION);
+      setIsTraining(false);
+      setSessionPhase(SESSION_PHASE.IDLE);
+      setArmingWorkout(null);
+      setInterruptedSession(null);
     } else {
       try {
         if (savedSession) {
           const session = JSON.parse(savedSession);
           if (session && session.date === todayStr) {
-            setIsTraining(!!session.isTraining);
+            const restoredSets = Array.isArray(session.sessionSets) ? session.sessionSets : [];
+            const startedAtMs = session.sessionStartedAt
+              ? new Date(session.sessionStartedAt).getTime()
+              : NaN;
+            const sessionAgeMinutes = Number.isFinite(startedAtMs)
+              ? Math.max(0, Math.round((Date.now() - startedAtMs) / 60000))
+              : null;
+            const staleEmptyTraining = Boolean(session.isTraining)
+              && restoredSets.length === 0
+              && (sessionAgeMinutes === null || sessionAgeMinutes >= 30);
+            if (staleEmptyTraining) {
+              logger.warn('Sessão ativa vazia descartada na recuperação local', {
+                sessionSyncId: session.sessionSyncId || session.session_sync_id || null,
+                ageMinutes: sessionAgeMinutes,
+              });
+              localStorage.removeItem('gym_active_session');
+              setIsTraining(false);
+              setIsPendingWorkoutSync(false);
+              commitSessionSets([]);
+              commitCardioSession(null);
+              setSessionStartedAt(null);
+              setSessionSyncId(null);
+              setSessionLocation(null);
+              setSessionPhase(SESSION_PHASE.IDLE);
+              setArmingWorkout(null);
+              setInterruptedSession(null);
+            }
+
+            if (!staleEmptyTraining) {
+            const restoredSyncId = session.sessionSyncId || session.session_sync_id || null;
+            const pendingSync = Boolean(session.pending_sync);
+            const restoredPhase = typeof session.sessionPhase === 'string'
+              ? session.sessionPhase
+              : null;
+            const shouldRecoverAsInterrupted = Boolean(session.isTraining)
+              || restoredPhase === SESSION_PHASE.INTERRUPTED;
+
+            if (shouldRecoverAsInterrupted) {
+              setIsTraining(false);
+              setSessionPhase(SESSION_PHASE.INTERRUPTED);
+              setArmingWorkout(null);
+              setInterruptedSession(
+                session.interruptedSession && typeof session.interruptedSession === 'object'
+                  ? session.interruptedSession
+                  : {
+                      reason: session.interrupted_reason || 'restored_after_reload',
+                      restored_at: new Date().toISOString(),
+                      sync_id: restoredSyncId,
+                      workout_key: session.selectedWorkoutKey ?? null,
+                      sets_count: restoredSets.length,
+                    }
+              );
+              setActiveTab('workout');
+            } else if (restoredPhase === SESSION_PHASE.ARMING && session.armingWorkout) {
+              setIsTraining(false);
+              setSessionPhase(SESSION_PHASE.ARMING);
+              setArmingWorkout(session.armingWorkout);
+              setInterruptedSession(null);
+              setActiveTab('workout');
+            } else if (pendingSync) {
+              setIsTraining(false);
+              setSessionPhase(SESSION_PHASE.COMPLETED);
+              setArmingWorkout(null);
+              setInterruptedSession(null);
+            } else {
+              setIsTraining(false);
+              setSessionPhase(SESSION_PHASE.IDLE);
+              setArmingWorkout(null);
+              setInterruptedSession(null);
+            }
             setSelectedWorkoutKey(session.selectedWorkoutKey !== undefined ? session.selectedWorkoutKey : null);
             // completedExercises gerenciado pelo hook useExerciseCompletion — não precisa setter manual
             setSessionTime(Number(session.sessionTime) || 0);
-            const restoredSets = Array.isArray(session.sessionSets) ? session.sessionSets : [];
             commitSessionSets(restoredSets);
             setSessionStartedAt(session.sessionStartedAt || null);
-            setSessionSyncId(session.sessionSyncId || session.session_sync_id || null);
+            setSessionSyncId(restoredSyncId);
             setSessionLocation(session.sessionLocation || null);
             commitCardioSession(session.cardioSession || session.cardio || null);
-            setIsPendingWorkoutSync(Boolean(session.pending_sync));
-            if (session.isTraining) setActiveTab('workout');
+            setIsPendingWorkoutSync(pendingSync);
+            }
           }
         }
       } catch (e) {
@@ -677,13 +748,19 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   // Save Session Persistence
   useEffect(() => {
     if (!isLoaded) return;
-    if (isTraining || isPendingWorkoutSync) {
+    if (
+      isTraining
+      || isPendingWorkoutSync
+      || sessionPhase === SESSION_PHASE.INTERRUPTED
+      || sessionPhase === SESSION_PHASE.ARMING
+    ) {
       try {
         const todayStr = new Date().toDateString();
         // NUCLEAR CLEANING: Use the new sanitizer utility to prevent circularity
         const rawSession = {
           date: todayStr,
-          isTraining,
+          isTraining: sessionPhase === SESSION_PHASE.ACTIVE,
+          sessionPhase,
           pending_sync: isPendingWorkoutSync,
           selectedWorkoutKey,
           completedExercises,
@@ -693,6 +770,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           sessionSyncId,
           sessionLocation,
           cardioSession,
+          armingWorkout,
+          interruptedSession,
+          interrupted_reason: interruptedSession?.reason || null,
         };
         
         const cleanSession = sanitizeWorkoutState(rawSession);
@@ -703,7 +783,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     } else {
       localStorage.removeItem('gym_active_session');
     }
-  }, [isTraining, isPendingWorkoutSync, selectedWorkoutKey, completedExercises, sessionTime, sessionSets, sessionStartedAt, sessionSyncId, sessionLocation, cardioSession, isLoaded]);
+  }, [isTraining, isPendingWorkoutSync, sessionPhase, selectedWorkoutKey, completedExercises, sessionTime, sessionSets, sessionStartedAt, sessionSyncId, sessionLocation, cardioSession, armingWorkout, interruptedSession, isLoaded]);
 
   // Session Timer Logic
   useEffect(() => {
@@ -743,6 +823,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
 
     setIsTraining(true);
+    setSessionPhase(SESSION_PHASE.ACTIVE);
+    setArmingWorkout(null);
+    setInterruptedSession(null);
     setSelectedWorkoutKey(safeKey);
     setActiveTab('workout');
     setSessionTime(0);
@@ -782,7 +865,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       updated_at: startedAtIso,
     };
 
-    checkinBackendIdRef.current = null;
     await resetCheckin();
 
     const initialPos = await captureCurrentPosition();
@@ -818,6 +900,47 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
     // completedExercises gerenciado internamente pelo hook useExerciseCompletion
   };
+
+  const openWorkoutTab = useCallback((workoutKey) => {
+    const parsedKey = Number(workoutKey);
+    const safeKey = Number.isFinite(parsedKey) ? parsedKey : today;
+    setSelectedWorkoutKey(safeKey);
+    setActiveTab('workout');
+  }, [today]);
+
+  const requestSessionStart = useCallback((workoutKey) => {
+    if (sessionPhase === SESSION_PHASE.INTERRUPTED && interruptedSession) {
+      setActiveTab('workout');
+      setToastMessage({ icon: '!', text: 'Finalize a sessao pausada antes de iniciar outra.' });
+      setTimeout(() => setToastMessage(null), 2400);
+      return;
+    }
+
+    const parsedKey = Number(workoutKey);
+    const safeKey = Number.isFinite(parsedKey) ? parsedKey : today;
+    const targetWorkout = availableWorkouts?.[safeKey] || availableWorkouts?.[String(safeKey)] || null;
+
+    setSelectedWorkoutKey(safeKey);
+    setArmingWorkout({
+      key: safeKey,
+      title: targetWorkout?.title || 'Treino',
+      focus: targetWorkout?.focus || null,
+    });
+    setInterruptedSession(null);
+    setSessionPhase(SESSION_PHASE.ARMING);
+    setActiveTab('workout');
+  }, [availableWorkouts, interruptedSession, sessionPhase, today]);
+
+  const cancelSessionArming = useCallback(() => {
+    setArmingWorkout(null);
+    setSessionPhase(SESSION_PHASE.IDLE);
+  }, []);
+
+  const confirmSessionArming = useCallback(async () => {
+    if (!armingWorkout?.key) return;
+    await startSession(armingWorkout.key);
+  }, [armingWorkout, startSession]);
+
   const captureSessionSet = useCallback((exerciseId, setData) => {
     if (!setData) return null;
 
@@ -996,6 +1119,113 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   }, [commitCardioSession, normalizeCardioForSync, pushSyncDebugEvent, sessionSyncId]);
 
+  const interruptActiveSession = useCallback(async (reason = 'manual_interrupt') => {
+    if (!isTraining) return;
+
+    if (cardioSessionRef.current?.status === 'active') {
+      await handleStopCardio({
+        reason: 'cancel',
+        silent: true,
+        force: true,
+      });
+    }
+
+    try {
+      endCheckin('manual_pause');
+      await stopGymCheckinWatch();
+    } catch (checkinErr) {
+      logger.warn('Falha ao pausar check-in durante interrupcao da sessao', {
+        error: checkinErr?.message,
+      }, checkinErr);
+    }
+
+    const interruptedAt = new Date().toISOString();
+    setInterruptedSession({
+      reason,
+      interrupted_at: interruptedAt,
+      sync_id: sessionSyncId || null,
+      workout_key: selectedWorkoutKey ?? null,
+      elapsed_seconds: Number(sessionTime) || 0,
+      sets_count: Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current.length : 0,
+    });
+    setArmingWorkout(null);
+    setSessionPhase(SESSION_PHASE.INTERRUPTED);
+    setIsTraining(false);
+
+    pushSyncDebugEvent('session-interrupted', {
+      reason,
+      elapsed_seconds: Number(sessionTime) || 0,
+      sets_count: Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current.length : 0,
+    });
+    setToastMessage({ icon: '!', text: 'Sessao pausada. Retome ou descarte no treino.' });
+    setTimeout(() => setToastMessage(null), 2600);
+  }, [endCheckin, handleStopCardio, isTraining, pushSyncDebugEvent, selectedWorkoutKey, sessionSyncId, sessionTime, stopGymCheckinWatch]);
+
+  const resumeInterruptedSession = useCallback(async () => {
+    if (isTraining) return;
+
+    const resumedAt = new Date().toISOString();
+    const effectiveSyncId = sessionSyncId || interruptedSession?.sync_id || crypto.randomUUID();
+    if (!sessionSyncId) setSessionSyncId(effectiveSyncId);
+
+    setArmingWorkout(null);
+    setInterruptedSession(null);
+    setSessionPhase(SESSION_PHASE.ACTIVE);
+    setIsTraining(true);
+    setActiveTab('workout');
+
+    await resetCheckin();
+    const initialPos = await captureCurrentPosition();
+    if (initialPos?.coords) {
+      const { latitude, longitude } = initialPos.coords;
+      const label = await reverseGeocodeLocation(latitude, longitude);
+      if (label) setSessionLocation(label);
+
+      const dynamicGym = {
+        id: `gym_${selectedWorkoutKey ?? today}`,
+        lat: Number(latitude),
+        lng: Number(longitude),
+        radiusM: 120,
+      };
+
+      const started = await startGymCheckinWatch(dynamicGym, initialPos);
+      if (!started) startManualCheckin();
+    } else {
+      startManualCheckin();
+    }
+
+    pushSyncDebugEvent('session-resumed', {
+      resumed_at: resumedAt,
+      workout_key: selectedWorkoutKey ?? null,
+      sync_id: effectiveSyncId,
+      sets_count: Array.isArray(sessionSetsRef.current) ? sessionSetsRef.current.length : 0,
+    });
+  }, [captureCurrentPosition, interruptedSession?.sync_id, isTraining, pushSyncDebugEvent, resetCheckin, reverseGeocodeLocation, selectedWorkoutKey, sessionSyncId, startGymCheckinWatch, startManualCheckin, today]);
+
+  const discardInterruptedSession = useCallback(async () => {
+    if (cardioSessionRef.current?.status === 'active') {
+      await handleStopCardio({
+        reason: 'cancel',
+        silent: true,
+        force: true,
+      });
+    }
+
+    try {
+      endCheckin('manual_discard');
+      await stopGymCheckinWatch();
+    } catch (checkinErr) {
+      logger.warn('Falha ao encerrar check-in ao descartar sessao interrompida', {
+        error: checkinErr?.message,
+      }, checkinErr);
+    }
+
+    clearWorkoutSessionState();
+    setActiveTab('workout');
+    setToastMessage({ icon: '✓', text: 'Sessao interrompida descartada.' });
+    setTimeout(() => setToastMessage(null), 2400);
+  }, [clearWorkoutSessionState, endCheckin, handleStopCardio, stopGymCheckinWatch]);
+
   const handleExerciseComplete = async (id, isFinal = true, setData = null) => {
     const capturedSet = captureSessionSet(id, setData);
     const effectiveSetData = capturedSet || setData;
@@ -1036,13 +1266,35 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
       const hasExercisesInWorkout = Array.isArray(currentWorkout?.exercises) && currentWorkout.exercises.length > 0;
       if (hasExercisesInWorkout && safeSetsSnapshot.length === 0) {
-        pushSyncDebugEvent('finalize-blocked-no-sets', {
+        pushSyncDebugEvent('finalize-discarded-no-sets', {
           workout_key: String(selectedWorkoutKey || today),
           exercises_count: currentWorkout.exercises.length,
         });
-        setToastMessage({ icon: '!', text: 'Registre ao menos 1 serie antes de finalizar' });
-        setTimeout(() => setToastMessage(null), 2800);
+
+        if (cardioSessionRef.current?.status === 'active') {
+          await handleStopCardio({
+            reason: 'cancel',
+            silent: true,
+            force: true,
+          });
+        }
+
+        try {
+          endCheckin('manual');
+          await stopGymCheckinWatch();
+        } catch (checkinErr) {
+          logger.warn('Falha ao encerrar check-in em descarte de sessão', {
+            error: checkinErr?.message,
+          }, checkinErr);
+        }
+
+        clearWorkoutSessionState();
+        setIsTraining(false);
+        setShowCompletedScreen(false);
+        setPainelRefreshKey((k) => k + 1);
         haptics.medium();
+        setToastMessage({ icon: '✓', text: 'Sessão descartada sem salvar treino' });
+        setTimeout(() => setToastMessage(null), 2400);
         return;
       }
 
@@ -1090,6 +1342,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       setIsPendingWorkoutSync(true);
       setShowCompletedScreen(true);
       setIsTraining(false);
+      setSessionPhase(SESSION_PHASE.COMPLETED);
+      setArmingWorkout(null);
+      setInterruptedSession(null);
     }
   };
 
@@ -1561,7 +1816,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             <TabPainel
               user={mergedUser}
               today={today} currentWorkout={currentWorkout}
-              startSession={startSession} water={water} waterGoal={waterGoal}
+              onOpenWorkout={openWorkoutTab} water={water} waterGoal={waterGoal}
               isHydrationAlert={isHydrationAlert} handleWaterDrink={handleWaterDrink}
               setWater={setWater}
               protein={protein} proteinGoal={proteinGoal} setProtein={setProtein}
@@ -1576,7 +1831,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               <SessaoTreinoPremium
                 today={today}
                 workoutData={availableWorkouts}
-                startSession={startSession}
+                startSession={requestSessionStart}
+                confirmSessionStart={confirmSessionArming}
+                cancelSessionStart={cancelSessionArming}
+                sessionPhase={sessionPhase}
+                armingWorkout={armingWorkout}
+                interruptedSession={interruptedSession}
+                onResumeInterruptedSession={resumeInterruptedSession}
+                onDiscardInterruptedSession={discardInterruptedSession}
+                onInterruptSession={interruptActiveSession}
                 setVideoModal={setVideoModal}
                 isTraining={isTraining}
                 setIsTraining={handleFinishSession}
@@ -1751,7 +2014,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
               <div className="px-4 pb-5 pt-2 space-y-2 max-h-[58vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-                {/* Iniciar Treino — CTA principal */}
+                {/* Abrir Treino — navegação sem iniciar sessão */}
                 <motion.button
                   whileTap={{ scale: 0.97 }}
                   initial={{ opacity: 0, y: 10 }}
@@ -1760,7 +2023,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   onClick={() => {
                     setFabOpen(false);
                     if (window.navigator?.vibrate) window.navigator.vibrate(40);
-                    setTimeout(() => startSession(Number(today)), 120);
+                    setTimeout(() => openWorkoutTab(Number(today)), 120);
                   }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[18px] bg-[#B4FF3C] group"
                   style={{ boxShadow: '0 0 20px rgba(180,255,60,0.3), 0 6px 16px rgba(0,0,0,0.4)' }}
@@ -1770,8 +2033,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                       <Zap size={16} className="text-neutral-950" />
                     </div>
                     <div className="text-left">
-                      <span className="block text-neutral-950 text-[12px] font-black uppercase tracking-widest leading-tight">Iniciar Treino</span>
-                      <span className="block text-neutral-950/60 text-[9px] font-semibold uppercase tracking-widest mt-0.5">Sugestão do dia</span>
+                      <span className="block text-neutral-950 text-[12px] font-black uppercase tracking-widest leading-tight">Abrir Treino</span>
+                      <span className="block text-neutral-950/60 text-[9px] font-semibold uppercase tracking-widest mt-0.5">Ver detalhes antes de iniciar</span>
                     </div>
                   </div>
                   <ChevronRight size={16} className="text-neutral-950/50 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />

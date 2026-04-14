@@ -1,4 +1,5 @@
-import { supabase } from '../../lib/supabase';
+import { getSessionOrHandleInvalidRefresh } from '../../lib/sessionRecovery';
+import { buildApiUrl, getApiPathname, isLocalDevApiUrl } from '../api/baseUrl';
 
 const parseResponse = async (response) => {
   const json = await response.json().catch(() => ({}));
@@ -13,13 +14,17 @@ const parseResponse = async (response) => {
   return json;
 };
 
-const isLocalDevCheckinRoute = (url) =>
-  import.meta.env.DEV && typeof url === 'string' && url.startsWith('/api/checkins/');
+const isLocalDevCheckinRoute = (url) => {
+  const path = getApiPathname(url);
+  return import.meta.env.DEV && path.startsWith('/api/checkins/') && isLocalDevApiUrl(url);
+};
 const USE_LOCAL_CHECKIN_HTTP_IN_DEV = import.meta.env.VITE_LOCAL_CHECKIN_HTTP === 'true';
 
 const buildLocalDevFallback = (url, body = {}) => {
   const nowIso = new Date().toISOString();
-  if (url === '/api/checkins/start') {
+  const path = getApiPathname(url);
+
+  if (path === '/api/checkins/start') {
     return {
       local_only: true,
       ok: true,
@@ -34,7 +39,7 @@ const buildLocalDevFallback = (url, body = {}) => {
     };
   }
 
-  if (url === '/api/checkins/heartbeat') {
+  if (path === '/api/checkins/heartbeat') {
     return {
       local_only: true,
       ok: true,
@@ -44,7 +49,7 @@ const buildLocalDevFallback = (url, body = {}) => {
     };
   }
 
-  if (url === '/api/checkins/end') {
+  if (path === '/api/checkins/end') {
     return {
       local_only: true,
       ok: true,
@@ -63,12 +68,13 @@ const buildLocalDevFallback = (url, body = {}) => {
 };
 
 const postWithAuth = async (url, body) => {
-  if (isLocalDevCheckinRoute(url) && !USE_LOCAL_CHECKIN_HTTP_IN_DEV) {
-    console.info(`[checkinApi] modo local ativo para ${url} (sem request HTTP no npm run dev)`);
-    return buildLocalDevFallback(url, body);
+  const endpoint = buildApiUrl(url);
+  if (isLocalDevCheckinRoute(endpoint) && !USE_LOCAL_CHECKIN_HTTP_IN_DEV) {
+    console.info(`[checkinApi] modo local ativo para ${endpoint} (sem request HTTP no npm run dev)`);
+    return buildLocalDevFallback(endpoint, body);
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { session } = await getSessionOrHandleInvalidRefresh();
   if (!session?.access_token) {
     const err = new Error('Sessao invalida para check-in');
     err.code = 'UNAUTHORIZED';
@@ -76,7 +82,7 @@ const postWithAuth = async (url, body) => {
   }
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,16 +94,16 @@ const postWithAuth = async (url, body) => {
     try {
       return await parseResponse(response);
     } catch (error) {
-      if (error?.status === 404 && isLocalDevCheckinRoute(url)) {
-        console.warn(`[checkinApi] local fallback ativo para ${url} (endpoint indisponível no npm run dev)`);
-        return buildLocalDevFallback(url, body);
+      if (error?.status === 404 && isLocalDevCheckinRoute(endpoint)) {
+        console.warn(`[checkinApi] local fallback ativo para ${endpoint} (endpoint indisponível no npm run dev)`);
+        return buildLocalDevFallback(endpoint, body);
       }
       throw error;
     }
   } catch (networkError) {
-    if (isLocalDevCheckinRoute(url)) {
-      console.warn(`[checkinApi] local fallback ativo para ${url} (falha de rede local)`);
-      return buildLocalDevFallback(url, body);
+    if (isLocalDevCheckinRoute(endpoint)) {
+      console.warn(`[checkinApi] local fallback ativo para ${endpoint} (falha de rede local)`);
+      return buildLocalDevFallback(endpoint, body);
     }
     throw networkError;
   }

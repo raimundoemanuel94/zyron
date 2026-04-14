@@ -425,9 +425,26 @@ export function useGymCheckin({
   const endByWorkout = useCallback(() => endCheckin('workout_finished'), [endCheckin]);
 
   const resetCheckin = useCallback(async () => {
+    const wasActive = (
+      stateRef.current.status === CHECKIN_STATUS.ACTIVE
+      || stateRef.current.status === CHECKIN_STATUS.MANUAL_ACTIVE
+      || Boolean(stateRef.current.session)
+    );
+
+    if (wasActive) {
+      try {
+        endCheckin('manual_reset');
+      } catch (err) {
+        logger.warn('Falha ao encerrar check-in durante reset', { error: err?.message });
+      }
+    }
+
     await clearWatch();
+    clearApiTimers();
+    checkinDbIdRef.current = null;
+    apiStartLockRef.current = false;
     updateState(createInitialCheckinState());
-  }, [clearWatch, updateState]);
+  }, [clearApiTimers, clearWatch, endCheckin, updateState]);
 
   useEffect(() => {
     stateRef.current = state;

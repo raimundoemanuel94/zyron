@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { getSessionOrHandleInvalidRefresh } from '../../lib/sessionRecovery';
+import { buildApiUrl } from '../../services/api/baseUrl';
 import { C, Badge } from '../../styles/ds';
 
 const CONTEXTS = [
@@ -37,7 +38,7 @@ const FALLBACKS = {
 };
 
 const getAuthHeader = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { session } = await getSessionOrHandleInvalidRefresh();
   if (!session?.access_token) {
     throw new Error('Sessao invalida');
   }
@@ -47,7 +48,7 @@ const getAuthHeader = async () => {
 
 const fetchCoachAnalysis = async (context) => {
   const auth = await getAuthHeader();
-  const response = await fetch('/api/ai/coach', {
+  const response = await fetch(buildApiUrl('/api/ai/coach'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

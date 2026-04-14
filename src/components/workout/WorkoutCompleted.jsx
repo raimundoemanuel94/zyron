@@ -5,6 +5,7 @@ import { db } from '../../utils/db';
 import logger from '../../utils/logger';
 import { generateShareableImage, getLocalizedDayName } from '../../utils/imageGenerator';
 import { supabase } from '../../lib/supabase';
+import { getSessionOrHandleInvalidRefresh } from '../../lib/sessionRecovery';
 
 export default function WorkoutCompleted({ workout, sets, onFinish }) {
   const [photo, setPhoto] = useState(null);
@@ -18,7 +19,7 @@ export default function WorkoutCompleted({ workout, sets, onFinish }) {
   useEffect(() => {
     const fetchWeeklyStreak = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { session } = await getSessionOrHandleInvalidRefresh();
         if (!session) return;
 
         const now = new Date();

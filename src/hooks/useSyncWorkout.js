@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getSessionOrHandleInvalidRefresh } from '../lib/sessionRecovery';
 import logger from '../utils/logger';
 import { db as zyronDB } from '../utils/db';
 import { sanitizeWorkoutState } from '../utils/sanitizer';
 import { profileService } from '../core/profile/profileService';
+import { buildApiUrl } from '../services/api/baseUrl';
 
 const SHOULD_USE_SERVER_SYNC = import.meta.env.VITE_USE_SERVER_SYNC !== 'false';
 const ALLOW_CLIENT_SYNC_FALLBACK = import.meta.env.DEV || import.meta.env.VITE_ALLOW_CLIENT_SYNC_FALLBACK === 'true';
@@ -477,7 +479,8 @@ export function useSyncWorkout(user) {
       sets_origin: setsOrigin,
     });
 
-    const response = await fetch('/api/sync-workout', {
+    const endpoint = buildApiUrl('/api/sync-workout');
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -487,8 +490,31 @@ export function useSyncWorkout(user) {
     });
 
     const result = await response.json().catch(() => ({}));
+    console.log('[sync-debug][front][post-response]', {
+      sync_id: syncId,
+      endpoint,
+      status: response.status,
+      ok: response.ok,
+      body: result,
+    });
+    logger.systemEvent('[sync-debug][front][post-response]', {
+      sync_id: syncId,
+      status: response.status,
+      ok: response.ok,
+      error_code: result?.error?.code || result?.code || null,
+      error_message: result?.error?.message || result?.message || null,
+    });
     if (!response.ok) {
-      throw new Error(result.details || result.error || `HTTP ${response.status}`);
+      const err = new Error(
+        result?.details
+        || result?.error?.message
+        || result?.error
+        || result?.message
+        || `HTTP ${response.status}`
+      );
+      err.status = response.status;
+      err.payload = result;
+      throw err;
     }
 
     return result;
@@ -529,7 +555,7 @@ export function useSyncWorkout(user) {
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
+      const { session } = await getSessionOrHandleInvalidRefresh();
       if (!session) return;
 
       logger.systemEvent('Iniciando sincronizacao de itens pendentes', { items: queue.length });
@@ -645,7 +671,7 @@ export function useSyncWorkout(user) {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { session } = await getSessionOrHandleInvalidRefresh();
       if (!session) throw new Error('No active session');
 
       if (payload.workout.photo_payload) {

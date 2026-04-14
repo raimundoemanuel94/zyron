@@ -1,4 +1,5 @@
-import { supabase } from '../../lib/supabase';
+import { getSessionOrHandleInvalidRefresh } from '../../lib/sessionRecovery';
+import { buildApiUrl, getApiPathname, isLocalDevApiUrl } from '../api/baseUrl';
 
 const parseResponse = async (response) => {
   const json = await response.json().catch(() => ({}));
@@ -13,8 +14,10 @@ const parseResponse = async (response) => {
   return json;
 };
 
-const isLocalDevCardioRoute = (url) =>
-  import.meta.env.DEV && typeof url === 'string' && url.startsWith('/api/cardio/');
+const isLocalDevCardioRoute = (url) => {
+  const path = getApiPathname(url);
+  return import.meta.env.DEV && path.startsWith('/api/cardio/') && isLocalDevApiUrl(url);
+};
 const USE_LOCAL_CARDIO_HTTP_IN_DEV = import.meta.env.VITE_LOCAL_CARDIO_HTTP === 'true';
 const localCardioMemory = new Map();
 
@@ -29,10 +32,11 @@ const deriveDuration = (startedAt, endedAt) => {
 
 const buildLocalDevFallback = (url, body = {}) => {
   const nowIso = new Date().toISOString();
+  const path = getApiPathname(url);
   const sessionKey = body.session_id || body.workout_sync_id || body.cardio_log_id || `local-cardio-${Date.now()}`;
   const persisted = localCardioMemory.get(sessionKey) || null;
 
-  if (url === '/api/cardio/start') {
+  if (path === '/api/cardio/start') {
     if (persisted?.status === 'active') {
       return {
         local_only: true,
@@ -62,7 +66,7 @@ const buildLocalDevFallback = (url, body = {}) => {
     };
   }
 
-  if (url === '/api/cardio/end') {
+  if (path === '/api/cardio/end') {
     const active = persisted || null;
     const endedAt = body.ended_at || nowIso;
     const base = active || {
@@ -98,12 +102,13 @@ const buildLocalDevFallback = (url, body = {}) => {
 };
 
 const postWithAuth = async (url, body) => {
-  if (isLocalDevCardioRoute(url) && !USE_LOCAL_CARDIO_HTTP_IN_DEV) {
-    console.info(`[cardioApi] modo local ativo para ${url} (sem request HTTP no npm run dev)`);
-    return buildLocalDevFallback(url, body);
+  const endpoint = buildApiUrl(url);
+  if (isLocalDevCardioRoute(endpoint) && !USE_LOCAL_CARDIO_HTTP_IN_DEV) {
+    console.info(`[cardioApi] modo local ativo para ${endpoint} (sem request HTTP no npm run dev)`);
+    return buildLocalDevFallback(endpoint, body);
   }
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { session } = await getSessionOrHandleInvalidRefresh();
   if (!session?.access_token) {
     const err = new Error('Sessão inválida para cardio');
     err.code = 'UNAUTHORIZED';
@@ -111,7 +116,7 @@ const postWithAuth = async (url, body) => {
   }
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -123,16 +128,16 @@ const postWithAuth = async (url, body) => {
     try {
       return await parseResponse(response);
     } catch (error) {
-      if (error?.status === 404 && isLocalDevCardioRoute(url)) {
-        console.warn(`[cardioApi] local fallback ativo para ${url} (endpoint indisponível no npm run dev)`);
-        return buildLocalDevFallback(url, body);
+      if (error?.status === 404 && isLocalDevCardioRoute(endpoint)) {
+        console.warn(`[cardioApi] local fallback ativo para ${endpoint} (endpoint indisponível no npm run dev)`);
+        return buildLocalDevFallback(endpoint, body);
       }
       throw error;
     }
   } catch (networkError) {
-    if (isLocalDevCardioRoute(url)) {
-      console.warn(`[cardioApi] local fallback ativo para ${url} (falha de rede local)`);
-      return buildLocalDevFallback(url, body);
+    if (isLocalDevCardioRoute(endpoint)) {
+      console.warn(`[cardioApi] local fallback ativo para ${endpoint} (falha de rede local)`);
+      return buildLocalDevFallback(endpoint, body);
     }
     throw networkError;
   }

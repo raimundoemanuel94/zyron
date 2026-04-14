@@ -38,6 +38,14 @@ export default function SessaoTreinoPremium({
   today,
   workoutData,
   startSession,
+  confirmSessionStart = null,
+  cancelSessionStart = null,
+  sessionPhase = 'idle',
+  armingWorkout = null,
+  interruptedSession = null,
+  onResumeInterruptedSession = null,
+  onDiscardInterruptedSession = null,
+  onInterruptSession = null,
   setVideoModal,
   isTraining,
   setIsTraining,
@@ -154,7 +162,14 @@ export default function SessaoTreinoPremium({
       finishConfirmTimeoutRef.current = null;
     }
     haptics.heavy();
-    setIsTraining(false);
+    setIsTraining();
+  };
+
+  const requestStartSession = (workoutKey) => {
+    const parsedKey = Number(workoutKey);
+    if (!Number.isFinite(parsedKey)) return;
+    startSession(parsedKey);
+    haptics.medium();
   };
 
   const workoutEntries = Object.entries(workoutData)
@@ -268,7 +283,7 @@ export default function SessaoTreinoPremium({
 
                             <motion.button
                               whileTap={{ scale: 0.95 }}
-                              onClick={(e) => { e.stopPropagation(); haptics.heavy(); startSession(parseInt(key)); }}
+                              onClick={(e) => { e.stopPropagation(); requestStartSession(parseInt(key)); }}
                               className="w-full flex items-center justify-between px-4 py-3 rounded-[14px] mb-2 transition-transform duration-200"
                               style={isToday ? Btn.primary : { ...Btn.secondary, borderRadius: '14px' }}
                             >
@@ -354,7 +369,7 @@ export default function SessaoTreinoPremium({
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <motion.button
                         whileTap={{ scale: 0.96 }}
-                        onClick={(e) => { e.stopPropagation(); haptics.heavy(); startSession(parseInt(todayEntry[0])); }}
+                        onClick={(e) => { e.stopPropagation(); requestStartSession(parseInt(todayEntry[0])); }}
                         className="flex items-center justify-center gap-2 rounded-xl bg-[#F4FF3A] px-4 py-3.5 text-[13px] font-black uppercase tracking-[0.1em] text-black shadow-[0_0_14px_rgba(244,255,58,0.2)] transition-transform duration-200"
                       >
                         <Play size={13} className="fill-black" />
@@ -390,7 +405,7 @@ export default function SessaoTreinoPremium({
                     key={key}
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => { haptics.medium(); startSession(parseInt(key)); }}
+                    onClick={() => { requestStartSession(parseInt(key)); }}
                     className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-left transition-all duration-200 hover:border-[#F4FF3A]/25 hover:bg-white/[0.04]"
                   >
                     <img
@@ -409,6 +424,41 @@ export default function SessaoTreinoPremium({
               </div>
             </div>
           </motion.div>
+
+          {sessionPhase === 'interrupted' && interruptedSession && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[18px] border px-4 py-3.5"
+              style={{
+                background: 'rgba(255,255,255,0.02)',
+                borderColor: 'rgba(255,255,255,0.10)',
+              }}
+            >
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-white/70">
+                Sessão interrompida
+              </p>
+              <p className="mt-1 text-[13px] font-semibold text-white">
+                Você tem um treino pausado com {interruptedSession?.sets_count ?? 0} séries salvas.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => onDiscardInterruptedSession?.()}
+                  className="rounded-xl border border-white/12 bg-white/[0.03] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-white/82"
+                >
+                  Descartar
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => onResumeInterruptedSession?.()}
+                  className="rounded-xl bg-[#F4FF3A] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
+                >
+                  Retomar sessão
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
 
           {/* Rest day banner or quick-start */}
           <motion.div
@@ -432,7 +482,7 @@ export default function SessaoTreinoPremium({
             ) : (
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => { haptics.heavy(); startSession(today); }}
+                onClick={() => { requestStartSession(today); }}
                 className="w-full flex items-center justify-between px-4 py-4 rounded-[18px] transition-transform duration-200"
                 style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)' }}
               >
@@ -446,6 +496,56 @@ export default function SessaoTreinoPremium({
               </motion.button>
             )}
           </motion.div>
+
+          <AnimatePresence>
+            {sessionPhase === 'arming' && armingWorkout && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-[96] bg-black/72 backdrop-blur-sm"
+                  onClick={() => cancelSessionStart?.()}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 28, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 18, scale: 0.96 }}
+                  transition={{ type: 'spring', stiffness: 360, damping: 30 }}
+                  className="fixed left-1/2 z-[97] w-[92%] max-w-[420px] -translate-x-1/2 rounded-[20px] border border-white/10 bg-[rgba(10,10,12,0.98)] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.72)]"
+                  style={{ bottom: 'calc(env(safe-area-inset-bottom) + 92px)' }}
+                >
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#F4FF3A]/80">
+                    Confirmar início
+                  </p>
+                  <h4 className="mt-1 text-[18px] font-black leading-tight text-white">
+                    Iniciar {armingWorkout.title} agora?
+                  </h4>
+                  <p className="mt-1 text-[12px] font-semibold text-white/65">
+                    O cronômetro e a sessão ativa só começam após confirmar.
+                  </p>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => cancelSessionStart?.()}
+                      className="rounded-xl border border-white/12 bg-white/[0.04] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-white/80"
+                    >
+                      Cancelar
+                    </motion.button>
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => confirmSessionStart?.()}
+                      className="rounded-xl bg-[#F4FF3A] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
+                      style={{ boxShadow: '0 0 14px rgba(244,255,58,0.22)' }}
+                    >
+                      Iniciar treino
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </motion.div>
       )}
 
@@ -769,6 +869,16 @@ export default function SessaoTreinoPremium({
           )}
 
           {/* Finish session */}
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onInterruptSession?.()}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-[16px] border border-white/12 bg-white/[0.03] text-white/82 transition-all duration-200"
+          >
+            <span className="text-[12px] font-black uppercase tracking-[0.08em]">
+              Pausar e retomar depois
+            </span>
+          </motion.button>
+
           <motion.button
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}

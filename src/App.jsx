@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from './lib/supabase';
+import { AUTH_SESSION_RESET_EVENT, getSessionOrHandleInvalidRefresh } from './lib/sessionRecovery';
 import logger from './utils/logger';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MusicProvider } from './contexts/MusicContext';
@@ -39,7 +40,10 @@ function App() {
     });
 
     const loadSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { session, error } = await getSessionOrHandleInvalidRefresh();
+      if (error) {
+        logger.warn('Falha ao recuperar sessão inicial', { error: error?.message });
+      }
 
       if (session?.user) {
         logger.userAction('Login automático via sessão', {
@@ -80,7 +84,19 @@ function App() {
       setAuthLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    const handleSessionReset = () => {
+      setIsAuthenticated(false);
+      setUser(null);
+      setUserRole(null);
+      setViewManager('app');
+      setAuthLoading(false);
+    };
+    window.addEventListener(AUTH_SESSION_RESET_EVENT, handleSessionReset);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(AUTH_SESSION_RESET_EVENT, handleSessionReset);
+    };
   }, []);
 
   useEffect(() => {

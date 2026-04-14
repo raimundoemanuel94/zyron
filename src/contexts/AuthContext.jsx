@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { AUTH_SESSION_RESET_EVENT, getSessionOrHandleInvalidRefresh } from '../lib/sessionRecovery';
 
 const AuthContext = createContext();
 
@@ -9,7 +10,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    getSessionOrHandleInvalidRefresh().then(({ session }) => {
       if (session) {
         setUser(session.user);
         setIsAuthenticated(true);
@@ -27,7 +28,16 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    const handleSessionReset = () => {
+      setUser(null);
+      setIsAuthenticated(false);
+    };
+    window.addEventListener(AUTH_SESSION_RESET_EVENT, handleSessionReset);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener(AUTH_SESSION_RESET_EVENT, handleSessionReset);
+    };
   }, []);
 
   const value = {
