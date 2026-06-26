@@ -493,33 +493,16 @@ export default function TabPerfil({
                 <Download size={15} style={{ color: '#FB923C' }} />
               </div>
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>ARQUIVOS</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Arquivos</p>
                 <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Downloads</h3>
               </div>
             </div>
-
-            <div className="space-y-2">
-              {[
-                { label: 'Plano Alimentar',        date: '12/04/2026', color: '#FF5C5C', glowRgb: '255,92,92' },
-                { label: 'Exames e Bioimpedância', date: '05/03/2026', color: C.blue,    glowRgb: '125,161,255' },
-              ].map(({ label, date, color, glowRgb }) => (
-                <motion.div key={label} whileTap={{ scale: 0.98 }}
-                  className="flex items-center justify-between px-4 py-3.5 rounded-[18px] cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                      style={{ background: `rgba(${glowRgb},0.10)`, border: `1px solid rgba(${glowRgb},0.18)` }}>
-                      <FileText size={15} style={{ color }} />
-                    </div>
-                    <div>
-                      <p className="text-[12px] font-black text-white">{label}</p>
-                      <p className="text-[8.5px] font-medium mt-0.5" style={{ color: C.textSub }}>Atualizado em {date}</p>
-                    </div>
-                  </div>
-                  <Download size={15} style={{ color: C.textSub }} />
-                </motion.div>
-              ))}
+            <div className="flex flex-col items-center justify-center py-8 rounded-[14px]"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.08)' }}>
+              <Download size={20} style={{ color: 'rgba(255,255,255,0.15)', marginBottom: 10 }} />
+              <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Nenhum arquivo disponível ainda
+              </p>
             </div>
           </div>
         </div>
