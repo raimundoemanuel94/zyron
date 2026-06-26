@@ -1569,15 +1569,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <div className="relative flex items-center justify-center w-7 h-7">
           {isActive && (
             <span
-              className="absolute inset-0 rounded-[10px] bg-[#B4FF3C]/15 border border-[#B4FF3C]/35"
-              style={{ boxShadow: '0 0 10px rgba(180,255,60,0.18)' }}
+              className="absolute inset-0 rounded-[10px] bg-[#FFFFFF]/15 border border-[#FFFFFF]/35"
+              style={{ boxShadow: '0 0 10px rgba(255,255,255,0.18)' }}
             />
           )}
           <Icon
             size={18}
             strokeWidth={isActive ? 2.15 : 1.8}
             className={`transition-all duration-200 ${
-              isActive ? 'text-[#B4FF3C]' : 'text-neutral-400'
+              isActive ? 'text-[#FFFFFF]' : 'text-neutral-400'
             }`}
           />
         </div>
@@ -1593,8 +1593,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         {isActive && (
           <motion.div
             layoutId="nav-dot-indicator"
-            className="absolute -bottom-0.5 h-[3px] w-[4px] rounded-full bg-[#B4FF3C]"
-            style={{ boxShadow: '0 0 6px rgba(180,255,60,0.55)' }}
+            className="absolute -bottom-0.5 h-[3px] w-[4px] rounded-full bg-[#FFFFFF]"
+            style={{ boxShadow: '0 0 6px rgba(255,255,255,0.55)' }}
             transition={{ type: 'spring', stiffness: 380, damping: 30 }}
           />
         )}
@@ -1627,8 +1627,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         transition={{ delay: 0.5, duration: 2 }}
         className="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden z-0"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_45%_at_50%_-10%,rgba(205,255,90,0.08),transparent_62%),linear-gradient(180deg,#020302_0%,#050605_42%,#000_100%)]"></div>
-        <div className="absolute -top-32 -left-28 w-96 h-96 bg-[#CDFF5A]/[0.055] rounded-full blur-[130px]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_45%_at_50%_-10%,rgba(255,255,255,0.08),transparent_62%),linear-gradient(180deg,#020302_0%,#050605_42%,#000_100%)]"></div>
+        <div className="absolute -top-32 -left-28 w-96 h-96 bg-[#FFFFFF]/[0.055] rounded-full blur-[130px]"></div>
       </motion.div>
 
       {/* Rest Timer Top Bar */}
@@ -1682,7 +1682,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       >
         {/* Glow radial atmosférico — atrás do avatar, sutil */}
         <div className="pointer-events-none absolute top-0 left-0 w-[55%] h-full"
-          style={{ background: 'radial-gradient(ellipse 80% 90% at 10% 40%, rgba(205,255,90,0.055), transparent 70%)' }} />
+          style={{ background: 'radial-gradient(ellipse 80% 90% at 10% 40%, rgba(255,255,255,0.055), transparent 70%)' }} />
         {/* Linha de separação base — integra ao conteúdo */}
         <div className="pointer-events-none absolute bottom-0 left-[12%] right-[12%] h-[1px]"
           style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)' }} />
@@ -1697,13 +1697,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               {/* Anel de brilho sutil */}
               <div className="absolute -inset-1 rounded-full opacity-60"
                 style={{
-                  background: 'radial-gradient(circle, rgba(205,255,90,0.12) 0%, transparent 70%)',
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)',
                   borderRadius: '9999px',
                   filter: 'blur(2px)',
                 }} />
               {/* Anel interno */}
               <div className="absolute inset-0 rounded-full pointer-events-none"
-                style={{ boxShadow: '0 0 0 1px rgba(205,255,90,0.24), 0 8px 22px rgba(0,0,0,0.5)' }} />
+                style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.24), 0 8px 22px rgba(0,0,0,0.5)' }} />
               <input 
                 type="file" 
                 ref={avatarInputRef} 
@@ -1728,7 +1728,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 )}
                 {/* Overlay camera no hover */}
                 <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                  <Camera size={16} style={{ color: '#B4FF3C' }} />
+                  <Camera size={16} style={{ color: '#FFFFFF' }} />
                 </div>
               </motion.button>
             </div>
@@ -2031,8 +2031,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     if (window.navigator?.vibrate) window.navigator.vibrate(40);
                     setTimeout(() => openWorkoutTab(Number(today)), 120);
                   }}
-                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[18px] bg-[#B4FF3C] group"
-                  style={{ boxShadow: '0 0 20px rgba(180,255,60,0.3), 0 6px 16px rgba(0,0,0,0.4)' }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[18px] bg-[#FFFFFF] group"
+                  style={{ boxShadow: '0 0 20px rgba(255,255,255,0.3), 0 6px 16px rgba(0,0,0,0.4)' }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-black/15 flex items-center justify-center">
@@ -2051,23 +2051,23 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05, type: 'spring', stiffness: 340, damping: 28 }}
-                  className="rounded-[18px] border border-[#B4FF3C]/20 bg-[#B4FF3C]/[0.06] p-3"
+                  className="rounded-[18px] border border-[#FFFFFF]/20 bg-[#FFFFFF]/[0.06] p-3"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-[#B4FF3C]/15 border border-[#B4FF3C]/25 flex items-center justify-center">
-                        <Music2 size={15} className="text-[#B4FF3C]" />
+                      <div className="h-8 w-8 rounded-full bg-[#FFFFFF]/15 border border-[#FFFFFF]/25 flex items-center justify-center">
+                        <Music2 size={15} className="text-[#FFFFFF]" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10.5px] font-black uppercase tracking-wider text-white">Musica</p>
-                        <p className="text-[9px] text-[#B4FF3C]/80 truncate">
+                        <p className="text-[9px] text-[#FFFFFF]/80 truncate">
                           {currentTrack ? `${currentTrack.title || 'Faixa atual'}${isMusicPlaying ? ' • tocando' : ' • pausado'}` : 'Sem faixa carregada'}
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => openMusicPanel('player')}
-                      className="shrink-0 rounded-full border border-[#B4FF3C]/25 bg-[#B4FF3C]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#B4FF3C]"
+                      className="shrink-0 rounded-full border border-[#FFFFFF]/25 bg-[#FFFFFF]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#FFFFFF]"
                     >
                       Abrir
                     </button>
@@ -2079,8 +2079,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                         icon: Search,
                         label: 'Buscar musica',
                         sub: currentTrack ? 'Adicionar faixa' : 'Escolher primeira',
-                        color: 'text-[#B4FF3C]',
-                        bg: 'bg-[#B4FF3C]/10 border-[#B4FF3C]/15',
+                        color: 'text-[#FFFFFF]',
+                        bg: 'bg-[#FFFFFF]/10 border-[#FFFFFF]/15',
                         delay: 0.07,
                         action: () => openMusicPanel('search'),
                       },
@@ -2202,7 +2202,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                       </div>
                       <span className="text-neutral-300 text-[10.5px] font-medium">{label}</span>
                     </div>
-                    <ArrowRight size={13} className="text-neutral-700 group-hover:text-[#B4FF3C] transition-colors" />
+                    <ArrowRight size={13} className="text-neutral-700 group-hover:text-[#FFFFFF] transition-colors" />
                   </motion.button>
                 ))}
 
@@ -2229,7 +2229,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           {/* ── FAB — encaixado no topo da concha ── */}
           <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-22px' }}>
             {/* Sombra circular no fundo persistente */}
-            <div className="absolute inset-0 rounded-full bg-[#B4FF3C] opacity-7 blur-md" style={{ width: 58, height: 58, top: -4, left: -4 }} />
+            <div className="absolute inset-0 rounded-full bg-[#FFFFFF] opacity-7 blur-md" style={{ width: 58, height: 58, top: -4, left: -4 }} />
             <motion.button
               animate={{ rotate: fabOpen ? 45 : 0 }}
               whileTap={{ scale: 0.87 }}
@@ -2239,27 +2239,27 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 setFabOpen(f => !f);
               }}
               className={`relative flex h-[54px] w-[54px] items-center justify-center rounded-full border-2 transition-colors duration-200 ${
-                fabOpen ? 'bg-[rgba(28,28,30,1)]' : 'bg-[#B4FF3C]'
+                fabOpen ? 'bg-[rgba(28,28,30,1)]' : 'bg-[#FFFFFF]'
               }`}
               style={fabOpen
                 ? { borderColor: 'rgba(255,255,255,0.12)', boxShadow: '0 3px 12px rgba(0,0,0,0.64)' }
-                : { borderColor: 'rgba(255,255,255,0.18)', boxShadow: '0 0 9px rgba(180,255,60,0.14), 0 6px 14px rgba(0,0,0,0.5)' }
+                : { borderColor: 'rgba(255,255,255,0.18)', boxShadow: '0 0 9px rgba(255,255,255,0.14), 0 6px 14px rgba(0,0,0,0.5)' }
               }
             >
               <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
               {showMusicIndicator && (
                 <>
                   <div
-                    className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full bg-[#B4FF3C] z-10"
-                    style={{ boxShadow: '0 0 6px rgba(180,255,60,0.55)' }}
+                    className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full bg-[#FFFFFF] z-10"
+                    style={{ boxShadow: '0 0 6px rgba(255,255,255,0.55)' }}
                   />
-                  <div className="absolute top-[5px] right-[5px] h-3 w-3 rounded-full bg-[#B4FF3C]/20 animate-ping" />
+                  <div className="absolute top-[5px] right-[5px] h-3 w-3 rounded-full bg-[#FFFFFF]/20 animate-ping" />
                 </>
               )}
               <Plus
                 size={22}
                 strokeWidth={2.8}
-                className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-[#B4FF3C]' : 'text-neutral-950'}`}
+                className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-[#FFFFFF]' : 'text-neutral-950'}`}
               />
             </motion.button>
           </div>
@@ -2296,8 +2296,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
 
               {/* Brilho neon sutil nas duas metades */}
-              <path d="M50,0.5 L160,0.5"       stroke="rgba(180,255,60,0.09)" strokeWidth="0.8" fill="none" />
-              <path d="M260,0.5 L370,0.5"      stroke="rgba(180,255,60,0.09)" strokeWidth="0.8" fill="none" />
+              <path d="M50,0.5 L160,0.5"       stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" fill="none" />
+              <path d="M260,0.5 L370,0.5"      stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" fill="none" />
 
               {/* Curva do recorte — suave highlight */}
               <path
@@ -2363,7 +2363,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <div className="relative shrink-0">
                     <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(${C.neon}50, transparent 60%)`, transform: 'scale(1.15)', borderRadius: '50%' }} />
                     <div className="relative w-[52px] h-[52px] rounded-full overflow-hidden flex items-center justify-center"
-                      style={{ border: `2px solid ${C.neonBorder}`, background: '#1a1a1e', boxShadow: `0 0 14px rgba(205,255,90,0.12)` }}>
+                      style={{ border: `2px solid ${C.neonBorder}`, background: '#1a1a1e', boxShadow: `0 0 14px rgba(255,255,255,0.12)` }}>
                       {mergedUser.avatar_url ? (
                         <img src={mergedUser.avatar_url} alt={mergedUser.name} className="w-full h-full object-cover"
                           onError={e => { e.target.style.display = 'none'; }} />
@@ -2423,7 +2423,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setActiveTab('progress'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
-                  style={{ background: 'rgba(205,255,90,0.05)', border: `1px solid ${C.neonBorder}` }}
+                  style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.neonBorder}` }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: C.neonBg }}>
