@@ -1976,24 +1976,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         )}
       </AnimatePresence>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PREMIUM FLOATING DOCK — SVG côncavo + FAB neon + pop menu orgânico
-      ══════════════════════════════════════════════════════════════════════ */}
 
-      {/* Backdrop escurecido quando FAB aberto */}
-      <AnimatePresence>
-        {fabOpen && (
-          <motion.div
-            key="fab-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[45] bg-black/60 backdrop-blur-sm"
-            onClick={() => setFabOpen(false)}
-          />
-        )}
-      </AnimatePresence>
 
       {/* ── Menu de ações — pop orgânico acima da nav ─────────────────── */}
       <AnimatePresence>
@@ -2215,23 +2198,49 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         )}
       </AnimatePresence>
 
-      {/* ── PREMIUM FLOATING DOCK ─────────────────────────────────────────── */}
+      {/* ══════════════════════════════════════════════════════════════════════
+          NAV BAR — 5 abas principais + FAB ações rápidas
+      ══════════════════════════════════════════════════════════════════════ */}
+
+      {/* Backdrop FAB */}
+      <AnimatePresence>
+        {fabOpen && (
+          <motion.div
+            key="fab-backdrop"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[45] bg-black/60 backdrop-blur-sm"
+            onClick={() => setFabOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── NAV BAR FLAT 5 ABAS ─────────────────────────────────────────── */}
       <motion.nav
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.45, type: 'spring', stiffness: 160, damping: 26 }}
-        className="fixed bottom-0 left-0 w-full z-[50] flex justify-center pointer-events-none"
-        style={{ paddingBottom: 'max(9px, env(safe-area-inset-bottom))' }}
+        className="fixed bottom-0 left-0 w-full z-[50]"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {/* Gradiente de fundo que conecta a nav ao app */}
-        <div className="absolute bottom-0 left-0 w-full h-[110px] bg-linear-to-t from-black via-black/72 to-transparent pointer-events-none" />
+        {/* Gradiente fade */}
+        <div className="absolute bottom-0 left-0 w-full h-[80px] bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none" />
 
-        <div className="pointer-events-auto relative w-[93%] max-w-[430px]">
+        <div
+          className="relative mx-auto flex items-center justify-between px-2"
+          style={{
+            maxWidth: 430,
+            background: 'rgba(12,12,15,0.97)',
+            borderTop: '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(20px)',
+            height: 60,
+          }}
+        >
+          <NavButton id="painel"   icon={LayoutDashboard} label="Home"     />
+          <NavButton id="workout"  icon={Dumbbell}        label="Treino"   />
 
-          {/* ── FAB — encaixado no topo da concha ── */}
-          <div className="absolute left-1/2 -translate-x-1/2 z-20" style={{ top: '-22px' }}>
-            {/* Sombra circular no fundo persistente */}
-            <div className="absolute inset-0 rounded-full bg-[#FFFFFF] opacity-7 blur-md" style={{ width: 58, height: 58, top: -4, left: -4 }} />
+          {/* FAB central — ações rápidas */}
+          <div className="relative flex flex-col items-center" style={{ marginTop: -20 }}>
             <motion.button
               animate={{ rotate: fabOpen ? 45 : 0 }}
               whileTap={{ scale: 0.87 }}
@@ -2240,88 +2249,28 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 if (window.navigator?.vibrate) window.navigator.vibrate(fabOpen ? 15 : 30);
                 setFabOpen(f => !f);
               }}
-              className={`relative flex h-[54px] w-[54px] items-center justify-center rounded-full border-2 transition-colors duration-200 ${
-                fabOpen ? 'bg-[rgba(28,28,30,1)]' : 'bg-[#FFFFFF]'
-              }`}
-              style={fabOpen
-                ? { borderColor: 'rgba(255,255,255,0.12)', boxShadow: '0 3px 12px rgba(0,0,0,0.64)' }
-                : { borderColor: 'rgba(255,255,255,0.18)', boxShadow: '0 0 9px rgba(255,255,255,0.14), 0 6px 14px rgba(0,0,0,0.5)' }
-              }
+              className="relative flex h-[50px] w-[50px] items-center justify-center rounded-full border-2"
+              style={{
+                background: fabOpen ? 'rgba(28,28,30,1)' : '#FFFFFF',
+                borderColor: fabOpen ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.20)',
+                boxShadow: fabOpen ? '0 3px 12px rgba(0,0,0,0.6)' : '0 0 14px rgba(255,255,255,0.15), 0 4px 12px rgba(0,0,0,0.5)',
+              }}
             >
-              <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
-              {showMusicIndicator && (
-                <>
-                  <div
-                    className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full bg-[#FFFFFF] z-10"
-                    style={{ boxShadow: '0 0 6px rgba(255,255,255,0.55)' }}
-                  />
-                  <div className="absolute top-[5px] right-[5px] h-3 w-3 rounded-full bg-[#FFFFFF]/20 animate-ping" />
-                </>
+              {showMusicIndicator && !fabOpen && (
+                <div className="absolute top-[6px] right-[6px] h-2 w-2 rounded-full bg-white z-10"
+                  style={{ boxShadow: '0 0 6px rgba(255,255,255,0.6)' }} />
               )}
-              <Plus
-                size={22}
-                strokeWidth={2.8}
-                className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-[#FFFFFF]' : 'text-neutral-950'}`}
+              <Plus size={22} strokeWidth={2.8}
+                className={`relative z-10 transition-colors duration-200 ${fabOpen ? 'text-white' : 'text-neutral-950'}`}
               />
             </motion.button>
+            <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5"
+              style={{ color: 'rgba(255,255,255,0.25)' }}>Ações</span>
           </div>
 
-          {/* ── A CONCHA — barra com recorte côncavo no centro ── */}
-          <div className="relative" style={{ filter: 'drop-shadow(0 -4px 12px rgba(0,0,0,0.38))' }}>
-            {/* SVG da forma côncava — mais fechada e orgânica */}
-            <svg
-              viewBox="0 0 420 68"
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-full block"
-              style={{ overflow: 'visible' }}
-            >
-              {/* Fundo da concha — curva côncava mais pronunciada e suave */}
-              <path
-                d={`
-                  M20,0
-                  L162,0
-                  C166,0 168,0 170,4
-                  C174,12 178,32 210,34
-                  C242,32 246,12 250,4
-                  C252,0 254,0 258,0
-                  L400,0
-                  C410.5,0 420,8 420,18
-                  L420,68 L0,68
-                  L0,18
-                  C0,8 9.5,0 20,0 Z
-                `}
-                fill="rgba(14,15,17,0.97)"
-              />
-
-              {/* Linha de borda topo — 2 metades, respeitando o vazio do FAB */}
-              <path d="M20,0.5 L162,0.5"       stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
-              <path d="M258,0.5 L400,0.5"      stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
-
-              {/* Brilho neon sutil nas duas metades */}
-              <path d="M50,0.5 L160,0.5"       stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" fill="none" />
-              <path d="M260,0.5 L370,0.5"      stroke="rgba(255,255,255,0.09)" strokeWidth="0.8" fill="none" />
-
-              {/* Curva do recorte — suave highlight */}
-              <path
-                d="M170,4 C174,12 178,32 210,34 C242,32 246,12 250,4"
-                stroke="rgba(255,255,255,0.04)" strokeWidth="1.2" fill="none"
-              />
-            </svg>
-
-            {/* Backdrop blur aplicado na forma */}
-            <div className="absolute inset-0 -z-10 pointer-events-none backdrop-blur-xl" />
-
-            {/* ── 4 NavButtons posicionados sobre o SVG ── */}
-            <div className="absolute inset-0 flex items-center justify-between px-4" style={{ paddingBottom: '2px' }}>
-              <NavButton id="painel"  icon={LayoutDashboard} label="Home"    />
-              <NavButton id="workout" icon={Dumbbell}        label="Treino" />
-              {/* Espaço central — coincide exatamente com o recorte SVG */}
-              <div className="w-[50px] shrink-0" />
-              <NavButton id="programa" icon={Target}         label="Programa" />
-              <NavButton id="sidebar" icon={MoreHorizontal}  label="Menu"    />
-            </div>
-          </div>
-
+          <NavButton id="programa" icon={Target}        label="Programa"  />
+          <NavButton id="evolucao" icon={TrendingUp}    label="Evolução"  />
+          <NavButton id="perfil"   icon={User}          label="Perfil"    />
         </div>
       </motion.nav>
 
