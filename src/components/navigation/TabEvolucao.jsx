@@ -302,34 +302,30 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
         )}
       </div>
 
-      {/* Grid gamificação */}
+      {/* Stat real — dias treinados */}
       <div className="grid grid-cols-2 gap-3">
-        {[
-          { icon: Zap,      label: 'Ganho de Força', val: '18', unit: '%',  accentColor: C.neon,     glowRgb: '205,255,90', custom: false },
-          { icon: Calendar, label: 'Frequência Mês',  val: null, unit: null, accentColor: '#4ADE80',  glowRgb: '74,222,128', custom: true  },
-        ].map(({ icon: Icon, label, val, unit, accentColor, glowRgb, custom }) => (
-          <div key={label} className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="absolute inset-0 pointer-events-none"
-              style={{ background: `radial-gradient(ellipse at 10% 100%, rgba(${glowRgb},0.07), transparent 65%)` }} />
-            <div className="flex h-8 w-8 items-center justify-center rounded-[10px] mb-3"
-              style={{ background: `rgba(${glowRgb},0.10)`, border: `1px solid rgba(${glowRgb},0.18)` }}>
-              <Icon size={15} style={{ color: accentColor }} />
-            </div>
-            <p className="text-[8.5px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: C.textSub }}>{label}</p>
-            {custom ? (
-              <>
-                <p className="text-[28px] font-black text-white leading-none">15<span className="text-[13px] font-semibold ml-1" style={{ color: C.textSub }}>/20</span></p>
-                <div className="mt-2 h-[4px] w-full rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                  <div className="h-full rounded-full" style={{ width: '75%', background: accentColor, boxShadow: `0 0 8px rgba(${glowRgb},0.45)` }} />
-                </div>
-              </>
-            ) : (
-              <p className="text-[28px] font-black text-white leading-none">
-                <AnimatedCounter to={val} /><span className="text-[14px] ml-0.5" style={{ color: accentColor }}>{unit}</span>
-              </p>
-            )}
+        <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-[10px] mb-3"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
+            <Calendar size={15} style={{ color: C.neon }} />
           </div>
-        ))}
+          <p className="text-[8px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: C.textSub }}>Dias treinados</p>
+          <p className="text-[28px] font-black text-white leading-none">
+            <AnimatedCounter to={Object.values(prHistory || {}).length || 0} />
+            <span className="text-[12px] font-semibold ml-1" style={{ color: C.textSub }}>exercícios</span>
+          </p>
+        </div>
+        <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+          <div className="flex h-8 w-8 items-center justify-center rounded-[10px] mb-3"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
+            <Zap size={15} style={{ color: C.neon }} />
+          </div>
+          <p className="text-[8px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: C.textSub }}>Semana PPL</p>
+          <p className="text-[28px] font-black text-white leading-none">
+            {Math.min(12, Math.floor((parseInt(localStorage.getItem('zyron_prog_days') || '0')) / 5) + 1)}
+            <span className="text-[12px] font-semibold ml-1" style={{ color: C.textSub }}>/12</span>
+          </p>
+        </div>
       </div>
 
       {/* Recordes */}
