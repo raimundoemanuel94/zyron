@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { TrendingUp, Calendar, Zap, ArrowBigUp, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
+import { useExerciseLoads } from '../../hooks/usePersistence';
 import EvolutionTimeline from '../shared/EvolutionTimeline';
 import { C, Card, Badge } from '../../styles/ds';
 
@@ -46,6 +47,59 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
   const [weightHistory, setWeightHistory] = React.useState([]);
   const [loadingHistory, setLoadingHistory] = React.useState(true);
   const saveTimerRef = React.useRef(null);
+
+  // ── Gráfico de progressão por exercício ──────────────────
+  const allExercises = React.useMemo(() => {
+    if (!workoutData) return [];
+    return Object.values(workoutData).flatMap(day => day.exercises || []).filter(ex => ex.id && ex.name);
+  }, [workoutData]);
+
+  const [selectedExId, setSelectedExId] = React.useState(null);
+  const [exLoadHistory, setExLoadHistory] = React.useState([]);
+  const [loadingExHistory, setLoadingExHistory] = React.useState(false);
+
+  // Inicializa com o primeiro exercício composto
+  React.useEffect(() => {
+    if (allExercises.length > 0 && !selectedExId) {
+      const firstCompound = allExercises.find(e => e.type === 'compound') || allExercises[0];
+      setSelectedExId(firstCompound.id);
+    }
+  }, [allExercises, selectedExId]);
+
+  // Busca histórico de carga do exercício selecionado
+  React.useEffect(() => {
+    if (!user?.id || !selectedExId) return;
+    const fetchExHistory = async () => {
+      setLoadingExHistory(true);
+      try {
+        const { data, error } = await supabase
+          .from('exercise_prs')
+          .select('exercise_id, max_load, updated_at')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: true });
+        if (!error && data) {
+          // Filtrar pelo exercício selecionado e formatar para o gráfico
+          const filtered = data
+            .filter(r => r.exercise_id === selectedExId || r.exercise_id?.includes(selectedExId))
+            .map((r, i) => ({
+              semana: `S${i + 1}`,
+              carga: r.max_load,
+              date: new Date(r.updated_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            }));
+          // Se não tiver histórico, mostra PR atual como ponto único
+          if (filtered.length === 0 && prHistory?.[selectedExId]) {
+            setExLoadHistory([{ semana: 'Atual', carga: prHistory[selectedExId], date: 'Agora' }]);
+          } else {
+            setExLoadHistory(filtered);
+          }
+        }
+      } catch (_) {}
+      finally { setLoadingExHistory(false); }
+    };
+    fetchExHistory();
+  }, [user?.id, selectedExId, prHistory]);
+
+  const selectedEx = allExercises.find(e => e.id === selectedExId);
 
   // ── Fetch real weight history from daily_stats ──────────────────────────
   React.useEffect(() => {
@@ -184,6 +238,68 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
             </ResponsiveContainer>
           )}
         </div>
+      </div>
+
+      {/* ── Gráfico de progressão de carga por exercício ── */}
+      <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textSub }}>Progressão de Carga</p>
+            <p className="text-[13px] font-black text-white uppercase tracking-tight leading-none mt-0.5">Por Exercício</p>
+          </div>
+          <Zap size={15} style={{ color: C.neon }} />
+        </div>
+
+        {/* Seletor de exercício */}
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 8, marginBottom: 8 }}>
+          {allExercises.filter(e => e.type === 'compound').slice(0, 8).map(ex => (
+            <button
+              key={ex.id}
+              onClick={() => setSelectedExId(ex.id)}
+              style={{
+                flexShrink: 0, padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700,
+                whiteSpace: 'nowrap', cursor: 'pointer', border: 'none',
+                background: selectedExId === ex.id ? C.neon : 'rgba(255,255,255,0.05)',
+                color: selectedExId === ex.id ? '#000' : 'rgba(255,255,255,0.45)',
+              }}
+            >
+              {ex.name.split(' ').slice(0, 2).join(' ')}
+            </button>
+          ))}
+        </div>
+
+        {/* Gráfico */}
+        <div className="h-36 w-full">
+          {loadingExHistory ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${C.neon}40`, borderTopColor: 'transparent' }} />
+            </div>
+          ) : exLoadHistory.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center gap-2">
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: C.textSub }}>Sem registros ainda</p>
+              <p className="text-[8px]" style={{ color: C.textMute }}>Salve cargas no TabPrograma para ver a evolução</p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={exLoadHistory} margin={{ top: 4, right: 4, left: -26, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="semana" stroke="transparent"
+                  tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 9, fontWeight: 600 }}
+                  tickLine={false} axisLine={false} dy={8} />
+                <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                <RechartsTooltip content={<DSTooltip />} cursor={{ stroke: `${C.neon}20`, strokeWidth: 1 }} />
+                <Line type="monotone" dataKey="carga" stroke={C.neon} strokeWidth={2.5}
+                  dot={{ r: 4, fill: C.neon, strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: C.neon, stroke: '#000', strokeWidth: 1.5 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        {selectedEx && (
+          <p className="text-[8px] font-semibold uppercase tracking-widest mt-2 text-center" style={{ color: C.textMute }}>
+            {selectedEx.name} · {selectedEx.group}
+          </p>
+        )}
       </div>
 
       {/* Grid gamificação */}
