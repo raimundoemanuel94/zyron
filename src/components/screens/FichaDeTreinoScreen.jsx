@@ -1737,11 +1737,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             {/* Texto — minimalista na aba Perfil, completo nas outras */}
             <div className="min-w-0 flex flex-col justify-center gap-[3px]">
               <p className="text-base font-semibold text-white leading-none tracking-tight truncate max-w-[180px]">
-                {activeTab === 'perfil' ? 'ZYRON' : 'Bom dia 👋'}
+                {activeTab === 'perfil' ? 'ZYRON' : activeTab === 'evolucao' ? 'ZYRON' : 'Bom dia 👋'}
               </p>
               <p className="text-xs font-medium leading-none"
                 style={{ color: 'rgba(255,255,255,0.60)' }}>
-                {activeTab === 'perfil' ? 'Perfil' : mergedUser.name.split(' ')[0]}
+                {activeTab === 'perfil' ? 'Perfil' : activeTab === 'evolucao' ? 'Evolução' : mergedUser.name.split(' ')[0]}
               </p>
             </div>
           </div>
@@ -2165,7 +2165,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 {[
                   {
                     icon: Camera, label: 'Nova Foto de Progresso', delay: 0.24,
-                    action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('progress'), 100); },
+                    action: () => { setFabOpen(false); if (window.navigator?.vibrate) window.navigator.vibrate(15); setTimeout(() => setActiveTab('evolucao'), 100); },
                   },
                   {
                     icon: Scale, label: 'Atualizar Peso Corporal', delay: 0.27,
@@ -2372,7 +2372,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 {/* Evolução & Fotos */}
                 <motion.button
                   whileTap={{ scale: 0.97 }}
-                  onClick={() => { setSidebarOpen(false); setActiveTab('progress'); }}
+                  onClick={() => { setSidebarOpen(false); setActiveTab('evolucao'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
                   style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.neonBorder}` }}
                 >
