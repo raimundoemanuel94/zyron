@@ -67,6 +67,7 @@ import SessaoTreinoPremium from './SessaoTreinoPremium';
 import TabEvolucao from '../navigation/TabEvolucao';
 import TabPerfil from '../navigation/TabPerfil';
 import TabCoach from '../navigation/TabCoach';
+import TabPrograma from '../navigation/TabPrograma';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import MusicDock from '../shared/MusicDock';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
@@ -1902,6 +1903,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             />
           )}
 
+          {/* PROGRAMA 12 SEMANAS */}
+          {activeTab === 'programa' && (
+            <TabPrograma />
+          )}
+
         </AnimatePresence>
 
         {/* Global Video PiP */}
@@ -2309,7 +2315,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               <NavButton id="workout" icon={Dumbbell}        label="Treino" />
               {/* Espaço central — coincide exatamente com o recorte SVG */}
               <div className="w-[50px] shrink-0" />
-              <NavButton id="coach"   icon={MessageSquare}   label="Coach"   />
+              <NavButton id="programa" icon={Target}         label="Programa" />
               <NavButton id="sidebar" icon={MoreHorizontal}  label="Menu"    />
             </div>
           </div>
