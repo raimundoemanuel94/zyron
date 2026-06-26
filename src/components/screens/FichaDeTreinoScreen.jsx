@@ -262,6 +262,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [sessionSets, setSessionSets] = useState([]); // Advanced Sync: Track all sets
   const [restTimer, setRestTimer] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [assinaturaOpen, setAssinaturaOpen] = useState(false);
   const [notificationSheetOpen, setNotificationSheetOpen] = useState(false);
   const [lastWaterTime, setLastWaterTime] = useState(Date.now()); // Para alerta de 2 horas
   const [showPR, setShowPR] = useState(null); // Animation trigger for PR
@@ -2457,6 +2458,26 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 </motion.button>
               </div>
 
+                {/* Assinatura */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => { setSidebarOpen(false); setAssinaturaOpen(true); }}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.neonBorder}` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: C.neonBg }}>
+                      <CreditCard size={14} style={{ color: C.neon }} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-[11px] font-black uppercase tracking-widest text-white leading-none">Assinatura</p>
+                      <p className="text-[8.5px] mt-0.5" style={{ color: C.neonDim }}>Renovar via PIX</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} style={{ color: C.neonDim }} />
+                </motion.button>
+              </div>
+
               {/* ── CONFIGURAÇÕES ── */}
               <p className="text-[8px] font-black uppercase tracking-[0.28em] mb-2 ml-1" style={{ color: C.textMute }}>Configurações</p>
               <div className="space-y-2 flex-1">
@@ -2528,6 +2549,66 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   </p>
                   <div className="w-1 h-1 rounded-full" style={{ background: C.neon, opacity: 0.5 }} />
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Assinatura */}
+      <AnimatePresence>
+        {assinaturaOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setAssinaturaOpen(false)}
+              className="fixed inset-0 z-60"
+              style={{ background: 'rgba(0,0,0,0.80)', backdropFilter: 'blur(6px)' }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 24 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-70 w-[88vw] max-w-sm"
+            >
+              <div className="relative rounded-[24px] overflow-hidden"
+                style={{ background: 'rgba(10,10,13,0.99)', border: `1px solid ${C.neonBorder}`, padding: 24 }}>
+                <div className="absolute top-0 left-[20%] right-[20%] h-px"
+                  style={{ background: `linear-gradient(to right, transparent, ${C.neon}50, transparent)` }} />
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px]" style={{ background: C.neonBg, border: `1px solid ${C.neonBorder}` }}>
+                      <CreditCard size={15} style={{ color: C.neon }} />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Renovação</p>
+                      <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Assinatura</h3>
+                    </div>
+                  </div>
+                  <button onClick={() => setAssinaturaOpen(false)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <X size={15} style={{ color: C.textSub }} />
+                  </button>
+                </div>
+                <div className="py-4 px-3 rounded-[16px] mb-4 text-center"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: C.textSub }}>Plano atual</p>
+                  <p className="text-[22px] font-black text-white leading-none">Ativo</p>
+                  <p className="text-[10px] mt-1" style={{ color: C.neonDim }}>Próxima renovação em breve</p>
+                </div>
+                <motion.button whileTap={{ scale: 0.97 }}
+                  className="w-full py-3.5 rounded-[14px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 mb-2"
+                  style={{ background: C.neon, color: '#000' }}>
+                  Gerar Código PIX
+                </motion.button>
+                <motion.button whileTap={{ scale: 0.97 }}
+                  onClick={() => setAssinaturaOpen(false)}
+                  className="w-full py-3 rounded-[14px] font-bold text-[10.5px] uppercase tracking-widest flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: C.textSub }}>
+                  Fechar
+                </motion.button>
               </div>
             </motion.div>
           </>
