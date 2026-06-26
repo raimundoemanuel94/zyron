@@ -148,7 +148,7 @@ function ExerciseRow({ ex, idx, dayId }) {
           />
           <button
             onClick={save}
-            style={{ background: saved ? '#22c55e' : '#B4FF3C', color: '#000', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+            style={{ background: saved ? '#22c55e' : '#FFFFFF', color: '#000', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
           >
             {saved ? '✓' : 'Salvar'}
           </button>
@@ -184,21 +184,21 @@ export default function TabPrograma() {
   return (
     <div style={{ paddingTop: 8 }}>
       {/* Header com semana atual */}
-      <div style={{ background: 'rgba(180,255,60,0.06)', border: '1px solid rgba(180,255,60,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: 11, color: '#B4FF3C', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Programa PPL + Upper</div>
+          <div style={{ fontSize: 11, color: '#FFFFFF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Programa PPL + Upper</div>
           <div style={{ fontSize: 13, color: '#f0f0f0', fontWeight: 600 }}>Semana {currentWeek} de 12 · Frequência 2× por músculo</div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#B4FF3C' }}>{currentWeek}<span style={{ fontSize: 12, color: '#888' }}>/12</span></div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF' }}>{currentWeek}<span style={{ fontSize: 12, color: '#888' }}>/12</span></div>
       </div>
 
       {/* Tabs seção */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {[['treino', '💪 Treino'], ['semanas', '📅 12 Semanas']].map(([id, label]) => (
           <button key={id} onClick={() => setActiveSection(id)} style={{
-            flex: 1, padding: '8px 0', borderRadius: 10, border: `1px solid ${activeSection === id ? '#B4FF3C' : 'rgba(255,255,255,0.08)'}`,
-            background: activeSection === id ? 'rgba(180,255,60,0.1)' : 'transparent',
-            color: activeSection === id ? '#B4FF3C' : '#888', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            flex: 1, padding: '8px 0', borderRadius: 10, border: `1px solid ${activeSection === id ? '#FFFFFF' : 'rgba(255,255,255,0.08)'}`,
+            background: activeSection === id ? 'rgba(255,255,255,0.1)' : 'transparent',
+            color: activeSection === id ? '#FFFFFF' : '#888', fontSize: 12, fontWeight: 700, cursor: 'pointer',
           }}>{label}</button>
         ))}
       </div>
@@ -211,9 +211,9 @@ export default function TabPrograma() {
             {DAYS.map((d, i) => (
               <button key={i} onClick={() => setActiveDay(i)} style={{
                 flexShrink: 0, padding: '6px 14px', borderRadius: 20,
-                border: `1px solid ${i === activeDay ? '#B4FF3C' : 'rgba(255,255,255,0.1)'}`,
-                background: i === activeDay ? 'rgba(180,255,60,0.12)' : 'transparent',
-                color: i === activeDay ? '#B4FF3C' : '#888', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                border: `1px solid ${i === activeDay ? '#FFFFFF' : 'rgba(255,255,255,0.1)'}`,
+                background: i === activeDay ? 'rgba(255,255,255,0.12)' : 'transparent',
+                color: i === activeDay ? '#FFFFFF' : '#888', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
               }}>{d.name}</button>
             ))}
           </div>
@@ -241,7 +241,7 @@ export default function TabPrograma() {
 
           {/* Botão concluir */}
           <button onClick={markDone} style={{
-            width: '100%', background: '#B4FF3C', color: '#000', border: 'none', borderRadius: 12,
+            width: '100%', background: '#FFFFFF', color: '#000', border: 'none', borderRadius: 12,
             padding: 14, fontSize: 14, fontWeight: 800, cursor: 'pointer', marginBottom: 12,
             textTransform: 'uppercase', letterSpacing: '0.05em',
           }}>✓ Marcar treino como feito</button>
@@ -262,7 +262,7 @@ export default function TabPrograma() {
             {WEEKS.map((w, i) => (
               <button key={i} onClick={() => setSelWeek(i)} style={{
                 background: w.deload ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)',
-                border: `${i === selWeek ? 2 : 1}px solid ${i === selWeek ? '#B4FF3C' : w.deload ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                border: `${i === selWeek ? 2 : 1}px solid ${i === selWeek ? '#FFFFFF' : w.deload ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.08)'}`,
                 borderRadius: 10, padding: 10, textAlign: 'center', cursor: 'pointer',
               }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: w.deload ? '#fbbf24' : '#f0f0f0' }}>S{w.num}</div>
@@ -272,7 +272,7 @@ export default function TabPrograma() {
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: week.deload ? '#fbbf24' : '#B4FF3C', marginBottom: 8 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: week.deload ? '#fbbf24' : '#FFFFFF', marginBottom: 8 }}>
               Semana {week.num} — {week.type}
             </div>
             <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.7 }}>{week.detail}</div>
@@ -280,7 +280,7 @@ export default function TabPrograma() {
 
           {/* Regra de progressão */}
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 16 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#B4FF3C', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Regra de Progressão de Carga</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Regra de Progressão de Carga</div>
             {[
               ['Compostos pesados', '+2,5 kg quando completar todas as séries no topo'],
               ['Compostos auxiliares', '+2 kg quando completar todas as séries no topo'],
@@ -293,7 +293,7 @@ export default function TabPrograma() {
               </div>
             ))}
             <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
-              <strong style={{ color: '#B4FF3C' }}>Deload</strong>: Semanas 5 e 12 — carga 50–60%, séries 50%, RIR 4–5
+              <strong style={{ color: '#FFFFFF' }}>Deload</strong>: Semanas 5 e 12 — carga 50–60%, séries 50%, RIR 4–5
             </div>
           </div>
         </div>
