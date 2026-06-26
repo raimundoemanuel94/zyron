@@ -960,11 +960,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
     const committedSets = commitSessionSets(next);
 
-    console.log('[serie][1] setData gerado', normalizedSet);
-    console.log('[serie][1] sessionSets (state atual)', sessionSets);
-    console.log('[serie][1] sessionSets (state apos add)', committedSets);
-    console.log('[serie][1] sessionSetsRef.current', sessionSetsRef.current);
-    console.log('[serie][1] contagem apos add', committedSets?.length ?? 0);
 
     pushSyncDebugEvent('set-added', {
       exercise_id: exerciseId,
@@ -1257,10 +1252,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       const effectiveSyncId = sessionSyncId || crypto.randomUUID();
       if (!sessionSyncId) setSessionSyncId(effectiveSyncId);
 
-      console.log('[serie][2] before finalize sessionSets (state)', sessionSets);
-      console.log('[serie][2] before finalize sessionSetsRef.current', sessionSetsRef.current);
-      console.log('[serie][2] before finalize contagem state', Array.isArray(sessionSets) ? sessionSets.length : 0);
-      console.log('[serie][2] before finalize contagem ref', sessionSetsRef.current?.length ?? 0);
 
       pushSyncDebugEvent('before-finalize', {
         ref_sets_count: sessionSetsRef.current?.length ?? 0,
@@ -1357,8 +1348,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       ? workoutData.client_sync_debug
       : {};
 
-    console.log('[serie][3] pre sync payload.sets', resolvedSets);
-    console.log('[serie][3] pre sync payload.sets.length', resolvedSets?.length ?? 0);
 
     pushSyncDebugEvent('pre-sync', {
       payload_sets_count: resolvedSets?.length ?? 0,
