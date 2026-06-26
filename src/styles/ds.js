@@ -113,3 +113,22 @@ export const Input = {
 // ─── Gradiente de fundo para topo de cards ────────────────────────────────────
 export const topGlow = (color = 'rgba(255,255,255,0.10)') =>
   `linear-gradient(90deg, transparent, ${color}, transparent)`;
+
+// ─── Feedback semântico ───────────────────────────────────────────────────────
+export const Feedback = {
+  success: {
+    bg: 'rgba(74,222,128,0.12)',
+    border: 'rgba(74,222,128,0.25)',
+    text: '#4ADE80',
+  },
+  error: {
+    bg: 'rgba(255,92,92,0.12)',
+    border: 'rgba(255,92,92,0.25)',
+    text: '#FF5C5C',
+  },
+  warning: {
+    bg: 'rgba(245,158,11,0.12)',
+    border: 'rgba(245,158,11,0.25)',
+    text: '#F59E0B',
+  },
+};
