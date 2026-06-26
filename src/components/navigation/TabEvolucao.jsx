@@ -150,7 +150,7 @@ export default function TabEvolucao({ user, profile, updateProfile, currentWorko
             </p>
           </div>
           {weightChange ? (
-            <span className={Badge.neon} style={{ color: weightChange.positive ? C.neon : '#FB7185', borderColor: weightChange.positive ? 'rgba(205,255,90,0.2)' : 'rgba(251,113,133,0.2)' }}>
+            <span className={Badge.neon} style={{ color: weightChange.positive ? C.neon : '#FB7185', borderColor: weightChange.positive ? 'rgba(255,255,255,0.2)' : 'rgba(251,113,133,0.2)' }}>
               {weightChange.dir} {weightChange.diff}kg
             </span>
           ) : (
