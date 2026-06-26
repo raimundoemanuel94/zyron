@@ -260,7 +260,7 @@ export default function TabPerfil({
                   </div>
                   <p className="text-[18px] font-black text-white leading-none">{value}</p>
                   <p className="text-[8px] font-bold mt-0.5" style={{ color: `rgba(${rgb},0.7)` }}>{unit}</p>
-                  <p className="text-[7.5px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -358,7 +358,7 @@ export default function TabPerfil({
               ].map(({ val, label }) => (
                 <div key={label} className="text-center py-2.5 rounded-[12px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                   <p className="text-[17px] font-black text-white leading-none">{val}</p>
-                  <p className="text-[7.5px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-wider mt-1" style={{ color: C.textSub }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -385,7 +385,7 @@ export default function TabPerfil({
                 <FileText size={15} style={{ color: C.neon }} />
               </div>
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>FICHA DO ALUNO</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Ficha do aluno</p>
                 <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Dados Médicos</h3>
               </div>
             </div>
@@ -398,7 +398,7 @@ export default function TabPerfil({
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>OBSERVAÇÕES</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Observações</span>
                   <Edit3 size={12} style={{ color: C.textSub }} />
                 </div>
                 <p className="text-[12px] font-medium text-white leading-relaxed">
@@ -413,7 +413,7 @@ export default function TabPerfil({
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>HISTÓRICO MÉDICO</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Histórico médico</span>
                   <Edit3 size={12} style={{ color: C.textSub }} />
                 </div>
                 <p className="text-[12px] font-medium text-white leading-relaxed">
@@ -428,7 +428,7 @@ export default function TabPerfil({
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>LESÕES</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Lesões</span>
                   <Edit3 size={12} style={{ color: C.textSub }} />
                 </div>
                 <p className="text-[12px] font-medium text-white leading-relaxed">
@@ -443,7 +443,7 @@ export default function TabPerfil({
                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>RESTRIÇÕES</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: C.textSub }}>Restrições</span>
                   <Edit3 size={12} style={{ color: C.textSub }} />
                 </div>
                 <p className="text-[12px] font-medium text-white leading-relaxed">
@@ -512,10 +512,10 @@ export default function TabPerfil({
                     {editingField === 'level' && 'NÍVEL'}
                     {editingField === 'frequency' && 'FREQUÊNCIA'}
                     {editingField === 'targetWeight' && 'PESO META'}
-                    {editingField === 'observations' && 'OBSERVAÇÕES'}
-                    {editingField === 'medicalHistory' && 'HISTÓRICO MÉDICO'}
-                    {editingField === 'injuries' && 'LESÕES'}
-                    {editingField === 'restrictions' && 'RESTRIÇÕES'}
+                    {editingField === 'observations' && 'Observações'}
+                    {editingField === 'medicalHistory' && 'Histórico médico'}
+                    {editingField === 'injuries' && 'Lesões'}
+                    {editingField === 'restrictions' && 'Restrições'}
                   </h3>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
@@ -608,7 +608,7 @@ export default function TabPerfil({
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-4 p-3 rounded-[12px] text-[12px] font-semibold flex items-center gap-2"
-                    style={{ background: 'rgba(255,68,68,0.15)', border: '1px solid rgba(255,68,68,0.3)', color: '#FF4444' }}
+                    style={{ background: 'rgba(255,92,92,0.12)', border: '1px solid rgba(255,92,92,0.25)', color: '#FF5C5C' }}
                   >
                     <span>✗</span>
                     <span>{editError}</span>
@@ -619,7 +619,7 @@ export default function TabPerfil({
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="mb-4 p-3 rounded-[12px] text-[12px] font-semibold flex items-center gap-2"
-                    style={{ background: 'rgba(0,255,0,0.15)', border: '1px solid rgba(0,255,0,0.3)', color: '#00FF00' }}
+                    style={{ background: 'rgba(74,222,128,0.12)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ADE80' }}
                   >
                     <span>✓</span>
                     <span>{editSuccess}</span>
@@ -642,7 +642,7 @@ export default function TabPerfil({
                     onClick={saveEdit}
                     disabled={editLoading || editSuccess}
                     className="flex-1 py-3 rounded-[16px] font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2"
-                    style={{ background: editSuccess ? 'rgba(0,255,0,0.2)' : C.neon, color: editSuccess ? '#00FF00' : '#000' }}
+                    style={{ background: editSuccess ? 'rgba(74,222,128,0.15)' : C.neon, color: editSuccess ? '#4ADE80' : '#000' }}
                   >
                     {editLoading ? (
                       <>
