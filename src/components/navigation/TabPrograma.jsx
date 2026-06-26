@@ -143,16 +143,16 @@ function ExerciseRow({ ex, idx, dayId, loads, saveLoad }) {
       }}>{idx + 1}</div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: '#f0f0f0', marginBottom: 2 }}>{ex.name}</div>
-        <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>{ex.detail}</div>
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', marginBottom: 8 }}>{ex.detail}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
           <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{ex.sets} séries</span>
           <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(34,197,94,0.10)', color: '#86efac', fontWeight: 600 }}>{ex.reps} reps</span>
           {ex.rir !== '—' && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: rirColor.bg, color: rirColor.text, fontWeight: 600 }}>RIR {ex.rir}</span>}
-          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: '#666', fontWeight: 600 }}>{ex.rest}</span>
+          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>{ex.rest}</span>
           <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: tc.bg, color: tc.text, fontWeight: 600 }}>{tc.label}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: '#666', minWidth: 56 }}>Kg usado</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', minWidth: 56 }}>Kg usado</span>
           <input
             type="number"
             value={kg}
@@ -179,6 +179,7 @@ export default function TabPrograma({ user }) {
   const todayIdx = todayMap[dow] ?? 0;
 
   const [activeDay, setActiveDay] = useState(todayIdx);
+  const [markedDone, setMarkedDone] = useState(false);
 
   // Cargas salvas no Supabase
   const { loads, saveLoad } = useExerciseLoads(user?.id);
@@ -192,7 +193,8 @@ export default function TabPrograma({ user }) {
     if (localStorage.getItem(key)) return;
     localStorage.setItem(key, '1');
     localStorage.setItem('zyron_prog_days', totalDays + 1);
-    alert('Treino marcado como concluído! 💪');
+    setMarkedDone(true);
+    setTimeout(() => setMarkedDone(false), 3000);
   }
 
   const day = DAYS[activeDay];
@@ -206,7 +208,7 @@ export default function TabPrograma({ user }) {
           <div style={{ fontSize: 11, color: '#FFFFFF', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Programa PPL + Upper</div>
           <div style={{ fontSize: 13, color: '#f0f0f0', fontWeight: 600 }}>Semana {currentWeek} de 12 · Frequência 2× por músculo</div>
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF' }}>{currentWeek}<span style={{ fontSize: 12, color: '#888' }}>/12</span></div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF' }}>{currentWeek}<span style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>/12</span></div>
       </div>
 
       {/* Tabs seção */}
@@ -237,8 +239,8 @@ export default function TabPrograma({ user }) {
 
           {/* Info do dia */}
           <div style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#f0f0f0', marginBottom: 2 }}>{day.name} <span style={{ fontSize: 12, color: '#888', fontWeight: 400 }}>· {day.day}</span></div>
-            <div style={{ fontSize: 12, color: '#888' }}>{day.muscles}</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#f0f0f0', marginBottom: 2 }}>{day.name} <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', fontWeight: 400 }}>· {day.day}</span></div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)' }}>{day.muscles}</div>
           </div>
 
           {/* Aquecimento */}
@@ -274,7 +276,7 @@ export default function TabPrograma({ user }) {
       {/* SEÇÃO 12 SEMANAS */}
       {activeSection === 'semanas' && (
         <div>
-          <div style={{ fontSize: 11, color: '#888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Toque para ver os detalhes</div>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Toque para ver os detalhes</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
             {WEEKS.map((w, i) => (
               <button key={i} onClick={() => setSelWeek(i)} style={{
@@ -292,7 +294,7 @@ export default function TabPrograma({ user }) {
             <div style={{ fontSize: 15, fontWeight: 700, color: week.deload ? '#fbbf24' : '#FFFFFF', marginBottom: 8 }}>
               Semana {week.num} — {week.type}
             </div>
-            <div style={{ fontSize: 13, color: '#aaa', lineHeight: 1.7 }}>{week.detail}</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.40)', lineHeight: 1.7 }}>{week.detail}</div>
           </div>
 
           {/* Regra de progressão */}
@@ -306,10 +308,10 @@ export default function TabPrograma({ user }) {
             ].map(([k, v]) => (
               <div key={k} style={{ paddingBottom: 10, marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#f0f0f0' }}>{k}</div>
-                <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>{v}</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.40)', marginTop: 2 }}>{v}</div>
               </div>
             ))}
-            <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 4 }}>
               <strong style={{ color: '#FFFFFF' }}>Deload</strong>: Semanas 5 e 12 — carga 50–60%, séries 50%, RIR 4–5
             </div>
           </div>
