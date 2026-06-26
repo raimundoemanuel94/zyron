@@ -16,6 +16,7 @@ export default function TabPerfil({
   plankTime,
   onLogout,
   onAvatarUpdate,
+  onToast,
   stats,
   metrics
 }) {
@@ -53,9 +54,12 @@ export default function TabPerfil({
 
       setAvatarUrl(publicUrl);
       if (onAvatarUpdate) onAvatarUpdate(publicUrl);
+      if (onToast) onToast({ icon: '✓', text: 'Foto atualizada com sucesso!' });
     } catch (err) {
       console.error('Erro no upload:', err);
-      alert('Erro ao enviar foto. Verifique se o bucket "avatars" existe no Supabase Storage.');
+      if (onToast) {
+        onToast({ icon: '✗', text: 'Erro ao enviar foto. Tente novamente.' });
+      }
     } finally { setUploading(false); }
   };
 
