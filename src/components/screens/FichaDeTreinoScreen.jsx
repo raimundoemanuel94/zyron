@@ -2274,45 +2274,41 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         </div>
       </motion.nav>
 
-      {/* PREMIUM SIDEBAR (Gaveta Lateral) */}
+      {/* SIDEBAR */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            {/* Sidebar Backdrop */}
+            {/* Backdrop */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setSidebarOpen(false)}
               className="fixed inset-0 z-60"
               style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
             />
 
-            {/* Sidebar Container */}
+            {/* Container */}
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 320, damping: 32 }}
               className="fixed top-0 right-0 h-full z-70 flex flex-col overflow-y-auto"
               style={{
-                width: '82vw',
-                maxWidth: 320,
+                width: '82vw', maxWidth: 320,
                 background: 'rgba(10,10,13,0.98)',
                 borderLeft: '1px solid rgba(255,255,255,0.07)',
                 boxShadow: '-16px 0 48px rgba(0,0,0,0.9)',
                 padding: '0 20px',
               }}
             >
-              {/* Top glow accent */}
-              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(to right, transparent, ${C.neon}40, transparent)` }} />
+              {/* Glow top */}
+              <div className="absolute top-0 left-0 right-0 h-px"
+                style={{ background: `linear-gradient(to right, transparent, ${C.neon}40, transparent)` }} />
 
               {/* ── PROFILE HEADER ── */}
               <div className="flex items-center justify-between pt-12 pb-5">
                 <div className="flex items-center gap-3">
-                  {/* Avatar with neon halo */}
                   <div className="relative shrink-0">
-                    <div className="absolute inset-0 rounded-full" style={{ background: `conic-gradient(${C.neon}50, transparent 60%)`, transform: 'scale(1.15)', borderRadius: '50%' }} />
+                    <div className="absolute inset-0 rounded-full"
+                      style={{ background: `conic-gradient(${C.neon}50, transparent 60%)`, transform: 'scale(1.15)', borderRadius: '50%' }} />
                     <div className="relative w-[52px] h-[52px] rounded-full overflow-hidden flex items-center justify-center"
                       style={{ border: `2px solid ${C.neonBorder}`, background: '#1a1a1e', boxShadow: `0 0 14px rgba(255,255,255,0.12)` }}>
                       {mergedUser.avatar_url ? (
@@ -2325,7 +2321,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                       )}
                     </div>
                   </div>
-
                   <div>
                     <h2 className="font-black uppercase tracking-wider text-white text-[13px] leading-none">
                       {mergedUser.name}
@@ -2336,7 +2331,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     </div>
                   </div>
                 </div>
-
                 <button
                   onClick={() => setSidebarOpen(false)}
                   className="flex h-9 w-9 items-center justify-center rounded-full transition-colors"
@@ -2346,12 +2340,12 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 </button>
               </div>
 
-              {/* ── QUICK STATS STRIP ── */}
+              {/* ── STATS ── */}
               <div className="grid grid-cols-3 gap-2 mb-5">
                 {[
-                  { val: stats?.weeklyTrainedDays || 0, label: 'Treinos/Sem', icon: Dumbbell, color: C.neon, rgb: '205,255,90' },
-                  { val: stats?.currentStreak || 0, label: 'Streak', icon: Flame, color: '#FB923C', rgb: '251,146,60' },
-                  { val: stats?.monthlyWorkouts || 0, label: 'No mês', icon: Trophy, color: '#A78BFA', rgb: '167,139,250' },
+                  { val: stats?.weeklyTrainedDays || 0, label: 'Treinos/Sem', icon: Dumbbell, color: C.neon, rgb: '255,255,255' },
+                  { val: stats?.currentStreak || 0,    label: 'Streak',       icon: Flame,    color: '#FB923C', rgb: '251,146,60' },
+                  { val: stats?.monthlyWorkouts || 0,  label: 'No mês',       icon: Trophy,   color: '#A78BFA', rgb: '167,139,250' },
                 ].map(({ val, label, icon: Icon, color, rgb }) => (
                   <div key={label} className="flex flex-col items-center py-3 rounded-[14px]"
                     style={{ background: `rgba(${rgb},0.06)`, border: `1px solid rgba(${rgb},0.14)` }}>
@@ -2362,16 +2356,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 ))}
               </div>
 
-              {/* Divider */}
               <div className="mb-4" style={{ height: 1, background: C.border }} />
 
               {/* ── NAVEGAÇÃO ── */}
               <p className="text-[8px] font-black uppercase tracking-[0.28em] mb-2 ml-1" style={{ color: C.textMute }}>Navegação</p>
               <div className="space-y-2 mb-4">
 
-                {/* Evolução & Fotos */}
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+                <motion.button whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setActiveTab('evolucao'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
                   style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${C.neonBorder}` }}
@@ -2388,9 +2379,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <ChevronRight size={14} style={{ color: C.neonDim }} />
                 </motion.button>
 
-                {/* Perfil & Voz */}
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+                <motion.button whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setActiveTab('perfil'); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
                   style={{ background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.16)' }}
@@ -2401,15 +2390,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     </div>
                     <div className="text-left">
                       <p className="text-[11px] font-black uppercase tracking-widest text-white leading-none">Perfil</p>
-                      <p className="text-[8.5px] mt-0.5" style={{ color: 'rgba(167,139,250,0.55)' }}>Metas & Voz</p>
+                      <p className="text-[8.5px] mt-0.5" style={{ color: 'rgba(167,139,250,0.55)' }}>Metas & Dados</p>
                     </div>
                   </div>
                   <ChevronRight size={14} style={{ color: 'rgba(167,139,250,0.4)' }} />
                 </motion.button>
 
-                {/* Assinatura */}
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+                <motion.button whileTap={{ scale: 0.97 }}
                   onClick={() => { setSidebarOpen(false); setAssinaturaOpen(true); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
                   style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.neonBorder}` }}
@@ -2425,15 +2412,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   </div>
                   <ChevronRight size={14} style={{ color: C.neonDim }} />
                 </motion.button>
+
               </div>
 
               {/* ── CONFIGURAÇÕES ── */}
               <p className="text-[8px] font-black uppercase tracking-[0.28em] mb-2 ml-1" style={{ color: C.textMute }}>Configurações</p>
               <div className="space-y-2 flex-1">
 
-                {/* Modo Noturno */}
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+                <motion.button whileTap={{ scale: 0.97 }}
                   onClick={() => { setNightMode(!nightMode); if(window.navigator?.vibrate) window.navigator.vibrate(20); }}
                   className="w-full flex items-center justify-between px-4 py-3.5 rounded-[16px] transition-colors"
                   style={{
@@ -2451,11 +2437,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     <span className="text-[11px] font-black uppercase tracking-widest"
                       style={{ color: nightMode ? '#F59E0B' : 'rgba(255,255,255,0.75)' }}>Modo Noturno</span>
                   </div>
-                  {/* Toggle pill */}
                   <div className="relative w-10 h-[22px] rounded-full transition-colors"
                     style={{ background: nightMode ? '#F59E0B' : 'rgba(255,255,255,0.10)' }}>
-                    <motion.div
-                      layout
+                    <motion.div layout
                       className="absolute top-[3px] w-[16px] h-[16px] bg-white rounded-full shadow"
                       style={{ left: nightMode ? '21px' : '3px' }}
                       transition={{ type: 'spring', stiffness: 400, damping: 28 }}
@@ -2463,10 +2447,8 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   </div>
                 </motion.button>
 
-                {/* Admin Panel */}
                 {isAnyAdmin && (
-                  <motion.button
-                    whileTap={{ scale: 0.97 }}
+                  <motion.button whileTap={{ scale: 0.97 }}
                     onClick={() => { setSidebarOpen(false); if(onOpenAdmin) onOpenAdmin(); }}
                     className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[16px] transition-colors"
                     style={{ background: 'rgba(255,59,48,0.06)', border: '1px solid rgba(255,59,48,0.20)' }}
@@ -2474,15 +2456,14 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                     <div className="flex h-8 w-8 items-center justify-center rounded-[10px]" style={{ background: 'rgba(255,59,48,0.10)' }}>
                       <ShieldAlert size={14} style={{ color: C.red }} />
                     </div>
-                    <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: C.red }}>Painel Master Admin</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: C.red }}>Painel Admin</span>
                   </motion.button>
                 )}
               </div>
 
               {/* ── FOOTER ── */}
               <div className="shrink-0 pt-5 pb-10" style={{ borderTop: `1px solid ${C.border}`, marginTop: 20 }}>
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
+                <motion.button whileTap={{ scale: 0.97 }}
                   onClick={onLogout}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[16px] transition-colors"
                   style={{ background: 'rgba(255,59,48,0.05)', border: '1px solid rgba(255,59,48,0.14)' }}
@@ -2490,12 +2471,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <LogOut size={13} style={{ color: 'rgba(255,100,90,0.7)' }} />
                   <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'rgba(255,100,90,0.7)' }}>Encerrar Sessão</span>
                 </motion.button>
-
                 <div className="flex items-center justify-center gap-1.5 mt-4">
                   <div className="w-1 h-1 rounded-full" style={{ background: C.neon, opacity: 0.5 }} />
-                  <p className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textMute }}>
-                    Zyron v4.0.0
-                  </p>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: C.textMute }}>Zyron v4.0.0</p>
                   <div className="w-1 h-1 rounded-full" style={{ background: C.neon, opacity: 0.5 }} />
                 </div>
               </div>
@@ -2503,7 +2481,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           </>
         )}
       </AnimatePresence>
-
       {/* Modal Assinatura */}
       <AnimatePresence>
         {assinaturaOpen && (
