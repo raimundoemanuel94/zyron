@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useExerciseLoads } from '../../hooks/usePersistence';
 
 const DAYS = [
   {
@@ -93,14 +94,28 @@ const WEEKS = [
   { num: 12, type: 'DELOAD FINAL', deload: true, detail: 'Avalie as 12 semanas: meça, tire fotos, registre cargas. Próximo bloco começa aqui.' },
 ];
 
-function ExerciseRow({ ex, idx, dayId }) {
-  const key = `zyron_kg_${dayId}_${idx}`;
-  const [kg, setKg] = React.useState(() => localStorage.getItem(key) || '');
+function ExerciseRow({ ex, idx, dayId, loads, saveLoad }) {
+  const exerciseKey = `${dayId}_${idx}_${ex.name.replace(/\s+/g,'_')}`;
+  const [kg, setKg] = React.useState('');
   const [saved, setSaved] = React.useState(false);
+
+  // Sincroniza com dados do Supabase quando carregam
+  React.useEffect(() => {
+    const supaVal = loads?.[exerciseKey]?.kg || loads?.[ex.id];
+    if (supaVal) setKg(String(supaVal));
+    else {
+      // fallback localStorage
+      const local = localStorage.getItem(`zyron_kg_${dayId}_${idx}`);
+      if (local) setKg(local);
+    }
+  }, [loads, exerciseKey, ex.id, dayId, idx]);
 
   function save() {
     if (!kg) return;
-    localStorage.setItem(key, kg);
+    // Salva no Supabase
+    if (saveLoad) saveLoad(ex.id || exerciseKey, parseFloat(kg));
+    // Mantém localStorage como cache offline
+    localStorage.setItem(`zyron_kg_${dayId}_${idx}`, kg);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   }
@@ -158,17 +173,19 @@ function ExerciseRow({ ex, idx, dayId }) {
   );
 }
 
-export default function TabPrograma() {
+export default function TabPrograma({ user }) {
   const dow = new Date().getDay();
   const todayMap = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
   const todayIdx = todayMap[dow] ?? 0;
 
   const [activeDay, setActiveDay] = useState(todayIdx);
-  const [activeSection, setActiveSection] = useState('treino'); // treino | semanas
-  const [selWeek, setSelWeek] = useState(0);
 
+  // Cargas salvas no Supabase
+  const { loads, saveLoad } = useExerciseLoads(user?.id);
   const totalDays = parseInt(localStorage.getItem('zyron_prog_days') || '0');
   const currentWeek = Math.min(12, Math.floor(totalDays / 5) + 1);
+  const [activeSection, setActiveSection] = useState('treino'); // treino | semanas
+  const [selWeek, setSelWeek] = useState(0);
 
   function markDone() {
     const key = `zyron_prog_done_${DAYS[activeDay].id}_${new Date().toDateString()}`;
@@ -235,7 +252,7 @@ export default function TabPrograma() {
           {/* Exercícios */}
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '4px 16px', marginBottom: 12 }}>
             {day.exercises.map((ex, i) => (
-              <ExerciseRow key={i} ex={ex} idx={i} dayId={day.id} />
+              <ExerciseRow key={i} ex={ex} idx={i} dayId={day.id} loads={loads} saveLoad={saveLoad} />
             ))}
           </div>
 
