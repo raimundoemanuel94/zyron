@@ -305,7 +305,7 @@ export default function WorkoutCard({
       {/* COLLAPSED STATE - Compact Horizontal Row */}
       {!isExpanded && (
         <div className="relative grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-5">
-          <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full bg-[#F4FF3A]/55" />
+          <div className="absolute left-0 top-5 bottom-5 w-[3px] rounded-r-full bg-[#FFFFFF]/55" />
           {/* Thumbnail animado */}
           <div
             className="hidden relative w-16 h-16 rounded-xl overflow-hidden shrink-0 cursor-pointer group/thumb border border-white/10 bg-neutral-900 shadow-inner"
@@ -370,7 +370,7 @@ export default function WorkoutCard({
                 setIsExpanded(true);
                 cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
               }}
-              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-[#F4FF3A]/28 bg-[#F4FF3A]/10 px-4 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-[#F4FF3A] transition-all duration-200 hover:bg-[#F4FF3A]/14"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full border border-[#FFFFFF]/28 bg-[#FFFFFF]/10 px-4 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-[#FFFFFF] transition-all duration-200 hover:bg-[#FFFFFF]/14"
             >
               <Sparkles size={14} />
               Registrar
@@ -388,7 +388,7 @@ export default function WorkoutCard({
                 <span className={`text-[12px] font-black px-2.5 py-1 rounded-full uppercase tracking-[0.06em] border ${MUSCLE_COLORS[ex.group]?.badge || 'bg-yellow-400/10 text-yellow-400 border-yellow-400/30'}`}>
                   {ex.group}
                 </span>
-                <span className="rounded-full border border-[#F4FF3A]/22 bg-[#F4FF3A]/8 px-2.5 py-1 text-[12px] font-black uppercase tracking-[0.06em] text-[#F4FF3A]">
+                <span className="rounded-full border border-[#FFFFFF]/22 bg-[#FFFFFF]/8 px-2.5 py-1 text-[12px] font-black uppercase tracking-[0.06em] text-[#FFFFFF]">
                   Série {activeSet}/{ex.sets}
                 </span>
               </div>
@@ -421,7 +421,7 @@ export default function WorkoutCard({
                     i < activeSet - 1
                       ? 'h-2 w-5 bg-emerald-400/80'
                       : i === activeSet - 1
-                        ? 'h-2 w-8 bg-[#F4FF3A] shadow-[0_0_8px_rgba(244,255,58,0.45)]'
+                        ? 'h-2 w-8 bg-[#FFFFFF] shadow-[0_0_8px_rgba(244,255,58,0.45)]'
                         : 'h-2 w-2 bg-white/12'
                   }`}
                 />
@@ -430,7 +430,7 @@ export default function WorkoutCard({
             {ENABLE_EXERCISE_VISUAL_GUIDE && (
               <button
                 onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
-                className="rounded-full border border-white/14 bg-black/25 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/80 transition-all duration-200 hover:text-[#F4FF3A]"
+                className="rounded-full border border-white/14 bg-black/25 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/80 transition-all duration-200 hover:text-[#FFFFFF]"
               >
                 {showVideo ? 'Fechar técnica' : 'Técnica'}
               </button>
@@ -481,10 +481,10 @@ export default function WorkoutCard({
             className="overflow-hidden"
           >
             <div className="px-4 pb-4 space-y-3">
-              <div className="rounded-2xl border border-[#F4FF3A]/18 bg-[#F4FF3A]/[0.035] p-3">
+              <div className="rounded-2xl border border-[#FFFFFF]/18 bg-[#FFFFFF]/[0.035] p-3">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[12px] font-black uppercase tracking-[0.06em] text-[#F4FF3A]/85">Série atual</p>
+                    <p className="text-[12px] font-black uppercase tracking-[0.06em] text-[#FFFFFF]/85">Série atual</p>
                     <p className="mt-1 text-[14px] font-black uppercase tracking-tight text-white">
                       Série {activeSet} de {totalSets}
                     </p>
@@ -523,7 +523,7 @@ export default function WorkoutCard({
                         placeholder="0"
                         className="w-full bg-transparent text-xl font-black text-white outline-none"
                       />
-                      <span className="text-[12px] font-black text-[#F4FF3A]">kg</span>
+                      <span className="text-[12px] font-black text-[#FFFFFF]">kg</span>
                     </div>
                   </label>
 
@@ -568,7 +568,7 @@ export default function WorkoutCard({
                             : logged
                               ? 'border-emerald-400/30 bg-emerald-400/10'
                               : isActiveSet
-                                ? 'border-[#F4FF3A]/45 bg-[#F4FF3A]/10'
+                                ? 'border-[#FFFFFF]/45 bg-[#FFFFFF]/10'
                                 : 'border-white/8 bg-white/[0.025]'
                         }`}
                       >
@@ -582,7 +582,7 @@ export default function WorkoutCard({
                             : logged
                               ? 'text-emerald-300'
                               : isActiveSet
-                                ? 'text-[#F4FF3A]'
+                                ? 'text-[#FFFFFF]'
                                 : 'text-white/22'
                         }`}
                         >
@@ -610,12 +610,12 @@ export default function WorkoutCard({
                       }}
                       className="w-20 bg-transparent text-base font-black text-white outline-none"
                     />
-                    <span className="text-[12px] font-black uppercase text-[#F4FF3A]">s</span>
+                    <span className="text-[12px] font-black uppercase text-[#FFFFFF]">s</span>
                   </div>
                 </label>
 
                 {isRunning && (
-                  <span className="rounded-full border border-[#F4FF3A]/30 bg-[#F4FF3A]/10 px-3 py-1.5 font-mono text-sm font-black text-[#F4FF3A]">
+                  <span className="rounded-full border border-[#FFFFFF]/30 bg-[#FFFFFF]/10 px-3 py-1.5 font-mono text-sm font-black text-[#FFFFFF]">
                     {formatSetTime(setTimer)}
                   </span>
                 )}
@@ -624,7 +624,7 @@ export default function WorkoutCard({
               <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); setShowAdvanced(prev => !prev); }}
-                className="w-full rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-left text-[12px] font-black uppercase tracking-[0.06em] text-white/75 transition-all duration-200 hover:text-[#F4FF3A]"
+                className="w-full rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2 text-left text-[12px] font-black uppercase tracking-[0.06em] text-white/75 transition-all duration-200 hover:text-[#FFFFFF]"
               >
                 {showAdvanced ? 'Ocultar detalhes' : '+ Detalhes: RPE / RIR'}
               </button>
@@ -705,14 +705,14 @@ export default function WorkoutCard({
                 className={`w-full h-14 rounded-2xl flex items-center justify-between px-4 transition-all duration-200 font-black ${
                   isRunning
                     ? 'bg-emerald-400 text-neutral-950 border border-emerald-300 shadow-[0_0_14px_rgba(74,222,128,0.25)]'
-                    : 'bg-[#11140b] text-[#F4FF3A] border-2 border-[#F4FF3A]/55 hover:bg-[#171d0f]'
+                    : 'bg-[#11140b] text-[#FFFFFF] border-2 border-[#FFFFFF]/55 hover:bg-[#171d0f]'
                 }`}
               >
                 <div className="flex items-center gap-3 leading-none">
                   {isRunning ? (
                     <div className="h-2 w-2 shrink-0 rounded-full bg-red-600 animate-ping" />
                   ) : (
-                    <Play className="shrink-0 fill-[#F4FF3A] text-[#F4FF3A]" size={16} />
+                    <Play className="shrink-0 fill-[#FFFFFF] text-[#FFFFFF]" size={16} />
                   )}
                   <div className="text-left">
                     <span className={`block text-[12px] font-black uppercase tracking-[0.06em] ${isRunning ? 'text-neutral-800' : 'text-white/75'}`}>
