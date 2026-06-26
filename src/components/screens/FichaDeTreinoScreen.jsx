@@ -1,3 +1,4 @@
+// v4.1.0 — nav 5 abas + sidebar limpo
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   LayoutDashboard,
