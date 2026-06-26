@@ -31,7 +31,7 @@ function useCountUp(target, duration = 900) {
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const CARD = 'relative overflow-hidden rounded-[18px] bg-[rgba(13,14,16,0.96)] border border-white/[0.065] shadow-[0_10px_34px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.045)]';
-const NEON = '#CDFF5A';
+const NEON = '#FFFFFF';
 const FALLBACK_TIME_ZONE = 'America/Cuiaba';
 
 // ─── Stagger ──────────────────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ export default function TabPainel({
               boxShadow: '0 8px 22px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',
             }}
           >
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_12%_0%,rgba(205,255,90,0.12),transparent_46%)]" />
+            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.12),transparent_46%)]" />
             <div className="relative z-10">
               <h2 className="text-xl font-black leading-tight text-white">{workoutTitle}</h2>
               <p className="mt-1 text-xs font-medium text-zinc-500">{workoutFocus}</p>
@@ -394,16 +394,16 @@ export default function TabPainel({
                       transition={{ delay: i * 0.03, duration: 0.25 }}
                       className={`min-w-[50px] p-2 rounded-full text-center border ${
                         isCompletedToday
-                          ? 'bg-[#B6FF00] border-[#B6FF00] text-black'
+                          ? 'bg-[#FFFFFF] border-[#FFFFFF] text-black'
                           : isPendingToday
-                            ? 'border-[#B6FF00]/55 bg-[#B6FF00]/8 text-[#D8FFA1]'
+                            ? 'border-[#FFFFFF]/55 bg-[#FFFFFF]/8 text-[#E0E0E0]'
                           : trained
-                            ? 'border-[#B6FF00]/45 text-[#D8FFA1]'
+                            ? 'border-[#FFFFFF]/45 text-[#E0E0E0]'
                             : 'border-white/[0.06] bg-transparent text-zinc-500'
                       }`}
                     >
                       <p className="text-[9px] font-bold uppercase">{label}</p>
-                      <p className={`text-sm font-semibold ${isCompletedToday ? 'text-black' : isPendingToday ? 'text-[#E7FFAB]' : trained ? 'text-zinc-200' : 'text-zinc-500'}`}>
+                      <p className={`text-sm font-semibold ${isCompletedToday ? 'text-black' : isPendingToday ? 'text-[#E8E8E8]' : trained ? 'text-zinc-200' : 'text-zinc-500'}`}>
                         {dateNum}
                       </p>
                     </motion.div>
@@ -417,8 +417,8 @@ export default function TabPainel({
             variants={stagger.item}
             whileTap={{ scale: 0.97 }}
             onClick={() => onOpenWorkout?.(today)}
-            className="mt-3 w-full rounded-xl border border-[#B6FF00]/35 bg-[#B6FF00]/8 py-3 text-sm font-semibold text-[#E8FFAD] transition-transform"
-            style={{ boxShadow: '0 6px 14px rgba(182,255,0,0.09)' }}
+            className="mt-3 w-full rounded-xl border border-[#FFFFFF]/35 bg-[#FFFFFF]/8 py-3 text-sm font-semibold text-[#E8E8E8] transition-transform"
+            style={{ boxShadow: '0 6px 14px rgba(255,255,255,0.09)' }}
           >
             Ver treino de hoje
           </motion.button>
@@ -591,7 +591,7 @@ export default function TabPainel({
         {/* ══ 5. STATS DO TREINO ATUAL ════════════════════════════════════ */}
         <motion.div variants={stagger.item} className="grid grid-cols-3 gap-[clamp(6px,1.5vw,10px)] shrink-0">
           {[
-            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#CDFF5A', glowRgb: '205,255,90', featured: true },
+            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#FFFFFF', glowRgb: '205,255,90', featured: true },
             { label: 'Exercícios',  value: exerciseCount,   unit: 'hoje', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
             { label: 'Séries',      value: totalSets,       unit: 'total', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
           ].map(({ label, value, unit, icon: Icon, accentColor, glowRgb, featured }) => (
@@ -650,7 +650,7 @@ export default function TabPainel({
         {/* ══ 4. ATIVIDADE RECENTE ════════════════════════════════════════ */}
         <motion.div variants={stagger.item} className={`${CARD} flex flex-col shrink-0 overflow-visible`} style={{ padding: '10px 12px' }}>
           <div className="absolute top-0 left-[30%] right-[30%] h-[1px]
-            bg-gradient-to-r from-transparent via-[#CDFF5A]/20 to-transparent" />
+            bg-gradient-to-r from-transparent via-[#FFFFFF]/20 to-transparent" />
 
           {/* Header */}
           <div className="flex items-center justify-between mb-2 flex-none px-1">
@@ -660,7 +660,7 @@ export default function TabPainel({
                  {loadingActivity ? 'Carregando…' : recentActivity.length > 0 ? 'Sincronizado' : 'Nenhum treino ainda'}
                </p>
              </div>
-             <motion.button whileTap={{ scale: 0.9 }} className="text-[#B4FF3C]/80 bg-[#B4FF3C]/[0.07] px-2 py-1 rounded-full text-[8px] font-black tracking-widest uppercase border border-[#B4FF3C]/15">
+             <motion.button whileTap={{ scale: 0.9 }} className="text-[#FFFFFF]/80 bg-[#FFFFFF]/[0.07] px-2 py-1 rounded-full text-[8px] font-black tracking-widest uppercase border border-[#FFFFFF]/15">
                Histórico
              </motion.button>
           </div>
@@ -684,17 +684,17 @@ export default function TabPainel({
               /* Empty state */
               <div className="flex flex-col items-center justify-center py-5 gap-2">
                 <div className="w-10 h-10 rounded-[14px] flex items-center justify-center"
-                  style={{ background: 'rgba(205,255,90,0.06)', border: '1px solid rgba(205,255,90,0.12)' }}>
-                  <Dumbbell size={16} style={{ color: 'rgba(205,255,90,0.4)' }} />
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <Dumbbell size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
                 </div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-neutral-600">Complete um treino para ver aqui</p>
               </div>
             ) : (
               /* Real activity rows */
               recentActivity.slice(0, 1).map((log, i) => {
-                const accent = i === 0 ? '#CDFF5A' : 'rgba(255,255,255,0.75)';
-                const bgOpacity = i === 0 ? 'linear-gradient(135deg, rgba(205,255,90,0.055), rgba(255,255,255,0.025))' : 'rgba(255,255,255,0.026)';
-                const border = i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.065)';
+                const accent = i === 0 ? '#FFFFFF' : 'rgba(255,255,255,0.75)';
+                const bgOpacity = i === 0 ? 'linear-gradient(135deg, rgba(255,255,255,0.055), rgba(255,255,255,0.025))' : 'rgba(255,255,255,0.026)';
+                const border = i === 0 ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.065)';
                 return (
                   <motion.div
                     whileTap={{ scale: 0.97 }}
@@ -706,7 +706,7 @@ export default function TabPainel({
                     {/* Ícone */}
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-[10px] flex items-center justify-center text-[17px] shrink-0"
-                          style={{ background: i === 0 ? 'rgba(205,255,90,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.07)'}` }}>
+                          style={{ background: i === 0 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${i === 0 ? 'rgba(255,255,255,0.13)' : 'rgba(255,255,255,0.07)'}` }}>
                         {getWorkoutIcon(log.workout_name || 'Treino')}
                       </div>
                       {/* Texto */}
@@ -798,7 +798,7 @@ export default function TabPainel({
                 <div className="flex gap-2 mb-4">
                   {(selectedLog.started_at || selectedLog.ended_at) && (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-[12px]"
-                      style={{ background: 'rgba(205,255,90,0.06)', border: '1px solid rgba(205,255,90,0.14)' }}>
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)' }}>
                       <Clock size={11} style={{ color: NEON }} />
                       <span className="text-[11px] font-bold" style={{ color: NEON }}>
                         {formatHour(selectedLog.started_at)} — {formatHour(selectedLog.ended_at)}
@@ -866,7 +866,7 @@ export default function TabPainel({
                           }, {})
                         ).map(([exId, sets]) => (
                           <div key={exId} className="mb-3">
-                            <p className="text-[9px] font-black uppercase tracking-wider mb-1.5 ml-1" style={{ color: 'rgba(205,255,90,0.7)' }}>
+                            <p className="text-[9px] font-black uppercase tracking-wider mb-1.5 ml-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
                               {exId}
                             </p>
                             <div className="space-y-1">
@@ -875,7 +875,7 @@ export default function TabPainel({
                                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
                                   <div className="flex items-center gap-2">
                                     <span className="text-[9px] font-black w-5 text-center rounded-full py-0.5"
-                                      style={{ background: 'rgba(205,255,90,0.10)', color: NEON }}>
+                                      style={{ background: 'rgba(255,255,255,0.10)', color: NEON }}>
                                       {s.set_number || idx + 1}
                                     </span>
                                     <CheckCircle2 size={11} style={{ color: '#4ADE80' }} />
