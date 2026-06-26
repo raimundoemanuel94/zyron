@@ -46,11 +46,12 @@ const stagger = {
 // ─── Workout type icon helper ─────────────────────────────────────────────────
 const getWorkoutIcon = (title = '') => {
   const t = (title || '').toLowerCase();
-  if (t.includes('corrida') || t.includes('cardio') || t.includes('caminhada')) return '🏃';
-  if (t.includes('peito') || t.includes('chest') || t.includes('superior')) return '💪';
-  if (t.includes('perna') || t.includes('leg') || t.includes('inferior')) return '🦵';
-  if (t.includes('costa') || t.includes('back') || t.includes('costas')) return '🏋️';
-  if (t.includes('ombro') || t.includes('shoulder')) return '🔝';
+  if (t.includes('push')) return '💪';
+  if (t.includes('pull')) return '🏋️';
+  if (t.includes('upper')) return '🔝';
+  if (t.includes('legs b') || t.includes('legs a')) return '🦵';
+  if (t.includes('descanso')) return '😴';
+  if (t.includes('corrida') || t.includes('cardio')) return '🏃';
   return '🏋️';
 };
 
@@ -297,7 +298,7 @@ export default function TabPainel({
   const weekTrainCount  = trainedDays.length;
   const exerciseCount   = currentWorkout?.exercises?.length ?? 0;
   const totalSets       = currentWorkout?.exercises?.reduce(
-    (acc, ex) => acc + (ex.sets?.length ?? ex.defaultSets ?? 3), 0
+    (acc, ex) => acc + (typeof ex.sets === 'number' ? ex.sets : (ex.sets?.length ?? ex.defaultSets ?? 3)), 0
   ) ?? 0;
   const workoutTitle = currentWorkout?.title || 'Treino de hoje';
   const workoutFocus = (currentWorkout?.focus || 'Hipertrofia - Empurre').replace(/\s*-\s*/g, ' • ');
