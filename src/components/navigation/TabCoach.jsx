@@ -16,22 +16,22 @@ import { C, Badge } from '../../styles/ds';
 const CONTEXTS = [
   { id: 'workout', label: 'Treino', icon: Dumbbell },
   { id: 'progress', label: 'Progresso', icon: TrendingUp },
-  { id: 'recovery', label: 'Recuperacao', icon: Activity },
+  { id: 'recovery', label: 'Recuperação', icon: Activity },
 ];
 
 const FALLBACKS = {
   workout: {
-    message: 'Nao consegui ler seu historico agora.\nMantenha a execucao forte no proximo treino.\nVolte em instantes para atualizar a analise.',
+    message: 'Não consegui ler seu historico agora.\nMantenha a execucao forte no proximo treino.\nVolte em instantes para atualizar a analise.',
     insights: ['Coach temporariamente indisponivel', 'Tente novamente em alguns segundos'],
     suggestions: ['Registrar o proximo treino ajuda a liberar uma leitura melhor'],
   },
   progress: {
-    message: 'Sua leitura de progresso nao carregou agora.\nPriorize constancia e registre cargas reais.\nVolte em instantes para atualizar a analise.',
+    message: 'Sua leitura de progresso não carregou agora.\nPriorize constancia e registre cargas reais.\nVolte em instantes para atualizar a analise.',
     insights: ['Sem resposta da IA neste momento', 'Os dados continuam seguros no backend'],
     suggestions: ['Mantenha as cargas atualizadas para uma analise mais precisa'],
   },
   recovery: {
-    message: 'Nao consegui fechar sua leitura de recuperacao agora.\nObserve energia, sono e ritmo da semana.\nVolte em instantes para atualizar a analise.',
+    message: 'Não consegui fechar sua leitura de recuperacao agora.\nObserve energia, sono e ritmo da semana.\nVolte em instantes para atualizar a analise.',
     insights: ['Leitura temporariamente indisponivel', 'Os check-ins serao usados assim que a IA responder'],
     suggestions: ['Se estiver muito cansado, reduza intensidade no proximo treino'],
   },
