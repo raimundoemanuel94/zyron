@@ -235,7 +235,7 @@ export default function SessaoTreinoPremium({
                               ? `1.5px solid ${C.neon}`
                               : '1.5px solid rgba(255,255,255,0.08)',
                             boxShadow: isToday
-                              ? `0 0 16px rgba(205,255,90,0.14), 0 8px 20px rgba(0,0,0,0.4)`
+                              ? `0 0 16px rgba(255,255,255,0.14), 0 8px 20px rgba(0,0,0,0.4)`
                               : '0 8px 18px rgba(0,0,0,0.35)',
                           }}
                         >
@@ -338,12 +338,12 @@ export default function SessaoTreinoPremium({
                   style={{ filter: 'grayscale(0.45) contrast(1.08)' }}
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.94)_0%,rgba(0,0,0,0.72)_52%,rgba(0,0,0,0.34)_100%)]" />
-                <div className="absolute inset-x-0 top-0 h-px bg-[#F4FF3A]/60" />
+                <div className="absolute inset-x-0 top-0 h-px bg-[#FFFFFF]/60" />
 
                 <div className="relative z-10 flex h-full min-h-[250px] flex-col justify-between p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <span className="inline-flex rounded-full border border-[#F4FF3A]/32 bg-[#F4FF3A]/12 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.1em] text-[#F4FF3A]">
+                      <span className="inline-flex rounded-full border border-[#FFFFFF]/32 bg-[#FFFFFF]/12 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.1em] text-[#FFFFFF]">
                         Treino de hoje
                       </span>
                       <p className="mt-3 text-[12px] font-black uppercase tracking-[0.12em] text-white/70">
@@ -361,8 +361,8 @@ export default function SessaoTreinoPremium({
 
                   <div className="space-y-3">
                     {todayEntry[1].preCardio && (
-                      <p className="inline-flex items-center gap-2 rounded-full border border-[#F4FF3A]/18 bg-black/30 px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-white/80">
-                        <Zap size={11} className="text-[#F4FF3A]" />
+                      <p className="inline-flex items-center gap-2 rounded-full border border-[#FFFFFF]/18 bg-black/30 px-3 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-white/80">
+                        <Zap size={11} className="text-[#FFFFFF]" />
                         {todayEntry[1].preCardio}
                       </p>
                     )}
@@ -370,7 +370,7 @@ export default function SessaoTreinoPremium({
                       <motion.button
                         whileTap={{ scale: 0.96 }}
                         onClick={(e) => { e.stopPropagation(); requestStartSession(parseInt(todayEntry[0])); }}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-[#F4FF3A] px-4 py-3.5 text-[13px] font-black uppercase tracking-[0.1em] text-black shadow-[0_0_14px_rgba(244,255,58,0.2)] transition-transform duration-200"
+                        className="flex items-center justify-center gap-2 rounded-xl bg-[#FFFFFF] px-4 py-3.5 text-[13px] font-black uppercase tracking-[0.1em] text-black shadow-[0_0_14px_rgba(244,255,58,0.2)] transition-transform duration-200"
                       >
                         <Play size={13} className="fill-black" />
                         Iniciar
@@ -406,7 +406,7 @@ export default function SessaoTreinoPremium({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => { requestStartSession(parseInt(key)); }}
-                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-left transition-all duration-200 hover:border-[#F4FF3A]/25 hover:bg-white/[0.04]"
+                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-left transition-all duration-200 hover:border-[#FFFFFF]/25 hover:bg-white/[0.04]"
                   >
                     <img
                       src={workout.image || '/images/chest.png'}
@@ -416,7 +416,7 @@ export default function SessaoTreinoPremium({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[12px] font-black uppercase tracking-[0.08em] text-white/65">{workout.focus}</p>
                       <h4 className="truncate text-[14px] font-black uppercase leading-tight text-white">{workout.title}</h4>
-                      <p className="mt-0.5 text-[12px] font-bold uppercase tracking-[0.08em] text-[#F4FF3A]/85">{workout.exercises.length} exercícios</p>
+                      <p className="mt-0.5 text-[12px] font-bold uppercase tracking-[0.08em] text-[#FFFFFF]/85">{workout.exercises.length} exercícios</p>
                     </div>
                     <ArrowRight size={14} className="text-white/30" />
                   </motion.button>
@@ -452,7 +452,7 @@ export default function SessaoTreinoPremium({
                 <motion.button
                   whileTap={{ scale: 0.96 }}
                   onClick={() => onResumeInterruptedSession?.()}
-                  className="rounded-xl bg-[#F4FF3A] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
+                  className="rounded-xl bg-[#FFFFFF] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
                 >
                   Retomar sessão
                 </motion.button>
@@ -515,7 +515,7 @@ export default function SessaoTreinoPremium({
                   className="fixed left-1/2 z-[97] w-[92%] max-w-[420px] -translate-x-1/2 rounded-[20px] border border-white/10 bg-[rgba(10,10,12,0.98)] p-4 shadow-[0_24px_60px_rgba(0,0,0,0.72)]"
                   style={{ bottom: 'calc(env(safe-area-inset-bottom) + 92px)' }}
                 >
-                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#F4FF3A]/80">
+                  <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#FFFFFF]/80">
                     Confirmar início
                   </p>
                   <h4 className="mt-1 text-[18px] font-black leading-tight text-white">
@@ -536,7 +536,7 @@ export default function SessaoTreinoPremium({
                     <motion.button
                       whileTap={{ scale: 0.96 }}
                       onClick={() => confirmSessionStart?.()}
-                      className="rounded-xl bg-[#F4FF3A] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
+                      className="rounded-xl bg-[#FFFFFF] px-3 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-black"
                       style={{ boxShadow: '0 0 14px rgba(244,255,58,0.22)' }}
                     >
                       Iniciar treino
@@ -611,7 +611,7 @@ export default function SessaoTreinoPremium({
             <div className="absolute inset-x-4 bottom-2 h-[3px] overflow-hidden rounded-full bg-white/[0.045]">
               <motion.div
                 className="h-full rounded-full"
-                style={{ background: 'linear-gradient(90deg, #B4FF3C 0%, #F4FF3A 100%)' }}
+                style={{ background: 'linear-gradient(90deg, #FFFFFF 0%, #FFFFFF 100%)' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
@@ -627,9 +627,9 @@ export default function SessaoTreinoPremium({
               className="flex items-center gap-2 px-4 py-3 rounded-[16px]"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
-              <Zap size={13} style={{ color: '#D9F99D', flexShrink: 0 }} />
+              <Zap size={13} style={{ color: '#E5E5E5', flexShrink: 0 }} />
                 <span className="text-[12px] font-black uppercase tracking-[0.08em]"
-                  style={{ color: '#D9F99D' }}>Aquecimento: {currentWorkout.preCardio}</span>
+                  style={{ color: '#E5E5E5' }}>Aquecimento: {currentWorkout.preCardio}</span>
             </motion.div>
           )}
 
@@ -647,7 +647,7 @@ export default function SessaoTreinoPremium({
                 style={{ background: 'transparent' }}
               >
                 <div className="flex items-center gap-2">
-                  <Target size={12} className="text-[#F4FF3A]" />
+                  <Target size={12} className="text-[#FFFFFF]" />
                   <span className="text-[12px] font-black uppercase tracking-[0.1em] text-white/78">Filtros</span>
                   {/* Color dots per muscle group */}
                   <div className="flex gap-1 ml-1.5">
@@ -697,7 +697,7 @@ export default function SessaoTreinoPremium({
                   onClick={() => setSelectedMuscle(null)}
                   className="shrink-0 inline-flex items-center px-3.5 py-2.5 rounded-full font-black uppercase text-[12px] tracking-[0.06em] transition-all duration-200"
                   style={{
-                    background: selectedMuscle === null ? '#F4FF3A' : 'rgba(255,255,255,0.03)',
+                    background: selectedMuscle === null ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
                     color: selectedMuscle === null ? '#0a0a0a' : 'rgba(255,255,255,0.78)',
                     border: selectedMuscle === null ? '1px solid rgba(244,255,58,0.94)' : '1px solid rgba(255,255,255,0.12)',
                     boxShadow: selectedMuscle === null ? '0 0 14px rgba(244,255,58,0.2)' : 'none',
@@ -763,7 +763,7 @@ export default function SessaoTreinoPremium({
               <>
                 <div className="flex items-end justify-between px-1 pb-1">
                   <div>
-                    <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#F4FF3A]/82">Execução</p>
+                    <p className="text-[12px] font-black uppercase tracking-[0.08em] text-[#FFFFFF]/82">Execução</p>
                     <h3 className="text-[18px] font-black uppercase leading-none text-white">Exercícios</h3>
                   </div>
                   <span className="rounded-full border border-white/18 bg-white/[0.04] px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/82">
@@ -824,7 +824,7 @@ export default function SessaoTreinoPremium({
               <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/12 bg-white/[0.03]">
-                    <Flame size={14} className={cardioRunning ? 'text-emerald-300' : 'text-[#D9F99D]'} />
+                    <Flame size={14} className={cardioRunning ? 'text-emerald-300' : 'text-[#E5E5E5]'} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: 'rgba(255,255,255,0.78)' }}>Cardio final</p>
@@ -853,7 +853,7 @@ export default function SessaoTreinoPremium({
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl"
                 style={cardioRunning
                   ? { background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.32)', color: '#A7F3D0' }
-                  : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.14)', color: '#D9F99D', boxShadow: 'none' }
+                  : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.14)', color: '#E5E5E5', boxShadow: 'none' }
                 }
               >
                 <span className="font-black text-[12px] uppercase tracking-[0.08em]">
