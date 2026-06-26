@@ -46,7 +46,18 @@ const getAuthHeader = async () => {
   return `Bearer ${session.access_token}`;
 };
 
-const fetchCoachAnalysis = async (context) => {
+const buildPPLContext = () => {
+  const totalDays = parseInt(localStorage.getItem('zyron_prog_days') || '0');
+  const currentWeek = Math.min(12, Math.floor(totalDays / 5) + 1);
+  const isDeload = currentWeek === 5 || currentWeek === 12;
+  const dow = new Date().getDay();
+  const dayNames = { 1: 'Push A (Peito·Ombro·Tríceps)', 2: 'Pull A (Costas·Bíceps)', 3: 'Legs A (Quad·Glúteo·Panturrilha)', 4: 'Upper B (Peito·Costas·Ombro·Braços·Core)', 5: 'Legs B + Core (Posterior·Búlgaro·Abdômen)' };
+  const todayWorkout = dayNames[dow] || 'Descanso';
+  const rirTarget = isDeload ? '4–5 (deload)' : currentWeek <= 2 ? '3–4' : currentWeek <= 4 ? '1–2' : '1–2';
+  return { programa: 'PPL + Upper — 12 semanas', semanaAtual: currentWeek, isDeload, treinoHoje: todayWorkout, rirAlvo: rirTarget, frequencia: '2x por músculo/semana', objetivo: 'Hipertrofia natural + definição abdominal' };
+};
+
+const fetchCoachAnalysis = async (context, pplCtx, prs) => {
   const auth = await getAuthHeader();
   const response = await fetch(buildApiUrl('/api/ai/coach'), {
     method: 'POST',
@@ -54,7 +65,7 @@ const fetchCoachAnalysis = async (context) => {
       'Content-Type': 'application/json',
       Authorization: auth,
     },
-    body: JSON.stringify({ context }),
+    body: JSON.stringify({ context, programaAtual: pplCtx, recordes: prs }),
   });
 
   const data = await response.json().catch(() => ({}));
@@ -83,7 +94,7 @@ const LoadingDots = () => (
   </div>
 );
 
-export default function TabCoach({ user, profile }) {
+export default function TabCoach({ user, profile, prHistory, workoutData, metrics }) {
   const [context, setContext] = useState('workout');
   const [analysis, setAnalysis] = useState(FALLBACKS.workout);
   const [loading, setLoading] = useState(true);
@@ -100,7 +111,8 @@ export default function TabCoach({ user, profile }) {
       setError('');
 
       try {
-        const data = await fetchCoachAnalysis(context);
+        const pplCtx = buildPPLContext();
+        const data = await fetchCoachAnalysis(context, pplCtx, prHistory || {});
         if (!active) return;
 
         setAnalysis({
@@ -135,6 +147,9 @@ export default function TabCoach({ user, profile }) {
 
   const CurrentIcon = currentContext.icon;
   const firstName = profile?.name?.split(' ')?.[0] || 'Atleta';
+  const totalDays = parseInt(localStorage.getItem('zyron_prog_days') || '0');
+  const currentWeekCoach = Math.min(12, Math.floor(totalDays / 5) + 1);
+  const isDeloadWeek = currentWeekCoach === 5 || currentWeekCoach === 12;
 
   return (
     <motion.div
