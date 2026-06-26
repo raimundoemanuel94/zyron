@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, LogOut, QrCode, ArrowBigUp, Camera, User, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
+import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, LogOut, ArrowBigUp, Camera, User, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { profileService } from '../../core/profile/profileService';
 import { C, Card, Btn, Badge } from '../../styles/ds';
@@ -148,7 +148,6 @@ export default function TabPerfil({
   const tabs = [
     { id: 'geral', label: 'Geral' },
     { id: 'docs', label: 'Docs' },
-    { id: 'financeiro', label: 'PIX' },
   ];
 
   return (
@@ -526,32 +525,6 @@ export default function TabPerfil({
         </div>
       )}
 
-      {perfilTab === 'financeiro' && (
-        <div className="space-y-3">
-          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: C.neonBg, border: `1px solid ${C.neonBorder}` }}>
-                <QrCode size={15} style={{ color: C.neon }} />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Renovação</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Pagamento via PIX</h3>
-              </div>
-            </div>
-            <motion.button whileTap={{ scale: 0.97 }}
-              className="w-full py-3.5 rounded-[14px] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2"
-              style={Btn.primary}>
-              Gerar Código PIX
-            </motion.button>
-            <motion.button whileTap={{ scale: 0.97 }}
-              className="w-full mt-2 py-3 rounded-[14px] font-bold text-[10.5px] uppercase tracking-widest flex items-center justify-center"
-              style={Btn.secondary}>
-              Gerenciar Cartões
-            </motion.button>
-          </div>
-        </div>
-      )}
 
 
       {/* Modal de Edição */}
