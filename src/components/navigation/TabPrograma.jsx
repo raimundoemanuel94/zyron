@@ -3,7 +3,7 @@ import { useExerciseLoads } from '../../hooks/usePersistence';
 
 const DAYS = [
   {
-    id: 'push-a', name: 'Push A', day: 'Segunda',
+    id: 'push-a', name: 'Push A', shortName: 'Push A', day: 'Segunda',
     muscles: 'Peito · Ombro · Tríceps',
     warmup: ['5 min esteira leve 5 km/h','Rotação de ombros: 2×15 (frente e trás)','Band pull-apart: 2×20','Elevação lateral com band: 1×15 leve','1–2 séries leves no 1º composto (50–60%)'],
     exercises: [
@@ -17,7 +17,7 @@ const DAYS = [
     cardio: '20–25 min · 2 min 5 km/h + 2 min 8 km/h alternando',
   },
   {
-    id: 'pull-a', name: 'Pull A', day: 'Terça',
+    id: 'pull-a', name: 'Pull A', shortName: 'Pull A', day: 'Terça',
     muscles: 'Costas · Bíceps · Face pull',
     warmup: ['5 min esteira leve','Rotação torácica em 4 apoios: 10 rep/lado','Dislocações com band: 2×10','Remada curvada leve: 1×15 aquecimento'],
     exercises: [
@@ -31,7 +31,7 @@ const DAYS = [
     cardio: '25–30 min · Caminhada 5–6 km/h + 2 blocos de corrida 8 km/h de 3 min',
   },
   {
-    id: 'legs-a', name: 'Legs A', day: 'Quarta',
+    id: 'legs-a', name: 'Legs A', shortName: 'Legs A', day: 'Quarta',
     muscles: 'Quadríceps · Glúteo · Panturrilha',
     warmup: ['5 min esteira leve','Mobilidade de tornozelo: 10 rep/lado','Abertura de quadril (mundo): 8 rep/lado','Agachamento sem carga: 2×10','1–2 séries leves no agachamento'],
     exercises: [
@@ -44,7 +44,7 @@ const DAYS = [
     cardio: '20 min caminhada 5–6 km/h apenas · Dia de pernas = cardio mais leve',
   },
   {
-    id: 'upper-b', name: 'Upper B', day: 'Quinta',
+    id: 'upper-b', name: 'Upper B', shortName: 'Upper B', day: 'Quinta',
     muscles: 'Peito · Costas · Ombro · Braços · Core',
     warmup: ['5 min esteira','Rotação de ombros + band pull-apart: 2×15','Rosca leve e tríceps leve: 1×15 cada'],
     exercises: [
@@ -62,7 +62,7 @@ const DAYS = [
     cardio: '25 min · Blocos 2 min caminhada 5 km/h + 3 min corrida 7–8 km/h',
   },
   {
-    id: 'legs-b', name: 'Legs B + Core', day: 'Sexta',
+    id: 'legs-b', name: 'Legs B + Core', shortName: 'Legs B', day: 'Sexta',
     muscles: 'Posterior · Búlgaro · Abdômen',
     warmup: ['5 min esteira','Hip hinge com bastão: 10 reps','Afundo sem carga: 2×8/lado','Mobilidade de tornozelo e quadril'],
     exercises: [
@@ -231,7 +231,7 @@ export default function TabPrograma({ user }) {
                 border: `1px solid ${i === activeDay ? '#FFFFFF' : 'rgba(255,255,255,0.1)'}`,
                 background: i === activeDay ? 'rgba(255,255,255,0.12)' : 'transparent',
                 color: i === activeDay ? '#FFFFFF' : '#888', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
-              }}>{d.name}</button>
+              }}>{d.shortName || d.name}</button>
             ))}
           </div>
 
