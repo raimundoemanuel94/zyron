@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, LogOut, QrCode, ArrowBigUp, Camera, User, Music, Search, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
+import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, LogOut, QrCode, ArrowBigUp, Camera, User, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { profileService } from '../../core/profile/profileService';
-import { useMusic } from '../../contexts/MusicContext';
 import { C, Card, Btn, Badge } from '../../styles/ds';
 
 export default function TabPerfil({
@@ -32,13 +31,6 @@ export default function TabPerfil({
   const [editError, setEditError] = useState(null);
   const [editSuccess, setEditSuccess] = useState(null);
 
-  const { searchMusic, setPlaylist, loadVideoById } = useMusic();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([
-    { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg' },
-    { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio - Relax', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg' },
-  ]);
-  const [isSearching, setIsSearching] = useState(false);
 
   React.useEffect(() => {
     if (user?.avatar_url && !avatarUrl) setAvatarUrl(user.avatar_url);
