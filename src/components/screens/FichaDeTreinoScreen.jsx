@@ -1586,7 +1586,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
         {/* Label */}
         <span className={`text-[9.5px] font-medium leading-none tracking-wide transition-colors duration-200 ${
-          isActive ? 'text-[#D8FF83]' : 'text-neutral-500'
+          isActive ? 'text-white' : 'text-neutral-500'
         }`}>
           {label}
         </span>
@@ -1738,11 +1738,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
             {/* Texto — minimalista na aba Perfil, completo nas outras */}
             <div className="min-w-0 flex flex-col justify-center gap-[3px]">
               <p className="text-base font-semibold text-white leading-none tracking-tight truncate max-w-[180px]">
-                {activeTab === 'perfil' ? 'ZYRON' : activeTab === 'evolucao' ? 'ZYRON' : 'Bom dia 👋'}
+                {activeTab === 'perfil' ? 'ZYRON' : 'Bom dia 👋'}
               </p>
               <p className="text-xs font-medium leading-none"
                 style={{ color: 'rgba(255,255,255,0.60)' }}>
-                {activeTab === 'perfil' ? 'Perfil' : activeTab === 'evolucao' ? 'Evolução' : mergedUser.name.split(' ')[0]}
+                {activeTab === 'perfil' ? 'Perfil' : mergedUser.name.split(' ')[0]}
               </p>
             </div>
           </div>
@@ -1869,7 +1869,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
           )}
 
           {/* PROGRESS SCREEN */}
-          {activeTab === 'progress' && (
+          {(activeTab === 'evolucao' || activeTab === 'progress') && (
             <TabEvolucao 
               user={mergedUser}
               profile={profile}
