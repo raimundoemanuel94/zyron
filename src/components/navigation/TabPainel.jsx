@@ -426,8 +426,7 @@ export default function TabPainel({
 
         <div className="flex flex-col gap-2 pt-0">
         <motion.div variants={stagger.item} className="flex items-center justify-between px-1">
-          <p className="text-sm font-semibold text-white">Visão geral</p>
-          <p className="text-[10px] font-semibold tracking-[0.12em] text-zinc-500 uppercase">Hoje</p>
+          <p className="text-sm font-semibold text-white">Hoje</p>
         </motion.div>
 
         <motion.div
