@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, Play, LogOut, QrCode, ArrowBigUp, Camera, User, Music, Search, Heart, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
+import { Crown, FileText, Download, Flame, CheckCircle2, Trophy, TimerIcon, LogOut, QrCode, ArrowBigUp, Camera, User, Music, Search, Target, Ruler, Weight, Calendar, Activity, Zap, Info, Edit3, ChevronRight, TrendingUp, Droplet, Dumbbell, Award, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { profileService } from '../../core/profile/profileService';
 import { useMusic } from '../../contexts/MusicContext';
@@ -43,20 +43,6 @@ export default function TabPerfil({
   React.useEffect(() => {
     if (user?.avatar_url && !avatarUrl) setAvatarUrl(user.avatar_url);
   }, [user?.avatar_url]);
-
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    setIsSearching(true);
-    setSearchResults([]);
-    try {
-      const results = await searchMusic(searchQuery);
-      setSearchResults(results);
-    } catch (err) { console.error(err); }
-    finally { setIsSearching(false); }
-  };
-
-  const playSelectedTrack = (track) => { setPlaylist(searchResults); loadVideoById(track); };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -168,10 +154,9 @@ export default function TabPerfil({
   };
 
   const tabs = [
-    { id: 'geral', label: 'GERAL' },
-    { id: 'docs', label: 'DOCS' },
+    { id: 'geral', label: 'Geral' },
+    { id: 'docs', label: 'Docs' },
     { id: 'financeiro', label: 'PIX' },
-    { id: 'music', label: 'MÚSICA' },
   ];
 
   return (
@@ -576,67 +561,7 @@ export default function TabPerfil({
         </div>
       )}
 
-      {perfilTab === 'music' && (
-        <div className="space-y-3">
-          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: C.neonBg, border: `1px solid ${C.neonBorder}` }}>
-                <Music size={15} style={{ color: C.neon }} />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>Global PWA Player</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">ZYRON Radio</h3>
-              </div>
-            </div>
 
-            <form onSubmit={handleSearch} className="relative mb-4">
-              <input
-                type="text"
-                placeholder="Buscar música no YouTube…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-[14px] pl-10 pr-20 py-3 text-[12px] font-medium text-white placeholder:text-neutral-600 outline-none transition-colors"
-                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-              />
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2" size={14} style={{ color: C.textSub }} />
-              <button type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-[10px] text-[9.5px] font-black uppercase tracking-widest"
-                style={{ background: C.neon, color: '#000' }}>
-                Buscar
-              </button>
-            </form>
-
-            <div className="space-y-2">
-              {isSearching ? (
-                [1,2,3].map(i => <div key={i} className="h-14 rounded-[14px] animate-pulse" style={{ background: 'rgba(255,255,255,0.04)' }} />)
-              ) : (
-                searchResults.map((track, idx) => (
-                  <motion.div key={track.id} whileTap={{ scale: 0.98 }}
-                    onClick={() => playSelectedTrack(track)}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-[14px] cursor-pointer group"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
-                  >
-                    <div className="relative w-10 h-10 rounded-[10px] overflow-hidden shrink-0"
-                      style={{ background: 'rgba(255,255,255,0.07)' }}>
-                      {track.thumbnail && <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        style={{ background: 'rgba(0,0,0,0.5)' }}>
-                        <Play size={14} style={{ color: C.neon }} />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-[11px] font-black text-white truncate">{track.title}</h4>
-                      <p className="text-[8.5px] font-medium mt-0.5 uppercase tracking-widest" style={{ color: C.textSub }}>YouTube Audio</p>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Modal de Edição */}
       <AnimatePresence>
         {editingField && (
