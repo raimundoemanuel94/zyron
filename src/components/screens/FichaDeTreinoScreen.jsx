@@ -2406,7 +2406,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   </div>
                   <ChevronRight size={14} style={{ color: 'rgba(167,139,250,0.4)' }} />
                 </motion.button>
-              </div>
 
                 {/* Assinatura */}
                 <motion.button
