@@ -10,16 +10,24 @@ const ENABLE_EXERCISE_VISUAL_GUIDE = import.meta.env.VITE_ENABLE_EXERCISE_VISUAL
 
 // Cores por grupo muscular - visual hierarchy
 const MUSCLE_COLORS = {
-  'Peito':      { badge: 'bg-amber-500/10 text-amber-300 border-amber-500/18' },
-  'Costas':     { badge: 'bg-blue-500/10 text-blue-300 border-blue-500/18' },
-  'Perna':      { badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/18' },
-  'Bíceps':     { badge: 'bg-purple-500/10 text-purple-300 border-purple-500/18' },
-  'Tríceps':    { badge: 'bg-rose-500/10 text-rose-300 border-rose-500/18' },
-  'Ombro':      { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/18' },
-  'Abdômen':    { badge: 'bg-orange-500/10 text-orange-300 border-orange-500/18' },
-  'Panturrilha':{ badge: 'bg-teal-500/10 text-teal-300 border-teal-500/18' },
-  'Antebraço':  { badge: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/18' },
-  'Glúteos':    { badge: 'bg-pink-500/10 text-pink-300 border-pink-500/18' },
+  // ─── Grupos originais ────────────────────────────────────
+  'Peito':         { badge: 'bg-amber-500/10 text-amber-300 border-amber-500/18' },
+  'Costas':        { badge: 'bg-blue-500/10 text-blue-300 border-blue-500/18' },
+  'Perna':         { badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/18' },
+  'Bíceps':        { badge: 'bg-purple-500/10 text-purple-300 border-purple-500/18' },
+  'Tríceps':       { badge: 'bg-rose-500/10 text-rose-300 border-rose-500/18' },
+  'Ombro':         { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/18' },
+  'Abdômen':       { badge: 'bg-orange-500/10 text-orange-300 border-orange-500/18' },
+  'Panturrilha':   { badge: 'bg-teal-500/10 text-teal-300 border-teal-500/18' },
+  'Antebraço':     { badge: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/18' },
+  'Glúteos':       { badge: 'bg-pink-500/10 text-pink-300 border-pink-500/18' },
+  // ─── Grupos PPL + Upper ──────────────────────────────────
+  'Quadríceps':    { badge: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/18' },
+  'Isquiotibial':  { badge: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/18' },
+  'Posterior':     { badge: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/18' },
+  'Glúteo':        { badge: 'bg-pink-500/10 text-pink-300 border-pink-500/18' },
+  'Core':          { badge: 'bg-orange-500/10 text-orange-300 border-orange-500/18' },
+  'Face pull':     { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/18' },
 };
 
 const clampNumber = (value, min, max) => {
