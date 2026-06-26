@@ -6,11 +6,11 @@ import { C, Btn, Badge, Card } from '../../styles/ds';
 // Muscle accent palette - semantic overrides on top of DS base
 const MUSCLE_COLORS = {
   // ─── Grupos originais ────────────────────────────────────
-  'Peito':         { bg: 'rgba(245,158,11,0.14)',  text: '#F59E0B', border: 'rgba(245,158,11,0.30)' },
+  'Peito':         { bg: 'rgba(245,158,11,0.12)', text: '#F59E0B', border: 'rgba(245,158,11,0.25)' },
   'Costas':        { bg: 'rgba(59,130,246,0.14)',   text: '#7DA1FF', border: 'rgba(59,130,246,0.30)' },
   'Perna':         { bg: 'rgba(52,211,153,0.14)',   text: '#34D399', border: 'rgba(52,211,153,0.30)' },
   'Bíceps':        { bg: 'rgba(139,92,246,0.14)',   text: '#A78BFA', border: 'rgba(139,92,246,0.30)' },
-  'Tríceps':       { bg: 'rgba(251,113,133,0.14)',  text: '#FB7185', border: 'rgba(251,113,133,0.30)' },
+  'Tríceps':       { bg: 'rgba(167,139,250,0.12)', text: '#A78BFA', border: 'rgba(167,139,250,0.25)' },
   'Ombro':         { bg: 'rgba(56,189,248,0.14)',   text: '#38BDF8', border: 'rgba(56,189,248,0.30)' },
   'Abdômen':       { bg: 'rgba(251,146,60,0.14)',   text: '#FB923C', border: 'rgba(251,146,60,0.30)' },
   'Panturrilha':   { bg: 'rgba(45,212,191,0.14)',   text: '#2DD4BF', border: 'rgba(45,212,191,0.30)' },
