@@ -242,7 +242,7 @@ export default function TabPerfil({
                 <motion.div key={label} whileTap={{ scale: 0.93 }}
                   onClick={() => openEditModal(field, suffix ? String(value).replace(suffix, '') : value)}
                   className="flex flex-col gap-1.5 px-3 py-3 rounded-[14px] cursor-pointer"
-                  style={{ background: 'rgba(205,255,90,0.04)', border: `1px solid ${C.neonBorder}` }}>
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.neonBorder}` }}>
                   <div className="flex items-center justify-between">
                     <Icon size={11} style={{ color: C.neon }} />
                     <Edit3 size={9} style={{ color: C.neonDim }} />
@@ -334,7 +334,7 @@ export default function TabPerfil({
                       animate={{ width: pct !== null ? `${pct}%` : '3px' }}
                       transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
                       className="h-full rounded-full"
-                      style={{ background: `linear-gradient(90deg, ${C.neon}, #a8ff3e)`, boxShadow: `0 0 8px rgba(205,255,90,0.35)`, minWidth: '3px' }}
+                      style={{ background: `linear-gradient(90deg, ${C.neon}, #a8ff3e)`, boxShadow: `0 0 8px rgba(255,255,255,0.35)`, minWidth: '3px' }}
                     />
                   </div>
                 </div>
@@ -357,7 +357,7 @@ export default function TabPerfil({
                     <span className="text-[8px] font-black uppercase" style={{ color: C.textSub }}>{day}</span>
                     <div className="flex h-8 w-8 items-center justify-center rounded-[10px] transition-all"
                       style={isActive
-                        ? { background: C.neon, boxShadow: `0 0 10px rgba(205,255,90,0.25)` }
+                        ? { background: C.neon, boxShadow: `0 0 10px rgba(255,255,255,0.25)` }
                         : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }
                       }>
                       {isActive
@@ -401,7 +401,7 @@ export default function TabPerfil({
           <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
             <div className="flex items-center gap-3 mb-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(205,255,90,0.10)', border: `1px solid ${C.neonBorder}` }}>
+                style={{ background: 'rgba(255,255,255,0.10)', border: `1px solid ${C.neonBorder}` }}>
                 <FileText size={15} style={{ color: C.neon }} />
               </div>
               <div>
@@ -492,7 +492,7 @@ export default function TabPerfil({
                 { label: 'BIOIMPEDÂNCIA / FOTOS', icon: '📸', desc: 'Comparativo de composição corporal' },
               ].map(({ label, icon, desc }) => (
                 <div key={label} className="px-4 py-4 rounded-[14px] flex items-center gap-4"
-                  style={{ background: 'rgba(205,255,90,0.03)', border: '1px dashed rgba(205,255,90,0.15)' }}>
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.15)' }}>
                   <div className="flex h-10 w-10 items-center justify-center rounded-[12px] shrink-0 text-[18px]"
                     style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
                     {icon}
@@ -502,7 +502,7 @@ export default function TabPerfil({
                     <p className="text-[11px] font-medium text-neutral-300 mt-0.5">{desc}</p>
                   </div>
                   <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shrink-0"
-                    style={{ background: 'rgba(205,255,90,0.10)', border: '1px solid rgba(205,255,90,0.18)', color: C.neon }}>
+                    style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)', color: C.neon }}>
                     Em breve
                   </span>
                 </div>
@@ -718,7 +718,7 @@ export default function TabPerfil({
                               onClick={() => setEditValue(opt.value)}
                               className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[14px] text-left transition-all"
                               style={isSelected
-                                ? { background: 'rgba(205,255,90,0.10)', border: `1px solid ${C.neonBorder}`, boxShadow: `0 0 14px rgba(205,255,90,0.08)` }
+                                ? { background: 'rgba(255,255,255,0.10)', border: `1px solid ${C.neonBorder}`, boxShadow: `0 0 14px rgba(255,255,255,0.08)` }
                                 : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }
                               }
                             >
