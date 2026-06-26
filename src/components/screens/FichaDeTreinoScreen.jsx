@@ -1889,6 +1889,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
               toggleVoiceTimer={toggleVoiceTimer} formatPlankTime={formatPlankTime}
               plankTime={plankTime} onLogout={onLogout}
               onAvatarUpdate={handleAvatarUpdate}
+              onToast={(msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2800); }}
               stats={stats} metrics={metrics}
             />
           )}
