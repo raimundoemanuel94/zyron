@@ -449,42 +449,6 @@ export default function TabPerfil({
             </div>
           </div>
 
-          <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-[12px]"
-                style={{ background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.20)' }}>
-                <TrendingUp size={15} style={{ color: '#3B82F6' }} />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: C.textSub }}>EVOLUÇÃO</p>
-                <h3 className="text-[14px] font-black text-white uppercase leading-none mt-0.5">Histórico</h3>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { label: 'HISTÓRICO DE PESO', icon: '⚖️', desc: 'Gráfico de evolução do seu peso' },
-                { label: 'MEDIDAS CORPORAIS', icon: '📏', desc: 'Cintura, braços, pernas e mais' },
-                { label: 'BIOIMPEDÂNCIA / FOTOS', icon: '📸', desc: 'Comparativo de composição corporal' },
-              ].map(({ label, icon, desc }) => (
-                <div key={label} className="px-4 py-4 rounded-[14px] flex items-center gap-4"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.15)' }}>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[12px] shrink-0 text-[18px]"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                    {icon}
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-[9px] font-black uppercase tracking-[0.18em]" style={{ color: C.textSub }}>{label}</span>
-                    <p className="text-[11px] font-medium text-neutral-300 mt-0.5">{desc}</p>
-                  </div>
-                  <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.18)', color: C.neon }}>
-                    Em breve
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
 
           <div className="relative rounded-[20px] overflow-hidden" style={{ ...Card.style, padding: '16px' }}>
             <div className="flex items-center gap-3 mb-4">
