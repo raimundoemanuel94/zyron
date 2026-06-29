@@ -273,10 +273,14 @@ function CardioRegistro({ dayId, protocolo }) {
   );
 }
 
-export default function TabPrograma({ user }) {
+export default function TabPrograma({ user, onStartSession }) {
   const dow = new Date().getDay();
   const todayMap = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4 };
   const todayIdx = todayMap[dow] ?? 0;
+
+  // Mapeamento: índice do dia PPL → workoutKey numérico do workoutData
+  // push-a=1(seg), pull-a=2(ter), legs-a=3(qua), upper-b=4(qui), legs-b=5(sex)
+  const pplToWorkoutKey = { 0: 1, 1: 2, 2: 3, 3: 4, 4: 5 };
 
   const [activeDay, setActiveDay] = useState(todayIdx);
   const [markedDone, setMarkedDone] = useState(false);
