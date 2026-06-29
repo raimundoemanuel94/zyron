@@ -1897,7 +1897,10 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
           {/* PROGRAMA 12 SEMANAS */}
           {activeTab === 'programa' && (
-            <TabPrograma user={mergedUser} />
+            <TabPrograma
+              user={mergedUser}
+              onStartSession={requestSessionStart}
+            />
           )}
 
         </AnimatePresence>
