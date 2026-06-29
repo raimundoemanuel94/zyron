@@ -105,17 +105,21 @@ export const dailyStats = {
    * Update water and/or protein
    */
   async updateDailyStats(userId, date, updates) {
+    // Usar upsert garante que a linha existe antes de atualizar
+    // Fix: update simples falha silenciosamente se a linha não existir
     const { data, error } = await supabase
       .from('daily_stats')
-      .update(updates)
-      .eq('user_id', userId)
-      .eq('date', date)
+      .upsert([{
+        user_id: userId,
+        date: date,
+        ...updates,
+      }], { onConflict: 'user_id,date' })
       .select()
       .single();
 
     if (error) throw error;
 
-    // 🔄 SYNC: If weight is being updated, also update profile bio.weightKg
+    // 🔄 SYNC: Se peso atualizado, sincronizar com profiles
     if (updates.weight_kg !== undefined && userId) {
       try {
         await supabase
@@ -124,7 +128,6 @@ export const dailyStats = {
           .eq('id', userId);
       } catch (syncErr) {
         console.warn('Failed to sync weight to profile:', syncErr);
-        // Don't throw - weight was saved in daily_stats, profile sync is secondary
       }
     }
 
