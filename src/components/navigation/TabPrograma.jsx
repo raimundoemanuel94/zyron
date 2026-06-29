@@ -97,27 +97,33 @@ const WEEKS = [
 function ExerciseRow({ ex, idx, dayId, loads, saveLoad }) {
   const exerciseKey = `${dayId}_${idx}_${ex.name.replace(/\s+/g,'_')}`;
   const [kg, setKg] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
 
-  // Sincroniza com dados do Supabase quando carregam
+  // Sincroniza com Supabase quando carregam
   React.useEffect(() => {
     const supaVal = loads?.[exerciseKey]?.kg || loads?.[ex.id];
-    if (supaVal) setKg(String(supaVal));
+    if (supaVal) { setKg(String(supaVal)); setEditing(false); }
     else {
-      // fallback localStorage
       const local = localStorage.getItem(`zyron_kg_${dayId}_${idx}`);
-      if (local) setKg(local);
+      if (local) { setKg(local); setEditing(false); }
+      else setEditing(true); // sem valor salvo → modo edição
     }
   }, [loads, exerciseKey, ex.id, dayId, idx]);
 
   function save() {
-    if (!kg) return;
-    // Salva no Supabase
-    if (saveLoad) saveLoad(ex.id || exerciseKey, parseFloat(kg));
-    // Mantém localStorage como cache offline
-    localStorage.setItem(`zyron_kg_${dayId}_${idx}`, kg);
+    const val = parseFloat(kg);
+    if (!kg || isNaN(val) || val <= 0) return;
+    if (saveLoad) saveLoad(ex.id || exerciseKey, val);
+    localStorage.setItem(`zyron_kg_${dayId}_${idx}`, String(val));
     setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setEditing(false);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  function startEdit() {
+    setEditing(true);
+    setSaved(false);
   }
 
   const typeColors = {
@@ -145,30 +151,124 @@ function ExerciseRow({ ex, idx, dayId, loads, saveLoad }) {
         <div style={{ fontSize: 14, fontWeight: 600, color: '#f0f0f0', marginBottom: 2 }}>{ex.name}</div>
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', marginBottom: 8 }}>{ex.detail}</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(99,102,241,0.12)', color: '#a5b4fc', fontWeight: 600 }}>{ex.sets} séries</span>
-          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(34,197,94,0.10)', color: '#86efac', fontWeight: 600 }}>{ex.reps} reps</span>
+          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(99,102,241,0.12)', color: 'rgba(255,255,255,0.50)', fontWeight: 600 }}>{ex.sets} séries</span>
+          <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(34,197,94,0.10)', color: 'rgba(34,197,94,0.80)', fontWeight: 600 }}>{ex.reps} reps</span>
           {ex.rir !== '—' && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: rirColor.bg, color: rirColor.text, fontWeight: 600 }}>RIR {ex.rir}</span>}
           <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)', fontWeight: 600 }}>{ex.rest}</span>
           <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: tc.bg, color: tc.text, fontWeight: 600 }}>{tc.label}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', minWidth: 56 }}>Kg usado</span>
-          <input
-            type="number"
-            value={kg}
-            onChange={e => setKg(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && save()}
-            placeholder="—"
-            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#f0f0f0', fontSize: 14, fontWeight: 600, padding: '5px 10px', width: 70, textAlign: 'center' }}
-          />
-          <button
-            onClick={save}
-            style={{ background: saved ? '#22c55e' : '#FFFFFF', color: '#000', border: 'none', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-          >
-            {saved ? '✓' : 'Salvar'}
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', minWidth: 56 }}>Kg usado</span>
+          {editing ? (
+            <>
+              <input
+                type="number"
+                value={kg}
+                min="0"
+                step="0.5"
+                autoFocus
+                onChange={e => setKg(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && save()}
+                placeholder="kg"
+                style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 8, color: '#fff', fontSize: 15, fontWeight: 700, padding: '5px 10px', width: 72, textAlign: 'center', outline: 'none' }}
+              />
+              <button onClick={save}
+                style={{ background: '#FFFFFF', color: '#000', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}>
+                Salvar
+              </button>
+            </>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ background: saved ? 'rgba(74,222,128,0.12)' : 'rgba(255,255,255,0.06)', border: `1px solid ${saved ? 'rgba(74,222,128,0.30)' : 'rgba(255,255,255,0.10)'}`, borderRadius: 8, padding: '5px 14px', fontSize: 15, fontWeight: 800, color: saved ? '#4ADE80' : '#fff', minWidth: 72, textAlign: 'center' }}>
+                {kg ? `${kg} kg` : '—'}
+              </div>
+              <button onClick={startEdit}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 8, padding: '5px 12px', fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.50)', cursor: 'pointer' }}>
+                ✎ Editar
+              </button>
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function CardioRegistro({ dayId, protocolo }) {
+  const storageKey = `zyron_cardio_${dayId}_${new Date().toDateString()}`;
+  const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+
+  const [distancia, setDistancia] = React.useState(saved?.distancia || '');
+  const [duracao, setDuracao]     = React.useState(saved?.duracao || '');
+  const [velocidade, setVelocidade] = React.useState(saved?.velocidade || '');
+  const [registrado, setRegistrado] = React.useState(!!saved);
+  const [editando, setEditando]   = React.useState(!saved);
+
+  function salvarCardio() {
+    if (!distancia && !duracao) return;
+    const data = { distancia, duracao, velocidade, savedAt: new Date().toISOString() };
+    localStorage.setItem(storageKey, JSON.stringify(data));
+    setRegistrado(true);
+    setEditando(false);
+  }
+
+  return (
+    <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, padding: 14, marginTop: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.70)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>🏃 Cardio pós-treino</span>
+        {registrado && !editando && (
+          <button onClick={() => setEditando(true)}
+            style={{ fontSize: 10, color: 'rgba(255,255,255,0.40)', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}>
+            ✎ Editar
+          </button>
+        )}
+      </div>
+      <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 10, lineHeight: 1.6 }}>{protocolo}</div>
+
+      {editando ? (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+            {[
+              { label: 'Distância', value: distancia, set: setDistancia, placeholder: 'km', unit: 'km' },
+              { label: 'Duração', value: duracao, set: setDuracao, placeholder: 'min', unit: 'min' },
+              { label: 'Velocidade', value: velocidade, set: setVelocidade, placeholder: 'km/h', unit: 'km/h' },
+            ].map(({ label, value, set, placeholder, unit }) => (
+              <div key={label}>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, overflow: 'hidden' }}>
+                  <input
+                    type="number" value={value} min="0" step="0.1"
+                    onChange={e => set(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && salvarCardio()}
+                    placeholder={placeholder}
+                    style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, padding: '6px 8px', width: '100%', textAlign: 'center', outline: 'none' }}
+                  />
+                </div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', textAlign: 'center', marginTop: 2 }}>{unit}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={salvarCardio}
+            style={{ width: '100%', background: '#FFFFFF', color: '#000', border: 'none', borderRadius: 8, padding: '8px 0', fontSize: 12, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em' }}>
+            Salvar cardio
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {distancia && <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{distancia}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>km</div>
+          </div>}
+          {duracao && <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{duracao}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>min</div>
+          </div>}
+          {velocidade && <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: '8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{velocidade}</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>km/h</div>
+          </div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -245,9 +345,9 @@ export default function TabPrograma({ user }) {
 
           {/* Aquecimento */}
           <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 12, padding: 14, marginBottom: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#4ade80', marginBottom: 8 }}>🔥 Aquecimento + Mobilidade (8–10 min)</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#4ADE80', marginBottom: 8 }}>🔥 Aquecimento + Mobilidade (8–10 min)</div>
             {day.warmup.map((w, i) => (
-              <div key={i} style={{ fontSize: 12, color: '#86efac', lineHeight: 2 }}>· {w}</div>
+              <div key={i} style={{ fontSize: 12, color: 'rgba(34,197,94,0.80)', lineHeight: 2 }}>· {w}</div>
             ))}
           </div>
 
@@ -267,8 +367,8 @@ export default function TabPrograma({ user }) {
 
           {/* Cardio */}
           <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: 12, padding: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#818cf8', marginBottom: 6 }}>🏃 Cardio pós-treino</div>
-            <div style={{ fontSize: 12, color: '#a5b4fc', lineHeight: 1.7 }}>{day.cardio}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.70)', marginBottom: 6 }}>🏃 Cardio pós-treino</div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.50)', lineHeight: 1.7 }}>{day.cardio}</div>
           </div>
         </div>
       )}
