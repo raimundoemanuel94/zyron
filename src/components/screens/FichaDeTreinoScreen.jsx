@@ -71,6 +71,7 @@ import TabCoach from '../navigation/TabCoach';
 import TabPrograma from '../navigation/TabPrograma';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import MusicDock, { MiniPlayer } from '../shared/MusicDock';
+import ExerciseAnimationModal from '../workout/ExerciseAnimationModal';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
@@ -267,6 +268,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [restTimer, setRestTimer] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assinaturaOpen, setAssinaturaOpen] = useState(false);
+  const [openExerciseAnim, setOpenExerciseAnim] = useState(null); // { exercise, animData }
 
   // Handler que sabe reenviar cada tipo de ação pendente da fila offline
   const syncOfflineAction = useCallback(async (action) => {
@@ -1869,6 +1871,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 prHistory={prHistory}
                 showPR={showPR}
                 onActivateMuscle={() => {}}
+                onOpenExerciseAnimation={(exercise, animData) => setOpenExerciseAnim({ exercise, animData })}
                 isPremiumUser={true}
                 currentExerciseId={null}
                 activePrimaryMuscles={[]}
@@ -2507,6 +2510,15 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
       {/* Mini-player persistente — sempre visível acima da nav quando há música */}
       {!musicPanelOpen && (
         <MiniPlayer onExpand={() => { setMusicPanelView('player'); setMusicPanelOpen(true); }} />
+      )}
+
+      {/* Modal de animação de movimento do exercício — estilo player, minimizável */}
+      {openExerciseAnim && (
+        <ExerciseAnimationModal
+          exercise={openExerciseAnim.exercise}
+          animData={openExerciseAnim.animData}
+          onClose={() => setOpenExerciseAnim(null)}
+        />
       )}
 
       <MusicDock
