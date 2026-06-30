@@ -1871,7 +1871,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                 prHistory={prHistory}
                 showPR={showPR}
                 onActivateMuscle={() => {}}
-                onOpenExerciseAnimation={(exercise, animData) => setOpenExerciseAnim({ exercise, animData })}
+                onOpenExerciseAnimation={(exercise, animData, setControls) => setOpenExerciseAnim({ exercise, animData, setControls })}
                 isPremiumUser={true}
                 currentExerciseId={null}
                 activePrimaryMuscles={[]}
@@ -2517,6 +2517,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         <ExerciseAnimationModal
           exercise={openExerciseAnim.exercise}
           animData={openExerciseAnim.animData}
+          setControls={openExerciseAnim.setControls}
           onClose={() => setOpenExerciseAnim(null)}
         />
       )}
