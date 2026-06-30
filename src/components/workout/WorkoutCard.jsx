@@ -282,6 +282,17 @@ export default function WorkoutCard({
           if (onActivateMuscle && isPremiumUser) {
             onActivateMuscle(ex.id);
           }
+          // Abre automaticamente a tela de execução em tela cheia,
+          // com a animação do movimento + registro de série juntos
+          if (onOpenAnimation) {
+            onOpenAnimation(ex, animData, {
+              loggedSets, activeSet, totalSets, isRunning, setTimer,
+              actualReps, setActualReps, rpe, setRpe, rir, setRir,
+              restSeconds, setRestSeconds, setStatus, setSetStatus,
+              setError, onToggleSet: handleToggleSet, loadInputValue, onUpdateLoad,
+              exerciseId: ex.id, isNewPR, prHistoryLoad,
+            });
+          }
         }
       }}
     >
