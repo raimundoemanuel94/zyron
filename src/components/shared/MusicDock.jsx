@@ -454,17 +454,18 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
               >
                 <motion.div
                   key={currentTrack?.id || 'empty'}
-                  initial={{ scale: 0.9, opacity: 0 }}
+                  initial={{ scale: 0.92, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: 'spring', stiffness: 260, damping: 22 }}
-                  className="relative rounded-[24px] overflow-hidden"
+                  className="relative w-full overflow-hidden"
                   style={{
-                    width: 204,
-                    height: 204,
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    aspectRatio: '1 / 1',
+                    maxWidth: 280,
+                    borderRadius: 16,
+                    border: '1px solid rgba(255,255,255,0.08)',
                     boxShadow: isPlaying
-                      ? '0 0 56px rgba(255,255,255,0.14), 0 28px 56px rgba(0,0,0,0.65)'
-                      : '0 20px 44px rgba(0,0,0,0.65)',
+                      ? '0 0 70px rgba(255,255,255,0.12), 0 32px 64px rgba(0,0,0,0.7)'
+                      : '0 22px 48px rgba(0,0,0,0.7)',
                   }}
                 >
                   {currentTrack?.thumbnail ? (
@@ -478,21 +479,26 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
                     </div>
                   )}
 
+                  {/* Vinheta sutil para o equalizer ter contraste, sem boiar */}
                   {isPlaying && currentTrack && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                      <div className="px-3 py-1.5 rounded-full" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}>
+                    <>
+                      <div className="absolute bottom-0 left-0 right-0 h-16"
+                        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.55), transparent)' }} />
+                      <div className="absolute bottom-3 left-3">
                         <Equalizer isPlaying={isPlaying} size="lg" />
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {isPlaying && (
                     <motion.div
-                      className="absolute inset-0 rounded-[24px]"
-                      animate={{ opacity: [0.30, 0.55, 0.30] }}
+                      className="absolute inset-0"
+                      style={{ borderRadius: 16 }}
+                      animate={{ opacity: [0.25, 0.45, 0.25] }}
                       transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                      style={{ border: '2px solid rgba(255,255,255,0.40)' }}
-                    />
+                    >
+                      <div className="absolute inset-0" style={{ borderRadius: 16, border: '1.5px solid rgba(255,255,255,0.35)' }} />
+                    </motion.div>
                   )}
                 </motion.div>
 
