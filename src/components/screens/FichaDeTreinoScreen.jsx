@@ -2538,5 +2538,6 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         )}
       </AnimatePresence>
     </motion.div>
+    </>
   );
 }
