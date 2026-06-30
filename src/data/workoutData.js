@@ -25,6 +25,11 @@ export const workoutData = {
       { id: 'pa6', name: 'Tríceps Testa Barra EZ',       group: 'Tríceps', sets: 3, reps: '10–12', rir: '1',   rest: 60,  type: 'iso',      detail: 'Cotovelos fixos, amplitude total' },
     ],
     cardio: 'Esteira 20–25 min · 2 min 5 km/h + 2 min 8 km/h alternando',
+    cooldown: [
+      'Alongamento de peitoral na parede: 30s cada lado',
+      'Alongamento de tríceps atrás da cabeça: 30s cada braço',
+      'Alongamento de ombro cruzado no peito: 30s cada lado',
+    ],
   },
 
   // TERÇA — Pull A
@@ -47,6 +52,11 @@ export const workoutData = {
       { id: 'pla6', name: 'Face Pull com Corda',         group: 'Ombro',  sets: 3, reps: '15–20', rir: '2',   rest: 60,  type: 'iso',      detail: 'Puxar para a testa, rotação externa — saúde do ombro' },
     ],
     cardio: 'Esteira 25–30 min · Caminhada 5–6 km/h + 2 blocos corrida 8 km/h de 3 min',
+    cooldown: [
+      'Alongamento de dorsal pendurado ou sentado: 30s',
+      'Alongamento de bíceps com braço estendido na parede: 30s cada lado',
+      'Rotação de ombros lenta: 10 reps cada direção',
+    ],
   },
 
   // QUARTA — Legs A
@@ -69,6 +79,11 @@ export const workoutData = {
       { id: 'la5', name: 'Panturrilha em Pé',           group: 'Panturrilha', sets: 4, reps: '12–15', rir: '1',   rest: 60,  type: 'iso',      detail: 'Amplitude total, pausa de 1 seg no alongamento' },
     ],
     cardio: 'Esteira 20 min caminhada 5–6 km/h apenas · Dia de pernas = cardio mais leve',
+    cooldown: [
+      'Alongamento de quadríceps em pé: 30s cada perna',
+      'Alongamento de panturrilha na parede: 30s cada perna',
+      'Alongamento de isquiotibiais sentado: 30s cada perna',
+    ],
   },
 
   // QUINTA — Upper B
@@ -94,6 +109,11 @@ export const workoutData = {
       { id: 'ub10', name: 'Elevação de Pernas na Barra',  group: 'Core',    sets: 3, reps: '12–15', rir: '1',   rest: 60,  type: 'core',     detail: 'Controle total, sem balanço' },
     ],
     cardio: 'Esteira 25 min · Blocos 2 min caminhada 5 km/h + 3 min corrida 7–8 km/h',
+    cooldown: [
+      'Alongamento de peitoral e ombro: 30s cada lado',
+      'Alongamento de abdômen em extensão (cobra): 30s',
+      'Respiração profunda controlada: 5 ciclos lentos',
+    ],
   },
 
   // SEXTA — Legs B + Core
@@ -118,6 +138,11 @@ export const workoutData = {
       { id: 'lb8', name: 'Bicicleta Abdominal',            group: 'Core',        sets: 3, reps: '20/lado',rir: '—',   rest: 45,  type: 'core',     detail: 'Rotação real do tronco, não do pescoço' },
     ],
     cardio: 'Esteira 20 min caminhada 5–6 km/h · Fim de semana = recuperação completa',
+    cooldown: [
+      'Alongamento de glúteo cruzado deitado: 30s cada lado',
+      'Alongamento de isquiotibiais e lombar: 30s',
+      'Alongamento de panturrilha: 30s cada perna',
+    ],
   },
 
   // SÁBADO e DOMINGO — Descanso
