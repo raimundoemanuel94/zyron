@@ -78,6 +78,7 @@ export default function SessaoTreinoPremium({
   isCardioSyncing = false,
 }) {
   const [cardioDisplaySeconds, setCardioDisplaySeconds] = useState(0);
+  const [warmupOpen, setWarmupOpen] = useState(false);
   const [selectedMuscle, setSelectedMuscle] = useState(null);
   const [anatomyOpen, setAnatomyOpen] = useState(true); // Neural Monitor aberto por padrão
   const [confirmFinishArmed, setConfirmFinishArmed] = useState(false);
@@ -628,17 +629,52 @@ export default function SessaoTreinoPremium({
             </div>
           </motion.div>
 
-          {/* Pre-cardio alert */}
-          {currentWorkout?.preCardio && (
+          {/* Aquecimento — lista detalhada (programa PPL) com fallback pro texto antigo (ficha ABC) */}
+          {(currentWorkout?.warmup?.length > 0 || currentWorkout?.preCardio) && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-2 px-4 py-3 rounded-[16px]"
+              className="overflow-hidden rounded-[16px]"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
-              <Zap size={13} style={{ color: '#E5E5E5', flexShrink: 0 }} />
-                <span className="text-[12px] font-black uppercase tracking-[0.08em]"
-                  style={{ color: '#E5E5E5' }}>Aquecimento: {currentWorkout.preCardio}</span>
+              <button
+                onClick={() => setWarmupOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap size={13} style={{ color: '#E5E5E5', flexShrink: 0 }} />
+                  <span className="text-[12px] font-black uppercase tracking-[0.08em]" style={{ color: '#E5E5E5' }}>
+                    Aquecimento {currentWorkout?.warmup?.length > 0 ? `· ${currentWorkout.warmup.length} passos` : ''}
+                  </span>
+                </div>
+                <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.4)', transform: warmupOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+
+              <AnimatePresence>
+                {warmupOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-3.5 pt-0.5">
+                      {currentWorkout?.warmup?.length > 0 ? (
+                        <ul className="space-y-1.5">
+                          {currentWorkout.warmup.map((item, i) => (
+                            <li key={i} className="flex items-start gap-2 text-[11.5px] text-white/65 leading-relaxed">
+                              <span className="shrink-0 mt-1 w-1 h-1 rounded-full bg-white/40" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11.5px] text-white/65 leading-relaxed">{currentWorkout.preCardio}</p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
