@@ -204,7 +204,7 @@ function SearchPanel({ onSelect }) {
 
 // ─── MINI PLAYER — barra persistente acima da nav, estilo Spotify ───────────
 export function MiniPlayer({ onExpand }) {
-  const { currentTrack, isPlaying, togglePlay, nextTrack, progress } = useMusic();
+  const { currentTrack, isPlaying, togglePlay, nextTrack, progress, stopPlayback } = useMusic();
 
   if (!currentTrack) return null;
 
@@ -217,6 +217,11 @@ export function MiniPlayer({ onExpand }) {
   const handleNext = (e) => {
     e.stopPropagation();
     nextTrack();
+  };
+
+  const handleClose = (e) => {
+    e.stopPropagation();
+    stopPlayback();
   };
 
   return (
@@ -281,6 +286,15 @@ export function MiniPlayer({ onExpand }) {
             style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.70)' }}
           >
             <SkipForward size={15} />
+          </button>
+
+          <button
+            onClick={handleClose}
+            className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full"
+            style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.40)' }}
+            aria-label="Fechar player"
+          >
+            <X size={13} />
           </button>
         </div>
       </motion.div>
