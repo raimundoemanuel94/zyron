@@ -14,7 +14,7 @@ export function useMusclePump(userRole) {
   const [isAnimating, setIsAnimating] = useState(false);
 
   // Check if user has premium access (ADMIN or PERSONAL trainer also has access)
-  const isPremiumUser = userRole === 'PREMIUM' || userRole === 'ADMIN' || userRole === 'PERSONAL';
+  const isPremiumUser = true; // Neural Monitor liberado para todos os usuários do app
 
   // Activate muscles for an exercise
   const activateMusclePump = useCallback((exerciseId) => {
