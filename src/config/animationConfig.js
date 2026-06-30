@@ -6,7 +6,7 @@
  * - para reativar, definir VITE_USE_REMOTE_EXERCISE_MEDIA=true.
  */
 
-const USE_REMOTE_EXERCISE_MEDIA = import.meta.env.VITE_USE_REMOTE_EXERCISE_MEDIA === 'true';
+const USE_REMOTE_EXERCISE_MEDIA = import.meta.env.VITE_USE_REMOTE_EXERCISE_MEDIA !== 'false'; // ligado por padrão
 const RAW_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises';
 const PAGES_BASE = 'https://yuhonas.github.io/free-exercise-db/exercises';
 const JSDELIVR_BASE = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db/exercises';
