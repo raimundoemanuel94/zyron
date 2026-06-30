@@ -505,7 +505,7 @@ export default function TabPainel({
                 )}
                 <div className="flex items-baseline gap-1">
                   <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>{item.unit}</span>
-                  <span style={{ fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.22)' }}>/ {item.goal}</span>
+                  <span style={{ fontSize: '9px', fontWeight: 500, color: 'rgba(255,255,255,0.22)' }}>/ {item.goal}{item.done ? ' · completo' : ''}</span>
                 </div>
               </div>
 
