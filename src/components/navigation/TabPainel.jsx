@@ -365,84 +365,52 @@ export default function TabPainel({
         exit={{ opacity: 0, scale: 1.01 }}
         className="flex flex-col gap-2 pb-2"
       >
-        <div className="space-y-3 pb-1">
-          <motion.div
-            variants={stagger.item}
-            whileTap={{ scale: 0.985 }}
-            className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0F1220] px-4 py-4"
-            style={{
-              boxShadow: '0 8px 22px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.04)',
-            }}
-          >
-            <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.12),transparent_46%)]" />
-            <div className="relative z-10">
-              <h2 className="text-xl font-black leading-tight text-white">{workoutTitle}</h2>
-              <p className="mt-1 text-xs font-medium text-zinc-500">{workoutFocus}</p>
-
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {WEEK_DAYS.map((label, i) => {
-                  const dateNum = weekStart.getDate() + i;
-                  const isToday = i === today;
-                  const trained = trainedDays.includes(i);
-                  const isCompletedToday = isToday && trained;
-                  const isPendingToday = isToday && !trained;
-                  return (
-                    <motion.div
-                      key={label}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03, duration: 0.25 }}
-                      className={`min-w-[50px] p-2 rounded-full text-center border ${
-                        isCompletedToday
-                          ? 'bg-[#FFFFFF] border-[#FFFFFF] text-black'
-                          : isPendingToday
-                            ? 'border-[#FFFFFF]/55 bg-[#FFFFFF]/8 text-[#E0E0E0]'
-                          : trained
-                            ? 'border-[#FFFFFF]/45 text-[#E0E0E0]'
-                            : 'border-white/[0.06] bg-transparent text-zinc-500'
-                      }`}
-                    >
-                      <p className="text-[9px] font-bold uppercase">{label}</p>
-                      <p className={`text-sm font-semibold ${isCompletedToday ? 'text-black' : isPendingToday ? 'text-[#E8E8E8]' : trained ? 'text-zinc-200' : 'text-zinc-500'}`}>
-                        {dateNum}
-                      </p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.button
-            variants={stagger.item}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => onOpenWorkout?.(today)}
-            className="mt-3 w-full rounded-xl border border-[#FFFFFF]/35 bg-[#FFFFFF]/8 py-3 text-sm font-semibold text-[#E8E8E8] transition-transform"
-            style={{ boxShadow: '0 6px 14px rgba(255,255,255,0.09)' }}
-          >
-            Ver treino de hoje
-          </motion.button>
-        </div>
-
         <div className="flex flex-col gap-2 pt-0">
-        <motion.div variants={stagger.item} className="flex items-center justify-between px-1">
-          <p className="text-sm font-semibold text-white">Hoje</p>
-        </motion.div>
 
+        {/* ══ CARD ÚNICO: Treino do dia + semana compacta ════════════════ */}
         <motion.div
           variants={stagger.item}
-          className="rounded-2xl border border-white/[0.06] bg-[#0F1220] px-4 py-3"
-          style={{ boxShadow: '0 8px 20px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03)' }}
+          whileTap={{ scale: 0.985 }}
+          onClick={() => onOpenWorkout?.(today)}
+          className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0F1220] px-4 py-4 cursor-pointer"
+          style={{ boxShadow: '0 10px 28px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.045)' }}
         >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black tracking-[0.18em] uppercase text-zinc-500">Treino do dia</p>
-              <p className="mt-1 truncate text-lg font-bold text-white leading-none">{workoutTitle}</p>
-              <p className="mt-1 text-xs text-zinc-500">{workoutFocus}</p>
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.12),transparent_46%)]" />
+          <div className="relative z-10">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black tracking-[0.2em] uppercase text-zinc-500 mb-1">Treino de hoje</p>
+                <h2 className="text-xl font-black leading-tight text-white truncate">{workoutTitle}</h2>
+                <p className="mt-1 text-xs font-medium text-zinc-500">{workoutFocus}</p>
+              </div>
+              <div className="shrink-0 flex flex-col items-center justify-center rounded-xl border border-white/[0.10] bg-white/[0.04] px-3 py-2">
+                <p className="text-[18px] font-black text-white leading-none">{exerciseCount}</p>
+                <p className="text-[7.5px] font-bold uppercase tracking-[0.14em] text-zinc-500 mt-1">exercícios</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-white/[0.08] px-3 py-2 text-center">
-              <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-zinc-500">Exercícios</p>
-              <p className="text-xl font-black text-white leading-none mt-1">{exerciseCount}</p>
+
+            {/* Semana compacta — apenas indicador de progresso, sem números repetidos */}
+            <div className="mt-3 flex gap-1.5">
+              {WEEK_DAYS.map((label, i) => {
+                const isToday = i === today;
+                const trained = trainedDays.includes(i);
+                return (
+                  <div
+                    key={label}
+                    className={`flex-1 h-1.5 rounded-full transition-colors ${
+                      trained ? 'bg-[#FFFFFF]' : isToday ? 'bg-white/30' : 'bg-white/[0.06]'
+                    }`}
+                    title={label}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-zinc-500">{weekTrainCount} de 5 dias treinados essa semana</span>
+              <span className="flex items-center gap-1 text-[11px] font-bold text-white">
+                Abrir <ChevronRight size={13} />
+              </span>
             </div>
           </div>
         </motion.div>
