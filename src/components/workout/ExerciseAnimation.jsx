@@ -90,13 +90,13 @@ export default function ExerciseAnimation({
           {muscles?.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-2">
               {muscles.slice(0, 3).map((m, i) => (
-                <span key={i} className="text-[7px] font-black uppercase tracking-wider bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
+                <span key={i} className="text-[7px] font-black uppercase tracking-wider bg-white/10 text-white border border-white/20 px-1.5 py-0.5 rounded-full">
                   {m}
                 </span>
               ))}
             </div>
           )}
-          {tip && <p className="text-[9px] font-bold text-yellow-300/80 leading-tight line-clamp-2">⚡ {tip}</p>}
+          {tip && <p className="text-[9px] font-bold text-white/70 leading-tight line-clamp-2">⚡ {tip}</p>}
         </div>
 
         {/* Badge */}
@@ -133,17 +133,17 @@ export default function ExerciseAnimation({
         {muscles.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
             {muscles.slice(0, 3).map((m, i) => (
-              <span key={i} className="text-[7px] font-black uppercase tracking-wider bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-1.5 py-0.5 rounded-full">
+              <span key={i} className="text-[7px] font-black uppercase tracking-wider bg-white/10 text-white border border-white/20 px-1.5 py-0.5 rounded-full">
                 {m}
               </span>
             ))}
           </div>
         )}
-        {tip && <p className="text-[9px] font-bold text-yellow-300/80 leading-tight line-clamp-2">⚡ {tip}</p>}
+        {tip && <p className="text-[9px] font-bold text-white/70 leading-tight line-clamp-2">⚡ {tip}</p>}
       </div>
 
       <div className="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full border border-white/10">
-        <motion.div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"
+        <motion.div className="w-1.5 h-1.5 bg-white rounded-full"
           animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1.5 }} />
         <span className="text-[7px] font-black text-white/70 uppercase tracking-widest">Pronto</span>
       </div>
@@ -158,7 +158,7 @@ function InstructionsPanel({ instructions, show, onToggle }) {
   return (
     <>
       <button
-        className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full border border-white/10 text-[7px] font-black text-white/70 uppercase tracking-widest hover:border-yellow-400/30 transition-all z-20"
+        className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full border border-white/10 text-[7px] font-black text-white/70 uppercase tracking-widest hover:border-white/30 transition-all z-20"
         onClick={e => { e.stopPropagation(); onToggle(); }}
       >
         {show ? 'Fechar' : '📋 Passos'}
@@ -169,11 +169,11 @@ function InstructionsPanel({ instructions, show, onToggle }) {
           className="absolute inset-0 bg-black/95 backdrop-blur-sm flex flex-col justify-center p-4 z-30 rounded-t-2xl overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
-          <h4 className="text-[10px] font-black text-yellow-400 uppercase tracking-widest mb-3">Como executar</h4>
+          <h4 className="text-[10px] font-black text-white uppercase tracking-widest mb-3">Como executar</h4>
           <ol className="space-y-2">
             {instructions.map((step, i) => (
               <li key={i} className="flex gap-2">
-                <span className="shrink-0 w-4 h-4 rounded-full bg-yellow-400 text-black text-[8px] font-black flex items-center justify-center mt-0.5">{i + 1}</span>
+                <span className="shrink-0 w-4 h-4 rounded-full bg-white text-black text-[8px] font-black flex items-center justify-center mt-0.5">{i + 1}</span>
                 <p className="text-[10px] text-neutral-300 leading-relaxed flex-1">{step}</p>
               </li>
             ))}
