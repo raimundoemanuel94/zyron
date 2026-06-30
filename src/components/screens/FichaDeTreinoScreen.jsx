@@ -73,6 +73,9 @@ import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
 import MusicDock, { MiniPlayer } from '../shared/MusicDock';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import ConnectionBanner from '../shared/ConnectionBanner';
+import { persistenceService } from '../../services/persistenceService';
 import { useMusic } from '../../contexts/MusicContext';
 import haptics from '../../utils/haptics';
 import logger from '../../utils/logger';
@@ -264,6 +267,26 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   const [restTimer, setRestTimer] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [assinaturaOpen, setAssinaturaOpen] = useState(false);
+
+  // Handler que sabe reenviar cada tipo de ação pendente da fila offline
+  const syncOfflineAction = useCallback(async (action) => {
+    const { type, payload } = action;
+    switch (type) {
+      case 'save_exercise_load':
+        await persistenceService.upsertExercisePR(payload.userId, payload.exerciseId, payload.maxLoad);
+        break;
+      case 'update_daily_stats':
+        await persistenceService.updateDailyStats(payload.userId, payload.date, payload.updates);
+        break;
+      case 'finish_workout':
+        await persistenceService.logWorkout(payload.userId, payload.workoutData);
+        break;
+      default:
+        console.warn('[OfflineQueue] Tipo de ação desconhecido:', type);
+    }
+  }, []);
+
+  const { isOnline, pendingCount, isSyncing, justReconnected } = useOnlineStatus(syncOfflineAction);
   const [notificationSheetOpen, setNotificationSheetOpen] = useState(false);
   const [lastWaterTime, setLastWaterTime] = useState(Date.now()); // Para alerta de 2 horas
   const [showPR, setShowPR] = useState(null); // Animation trigger for PR
@@ -1603,7 +1626,9 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
   );
 
   return (
-    <motion.div 
+    <>
+      <ConnectionBanner isOnline={isOnline} pendingCount={pendingCount} isSyncing={isSyncing} justReconnected={justReconnected} />
+      <motion.div 
       ref={appConstraintsRef} 
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
       animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
