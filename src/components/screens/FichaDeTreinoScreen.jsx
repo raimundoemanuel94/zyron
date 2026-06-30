@@ -273,13 +273,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const { type, payload } = action;
     switch (type) {
       case 'save_exercise_load':
-        await persistenceService.upsertExercisePR(payload.userId, payload.exerciseId, payload.maxLoad);
+        await persistenceService.upsertPR(payload.userId, payload.exerciseId, payload.maxLoad);
         break;
       case 'update_daily_stats':
         await persistenceService.updateDailyStats(payload.userId, payload.date, payload.updates);
         break;
       case 'finish_workout':
-        await persistenceService.logWorkout(payload.userId, payload.workoutData);
+        await persistenceService.createLog(payload.userId, payload.workoutKey, payload.durationSeconds);
         break;
       default:
         console.warn('[OfflineQueue] Tipo de ação desconhecido:', type);
