@@ -28,6 +28,7 @@ export default function TabTreino({
   prHistory,
   showPR,
   onActivateMuscle,
+  onOpenExerciseAnimation,
   isPremiumUser,
   currentExerciseId,
   activePrimaryMuscles,
@@ -267,6 +268,7 @@ export default function TabTreino({
                   showPR={showPR}
                   videoQuery={EXERCISE_VIDEOS[ex.id] || 'vcBig73oqpE'}
                   onActivateMuscle={onActivateMuscle}
+                  onOpenAnimation={onOpenExerciseAnimation}
                   isPremiumUser={isPremiumUser}
                 />
               </motion.div>
