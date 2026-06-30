@@ -22,19 +22,19 @@ export const EXERCISE_ANIMATIONS = {
 
   // ── PEITO ────────────────────────────────────────────────────────────────
   'p1': {
-    ...gif('Barbell_Bench_Press'),
+    ...gif('Barbell_Bench_Press_-_Medium_Grip'),
     muscles: ['Peitorais', 'Tríceps', 'Deltoide Anterior'],
     tip: 'Escápulas retraídas, pés firmes no chão.',
     instructions: ['Deite no banco plano com a barra acima do peito.','Agarre a barra ligeiramente mais larga que os ombros.','Desça a barra de forma controlada até o peito baixo/esterno.','Empurre a barra para cima até os braços quase estendidos.'],
   },
   'p2': {
-    ...gif('Dumbbell_Incline_Bench_Press'),
+    ...gif('Incline_Dumbbell_Press'),
     muscles: ['Peitorais (clavicular)', 'Deltoide Anterior', 'Tríceps'],
     tip: 'Cotovelos a 45° do tronco, controle a descida.',
     instructions: ['Ajuste o banco para 30–45° de inclinação.','Segure os halteres na altura do peito, palmas à frente.','Empurre os halteres para cima convergindo levemente.','Desça de forma controlada até o nível do peito.'],
   },
   'p_cm': {
-    ...gif('Pec_Deck_Flyes'),
+    ...gif('Dumbbell_Flyes'),
     muscles: ['Peitorais', 'Coracobraquial'],
     tip: 'Pressione os padres no final para recrutar ao máximo.',
     instructions: ['Sente-se com as costas no encosto e ajuste a altura do assento.','Posicione os braços nos apoios com cotovelos a 90°.','Aproxime os braços na frente do peito espremendo o peitoral.','Retorne lentamente até a posição inicial.'],
@@ -80,7 +80,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Sente-se na máquina e prenda os joelhos no apoio.','Agarre a barra com pegada ampla pronada.','Puxe a barra até a clavícula retraindo as escápulas.','Retorne de forma controlada sentindo a abertura do dorso.'],
   },
   'c_rc': {
-    ...gif('Barbell_Bent_Over_Row'),
+    ...gif('Bent_Over_Barbell_Row'),
     muscles: ['Latíssimo do Dorso', 'Romboides', 'Trapézio Médio'],
     tip: 'Costas planas, puxe até o umbigo.',
     instructions: ['Incline o tronco a 45° segurando a barra com pegada pronada.','Mantenha as costas neutras e joelhos levemente dobrados.','Puxe a barra em direção ao umbigo retraindo as escápulas.','Desça lentamente com controle total.'],
@@ -101,7 +101,7 @@ export const EXERCISE_ANIMATIONS = {
   // ── BÍCEPS ───────────────────────────────────────────────────────────────
   'b1':   { ...gif('Barbell_Curl'),         muscles: ['Bíceps Braquial', 'Braquial'],              tip: 'Cotovelos fixos ao corpo, não balance o tronco.',        instructions: ['Fique de pé com pegada supinada.','Mantenha os cotovelos presos ao tronco.','Curve a barra até os bíceps contrair totalmente.','Desça lentamente.'] },
   'b_ra': { ...gif('Hammer_Curls'),         muscles: ['Bíceps', 'Braquiorradial (antebraço)'],      tip: 'Polegares para cima, movimento alternado e controlado.',  instructions: ['Polegares para cima.','Cotovelos presos ao tronco.','Curve um halter de cada vez.','Alterne os lados.'] },
-  'b3':   { ...gif('Concentration_Curl'),   muscles: ['Bíceps Braquial (pico)'],                    tip: 'Cotovelão apoiado na coxa, isolamento total.',            instructions: ['Sente-se com as pernas abertas.','Apoie o cotovelo na coxa.','Curve o halter contraindo ao máximo.','Desça até a extensão completa.'] },
+  'b3':   { ...gif('Standing_Concentration_Curl'),   muscles: ['Bíceps Braquial (pico)'],                    tip: 'Cotovelão apoiado na coxa, isolamento total.',            instructions: ['Sente-se com as pernas abertas.','Apoie o cotovelo na coxa.','Curve o halter contraindo ao máximo.','Desça até a extensão completa.'] },
   'b_rw': { ...gif('Barbell_Curl'),         muscles: ['Bíceps Braquial', 'Braquial'],              tip: 'Barra EZ reduz stress no pulso. Cotovelos fixos.',        instructions: ['Pegada supinada na barra EZ.','Tronco estático.','Curve até a contração máxima.','Desça lentamente.'] },
   'b2':   { ...gif('Hammer_Curls'),         muscles: ['Bíceps', 'Braquiorradial (antebraço)'],      tip: 'Neutro (polegares para cima), movimento unilateral.',     instructions: ['Pegada neutra (polegar para cima).','Cotovelos presos ao tronco.','Curve um halter por vez.','Alterne os lados.'] },
   'b_bi': { ...gif('Incline_Dumbbell_Curl'),muscles: ['Bíceps Braquial (cabeça longa)'],            tip: 'Inclinação aumenta a amplitude de movimento do bíceps.',  instructions: ['Banco inclinado a 60°.','Braços pendurados atrás do corpo.','Curve sem mover os cotovelos.','Desça para máximo alongamento.'] },
@@ -129,7 +129,7 @@ export const EXERCISE_ANIMATIONS = {
   // ── OMBRO ────────────────────────────────────────────────────────────────
   's1':   { ...gif('Dumbbell_Shoulder_Press'), muscles: ['Deltoide Anterior e Lateral', 'Tríceps'], tip: 'Cotovelos a 90°, não trave no topo.',                     instructions: ['Halteres na altura dos ombros.','Palmas para frente.','Empurre para cima convergindo.','Desça controlado.'] },
   's2':   { ...gif('Side_Lateral_Raise'),      muscles: ['Deltoide Lateral (medial)'],              tip: 'Cotovelos levemente dobrados, suba até a linha dos ombros.', instructions: ['Halteres ao lado do corpo.','Eleve os braços lateralmente.','Desça lentamente.'] },
-  's3':   { ...gif('Dumbbell_Front_Raise'),    muscles: ['Deltoide Anterior'],                      tip: 'Controle o eccêntrico, não balance o tronco.',            instructions: ['Halteres na frente das coxas.','Levante à linha dos ombros.','Desça devagar.'] },
+  's3':   { ...gif('Front_Raise_And_Pullover'),    muscles: ['Deltoide Anterior'],                      tip: 'Controle o eccêntrico, não balance o tronco.',            instructions: ['Halteres na frente das coxas.','Levante à linha dos ombros.','Desça devagar.'] },
   's4':   { ...gif('Reverse_Flyes'),           muscles: ['Deltoide Posterior', 'Romboides'],        tip: 'Cotovelos levemente dobrados, retração de escápula.',     instructions: ['Incline o tronco a 45°.','Eleve os braços lateralmente.','Desça sentindo a contração.'] },
   's_et': { ...gif('Barbell_Shrug'),           muscles: ['Trapézio Superior'],                      tip: 'Suba direto, sem rotação. Segure 1s no topo.',            instructions: ['Barra na frente com pegada pronada.','Levante os ombros o mais alto possível.','Segure 1s e desça.'] },
 
@@ -151,7 +151,7 @@ export const EXERCISE_ANIMATIONS = {
 
   // ── PUSH A — Segunda ────────────────────────────────────────────────────
   'pa1': {
-    ...gif('Barbell_Bench_Press'),
+    ...gif('Barbell_Bench_Press_-_Medium_Grip'),
     muscles: ['Peitorais', 'Tríceps', 'Deltoide Anterior'],
     tip: 'Escápulas retraídas, pés firmes no chão.',
     instructions: ['Deite no banco plano com a barra acima do peito.','Agarre a barra ligeiramente mais larga que os ombros.','Desça a barra de forma controlada até o peito baixo/esterno.','Empurre a barra para cima até os braços quase estendidos.'],
@@ -163,7 +163,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Halteres na altura dos ombros, palmas para frente.','Empurre para cima convergindo levemente.','Desça controlado até a linha dos ombros.'],
   },
   'pa3': {
-    ...gif('Dumbbell_Incline_Bench_Press'),
+    ...gif('Incline_Dumbbell_Press'),
     muscles: ['Peitorais (clavicular)', 'Deltoide Anterior'],
     tip: 'Cotovelos a 45° do tronco, controle a descida.',
     instructions: ['Banco inclinado 30–45°.','Halteres na altura do peito, palmas à frente.','Empurre convergindo levemente.','Desça controlado até o alongamento.'],
@@ -195,7 +195,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Pegada pronada, mais larga que os ombros.','Puxe o corpo retraindo as escápulas.','Desça controlado até a extensão completa.'],
   },
   'pla2': {
-    ...gif('Barbell_Bent_Over_Row'),
+    ...gif('Bent_Over_Barbell_Row'),
     muscles: ['Latíssimo do Dorso', 'Romboides', 'Trapézio Médio'],
     tip: 'Costas planas, puxe até o umbigo.',
     instructions: ['Incline o tronco a 45° segurando a barra.','Mantenha costas neutras, joelhos levemente dobrados.','Puxe a barra ao umbigo retraindo as escápulas.','Desça lentamente.'],
@@ -259,7 +259,7 @@ export const EXERCISE_ANIMATIONS = {
 
   // ── UPPER B — Quinta ────────────────────────────────────────────────────
   'ub1': {
-    ...gif('Dumbbell_Incline_Bench_Press'),
+    ...gif('Incline_Dumbbell_Press'),
     muscles: ['Peitorais (clavicular)', 'Deltoide Anterior', 'Tríceps'],
     tip: 'Foco no feixe clavicular — ângulo diferente do Push A.',
     instructions: ['Banco a 30–45°.','Halteres na altura do peito.','Empurre convergindo levemente.','Desça controlado.'],
@@ -271,7 +271,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Pés nos apoios, tronco ereto.','Puxe o triângulo até o abdômen.','Retraia as escápulas no final.','Retorne controlado.'],
   },
   'ub3': {
-    ...gif('Arnold_Press'),
+    ...gif('Arnold_Dumbbell_Press'),
     muscles: ['Deltoide (todos os feixes)', 'Tríceps'],
     tip: 'Rotação no movimento, ativa todo o ombro.',
     instructions: ['Halteres na frente, palmas voltadas para você.','Empurre girando as palmas para frente.','No topo, palmas para fora.','Desça revertendo a rotação.'],
@@ -283,7 +283,7 @@ export const EXERCISE_ANIMATIONS = {
     instructions: ['Polias altas, um passo à frente.','Puxe os cabos para baixo e ao centro.','Cruze as mãos sentindo a contração.','Retorne controlado.'],
   },
   'ub5': {
-    ...gif('Concentration_Curl'),
+    ...gif('Standing_Concentration_Curl'),
     muscles: ['Bíceps Braquial (pico)'],
     tip: 'Cotovelo apoiado na coxa, isolamento total.',
     instructions: ['Sentado, cotovelo apoiado na coxa.','Curve contraindo ao máximo.','Pausa de 1s no topo.','Desça até a extensão completa.'],
@@ -372,7 +372,7 @@ export const EXERCISE_ANIMATIONS = {
 
 // ─── Fallback padrão ──────────────────────────────────────────────────────────
 export const DEFAULT_ANIMATION = {
-  ...gif('Barbell_Bench_Press'),
+  ...gif('Barbell_Bench_Press_-_Medium_Grip'),
   muscles:      ['Músculos Principais'],
   tip:          'Execute com controle e amplitude completa.',
   instructions: ['Execute o exercício com boa postura e técnica controlada.'],
