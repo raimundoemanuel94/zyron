@@ -257,6 +257,21 @@ export default function WorkoutCard({
 
   const isNewPR = parseFloat(load) > (prHistoryLoad || 0);
 
+  // Mantém a tela cheia do exercício sempre sincronizada com o estado atual
+  // da série (carga, reps, status) — sem isso o modal ficaria "congelado"
+  // no momento em que foi aberto.
+  useEffect(() => {
+    if (!isExpanded || !onOpenAnimation) return;
+    onOpenAnimation(ex, animData, {
+      loggedSets, activeSet, totalSets, isRunning, setTimer,
+      actualReps, setActualReps, rpe, setRpe, rir, setRir,
+      restSeconds, setRestSeconds, setStatus, setSetStatus,
+      setError, onToggleSet: handleToggleSet, loadInputValue, onUpdateLoad,
+      exerciseId: ex.id, isNewPR, prHistoryLoad,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, loggedSets, activeSet, isRunning, actualReps, rpe, rir, restSeconds, setStatus, setError, loadInputValue]);
+
   return (
     <motion.div
       layout
@@ -281,17 +296,6 @@ export default function WorkoutCard({
           setIsExpanded(true);
           if (onActivateMuscle && isPremiumUser) {
             onActivateMuscle(ex.id);
-          }
-          // Abre automaticamente a tela de execução em tela cheia,
-          // com a animação do movimento + registro de série juntos
-          if (onOpenAnimation) {
-            onOpenAnimation(ex, animData, {
-              loggedSets, activeSet, totalSets, isRunning, setTimer,
-              actualReps, setActualReps, rpe, setRpe, rir, setRir,
-              restSeconds, setRestSeconds, setStatus, setSetStatus,
-              setError, onToggleSet: handleToggleSet, loadInputValue, onUpdateLoad,
-              exerciseId: ex.id, isNewPR, prHistoryLoad,
-            });
           }
         }
       }}
