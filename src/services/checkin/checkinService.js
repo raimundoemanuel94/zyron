@@ -19,8 +19,11 @@ export const CHECKIN_EVENT = {
 export const DEFAULT_CHECKIN_CONFIG = {
   entryConfirmations: 2,
   exitConfirmations: 2,
-  maxAccuracyM: 80,
-  fallbackRadiusM: 120,
+  // Precisão ajustada: 80m/120m era largo demais e podia confundir com
+  // estabelecimentos vizinhos. 50m/80m ainda tolera GPS impreciso de
+  // celulares mais antigos e prédios, mas reduz falsos positivos.
+  maxAccuracyM: 50,
+  fallbackRadiusM: 80,
   heartbeatIntervalMs: 2 * 60 * 1000,
   distanceFilterM: 0,
 };
