@@ -78,7 +78,7 @@ export default function SessaoTreinoPremium({
 }) {
   const [cardioDisplaySeconds, setCardioDisplaySeconds] = useState(0);
   const [selectedMuscle, setSelectedMuscle] = useState(null);
-  const [anatomyOpen, setAnatomyOpen] = useState(false);
+  const [anatomyOpen, setAnatomyOpen] = useState(true); // Neural Monitor aberto por padrão
   const [confirmFinishArmed, setConfirmFinishArmed] = useState(false);
   const finishConfirmTimeoutRef = useRef(null);
   const cardioTickRef = useRef(null);
@@ -656,7 +656,7 @@ export default function SessaoTreinoPremium({
               >
                 <div className="flex items-center gap-2">
                   <Target size={12} className="text-[#FFFFFF]" />
-                  <span className="text-[12px] font-black uppercase tracking-[0.1em] text-white/78">Filtros</span>
+                  <span className="text-[12px] font-black uppercase tracking-[0.1em] text-white/78">Mapa Muscular</span>
                   {/* Color dots per muscle group */}
                   <div className="flex gap-1 ml-1.5">
                     {[...new Set(currentWorkout.exercises.map(e => e.group))].map(muscle => {
