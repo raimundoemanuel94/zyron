@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
 import logger from '../utils/logger';
 import audioUnlocker from '../utils/audioUnlock';
 
@@ -11,10 +10,11 @@ const PLAYER_POSITION_KEY = 'zyron_player_pos';
 const PLAYER_MINIMIZED_KEY = 'zyron_player_minimized';
 const SILENT_AUDIO_URI = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT';
 
+// Fallback usado apenas quando a busca falha — playlists reais de treino no YouTube
 const fallbackTracks = [
-  { id: 'dQw4w9WgXcQ', title: 'ZYRON Hardcore Mix Vol 1', thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg', artist: 'ZYRON Mixes' },
-  { id: 'jfKfPfyJRdk', title: 'Lofi Hip Hop Radio', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
-  { id: 'L_jWHftIyJQ', title: 'Epic Workout Motivation', thumbnail: 'https://img.youtube.com/vi/L_jWHftIyJQ/default.jpg', artist: 'ZYRON Fitness' },
+  { id: 'jfKfPfyJRdk', title: 'lofi hip hop radio - beats to relax/study to', thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/default.jpg', artist: 'Lofi Girl' },
+  { id: 'gqxNkfDgF4w', title: 'Gym Motivation Mix', thumbnail: 'https://img.youtube.com/vi/gqxNkfDgF4w/default.jpg', artist: 'Workout Music' },
+  { id: '4xDzrJKXOOY', title: 'Deep House Workout Mix', thumbnail: 'https://img.youtube.com/vi/4xDzrJKXOOY/default.jpg', artist: 'Mix Sessions' },
 ];
 
 const isIOSUserAgent = () => typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent);
@@ -55,7 +55,7 @@ export const MusicProvider = ({ children }) => {
   const retryHandlerRef = useRef(null);
 
   const isIOSClient = isIOSUserAgent();
-  const isNativeIOSApp = Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+  const isNativeIOSApp = false; // PWA puro — sem wrapper nativo Capacitor
 
   useEffect(() => {
     const savedTrack = localStorage.getItem(LAST_TRACK_KEY);
