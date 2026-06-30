@@ -75,7 +75,7 @@ import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 import ConnectionBanner from '../shared/ConnectionBanner';
-import { persistenceService } from '../../services/persistenceService';
+import persistenceService from '../../services/persistenceService';
 import { useMusic } from '../../contexts/MusicContext';
 import haptics from '../../utils/haptics';
 import logger from '../../utils/logger';
@@ -273,13 +273,13 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     const { type, payload } = action;
     switch (type) {
       case 'save_exercise_load':
-        await persistenceService.upsertPR(payload.userId, payload.exerciseId, payload.maxLoad);
+        await persistenceService.exercisePRs.upsertPR(payload.userId, payload.exerciseId, payload.maxLoad);
         break;
       case 'update_daily_stats':
-        await persistenceService.updateDailyStats(payload.userId, payload.date, payload.updates);
+        await persistenceService.dailyStats.updateDailyStats(payload.userId, payload.date, payload.updates);
         break;
       case 'finish_workout':
-        await persistenceService.createLog(payload.userId, payload.workoutKey, payload.durationSeconds);
+        await persistenceService.workoutLogs.createLog(payload.userId, payload.workoutKey, payload.durationSeconds);
         break;
       default:
         console.warn('[OfflineQueue] Tipo de ação desconhecido:', type);
