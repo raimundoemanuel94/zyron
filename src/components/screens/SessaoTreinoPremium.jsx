@@ -79,6 +79,7 @@ export default function SessaoTreinoPremium({
 }) {
   const [cardioDisplaySeconds, setCardioDisplaySeconds] = useState(0);
   const [warmupOpen, setWarmupOpen] = useState(false);
+  const [cooldownOpen, setCooldownOpen] = useState(false);
   const [selectedMuscle, setSelectedMuscle] = useState(null);
   const [anatomyOpen, setAnatomyOpen] = useState(true); // Neural Monitor aberto por padrão
   const [confirmFinishArmed, setConfirmFinishArmed] = useState(false);
@@ -911,6 +912,51 @@ export default function SessaoTreinoPremium({
                   <div className="h-1.5 w-1.5 rounded-full bg-red-500 animate-ping" />
                 )}
               </motion.button>
+            </motion.div>
+          )}
+
+          {/* Alongamento pós-treino — expansível, igual ao aquecimento */}
+          {currentWorkout?.cooldown?.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="overflow-hidden rounded-[16px]"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <button
+                onClick={() => setCooldownOpen((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Coffee size={13} style={{ color: '#E5E5E5', flexShrink: 0 }} />
+                  <span className="text-[12px] font-black uppercase tracking-[0.08em]" style={{ color: '#E5E5E5' }}>
+                    Alongamento · {currentWorkout.cooldown.length} passos
+                  </span>
+                </div>
+                <ChevronDown size={14} style={{ color: 'rgba(255,255,255,0.4)', transform: cooldownOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+
+              <AnimatePresence>
+                {cooldownOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 pb-3.5 pt-0.5">
+                      <ul className="space-y-1.5">
+                        {currentWorkout.cooldown.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[11.5px] text-white/65 leading-relaxed">
+                            <span className="shrink-0 mt-1 w-1 h-1 rounded-full bg-white/40" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
