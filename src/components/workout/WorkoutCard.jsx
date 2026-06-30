@@ -66,6 +66,7 @@ export default function WorkoutCard({
   showPR,
   videoQuery,
   onActivateMuscle,
+  onOpenAnimation,
   isPremiumUser,
   userId
 }) {
@@ -436,45 +437,13 @@ export default function WorkoutCard({
             </div>
             {ENABLE_EXERCISE_VISUAL_GUIDE && (
               <button
-                onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
+                onClick={(e) => { e.stopPropagation(); onOpenAnimation?.(ex, animData); }}
                 className="rounded-full border border-white/14 bg-black/25 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/80 transition-all duration-200 hover:text-[#FFFFFF]"
               >
-                {showVideo ? 'Fechar' : '▶ Ver movimento'}
+                ▶ Ver movimento
               </button>
             )}
           </div>
-
-          <AnimatePresence>
-            {ENABLE_EXERCISE_VISUAL_GUIDE && showVideo && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="mt-3 overflow-hidden rounded-2xl border border-white/8 bg-black/40"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="grid grid-cols-[88px_1fr] items-center gap-3 p-2">
-                  <ExerciseAnimation
-                    frame0={animData.frame0}
-                    frame1={animData.frame1}
-                    frame0fb={animData.frame0fb}
-                    frame1fb={animData.frame1fb}
-                    muscles={animData.muscles || []}
-                    tip={animData.tip || ''}
-                    instructions={animData.instructions || []}
-                    exerciseName={ex.name}
-                    className="h-[78px] rounded-xl overflow-hidden"
-                  />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowVideo(false); }}
-                    className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3 text-[12px] font-black uppercase tracking-[0.06em] text-white/80"
-                  >
-                    Técnica visual ativa
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
       )}
 
