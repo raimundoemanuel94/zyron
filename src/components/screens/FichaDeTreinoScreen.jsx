@@ -2024,90 +2024,28 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
                   <ChevronRight size={16} className="text-neutral-950/50 group-hover:translate-x-0.5 transition-transform" strokeWidth={2.5} />
                 </motion.button>
 
-                {/* Musica — bloco dedicado no botao + */}
-                <motion.div
+                {/* Musica — atalho simples, controles completos vivem no MiniPlayer */}
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05, type: 'spring', stiffness: 340, damping: 28 }}
-                  className="rounded-[18px] border border-[#FFFFFF]/20 bg-[#FFFFFF]/[0.06] p-3"
+                  onClick={() => { setFabOpen(false); setTimeout(() => openMusicPanel(currentTrack ? 'player' : 'search'), 120); }}
+                  className="w-full flex items-center justify-between gap-2 rounded-[18px] border border-white/12 bg-white/[0.05] p-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-[#FFFFFF]/15 border border-[#FFFFFF]/25 flex items-center justify-center">
-                        <Music2 size={15} className="text-[#FFFFFF]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10.5px] font-black uppercase tracking-wider text-white">Musica</p>
-                        <p className="text-[9px] text-[#FFFFFF]/80 truncate">
-                          {currentTrack ? `${currentTrack.title || 'Faixa atual'}${isMusicPlaying ? ' • tocando' : ' • pausado'}` : 'Sem faixa carregada'}
-                        </p>
-                      </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                      <Music2 size={15} className="text-white" />
                     </div>
-                    <button
-                      onClick={() => openMusicPanel('player')}
-                      className="shrink-0 rounded-full border border-[#FFFFFF]/25 bg-[#FFFFFF]/10 px-2.5 py-1 text-[8px] font-black uppercase tracking-widest text-[#FFFFFF]"
-                    >
-                      Abrir
-                    </button>
+                    <div className="min-w-0 text-left">
+                      <p className="text-[10.5px] font-black uppercase tracking-wider text-white">Música</p>
+                      <p className="text-[9px] text-white/55 truncate">
+                        {currentTrack ? `${currentTrack.title || 'Faixa atual'}${isMusicPlaying ? ' • tocando' : ' • pausado'}` : 'Buscar e tocar'}
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="mt-2.5 grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        icon: Search,
-                        label: 'Buscar musica',
-                        sub: currentTrack ? 'Adicionar faixa' : 'Escolher primeira',
-                        color: 'text-[#FFFFFF]',
-                        bg: 'bg-[#FFFFFF]/10 border-[#FFFFFF]/15',
-                        delay: 0.07,
-                        action: () => openMusicPanel('search'),
-                      },
-                      {
-                        icon: isMusicPlaying ? Pause : Play,
-                        label: 'Pausar/Continuar',
-                        sub: currentTrack ? (isMusicPlaying ? 'Pausar faixa' : 'Retomar agora') : 'Abrir para tocar',
-                        color: 'text-amber-300',
-                        bg: 'bg-amber-500/10 border-amber-400/15',
-                        delay: 0.1,
-                        action: handleMusicToggleAction,
-                      },
-                      {
-                        icon: SkipForward,
-                        label: 'Proxima faixa',
-                        sub: musicPlaylist.length > 1 ? 'Avancar fila' : 'Adicionar mais',
-                        color: 'text-cyan-300',
-                        bg: 'bg-cyan-500/10 border-cyan-400/15',
-                        delay: 0.13,
-                        action: handleMusicNextAction,
-                      },
-                      {
-                        icon: Music2,
-                        label: 'Abrir player',
-                        sub: 'Controles completos',
-                        color: 'text-violet-300',
-                        bg: 'bg-violet-500/10 border-violet-400/15',
-                        delay: 0.16,
-                        action: () => openMusicPanel('player'),
-                      },
-                    ].map(({ icon: Ic, label, sub, color, bg, delay, action }) => (
-                      <motion.button
-                        key={label}
-                        whileTap={{ scale: 0.94 }}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay, type: 'spring', stiffness: 340, damping: 28 }}
-                        onClick={action}
-                        className={`flex flex-col items-start p-3 rounded-[14px] border ${bg} transition-all`}
-                      >
-                        <div className={`w-7 h-7 rounded-full ${bg} flex items-center justify-center mb-2`}>
-                          <Ic size={14} className={color} />
-                        </div>
-                        <span className="text-white text-[10px] font-bold leading-tight">{label}</span>
-                        <span className={`text-[8px] font-medium mt-0.5 ${color} opacity-70`}>{sub}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
+                  <ChevronRight size={14} className="shrink-0 text-white/35" strokeWidth={2.5} />
+                </motion.button>
 
                 <div className="grid grid-cols-2 gap-2">
                   {[
