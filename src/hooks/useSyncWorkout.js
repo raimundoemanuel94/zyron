@@ -265,6 +265,9 @@ const createDirectSyncProcessor = async (item, session) => {
     started_at: item.workout.started_at || item.workout.startedAt || null,
     ended_at: item.workout.ended_at || item.workout.finishedAt || null,
     location: item.workout.location || item.location?.address || null,
+    // Fix: exercises_completed sempre ficava 0 — o valor já era calculado
+    // em stats.completedExercises mas nunca chegava até aqui.
+    exercises_completed: item.stats?.completedExercises ?? 0,
   };
 
   const { data: existingLogs, error: lookupError } = await supabase
