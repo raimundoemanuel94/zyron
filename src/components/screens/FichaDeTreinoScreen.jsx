@@ -70,7 +70,7 @@ import TabPerfil from '../navigation/TabPerfil';
 import TabCoach from '../navigation/TabCoach';
 import TabPrograma from '../navigation/TabPrograma';
 import MusclePumpWrapper from '../anatomy/MusclePumpWrapper';
-import MusicDock from '../shared/MusicDock';
+import MusicDock, { MiniPlayer } from '../shared/MusicDock';
 import { useSyncWorkout } from '../../hooks/useSyncWorkout';
 import { useGymCheckin } from '../../hooks/useGymCheckin';
 import { useMusic } from '../../contexts/MusicContext';
@@ -2540,6 +2540,11 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
         isOpen={notificationSheetOpen}
         onClose={() => setNotificationSheetOpen(false)}
       />
+
+      {/* Mini-player persistente — sempre visível acima da nav quando há música */}
+      {!musicPanelOpen && (
+        <MiniPlayer onExpand={() => { setMusicPanelView('player'); setMusicPanelOpen(true); }} />
+      )}
 
       <MusicDock
         isOpen={musicPanelOpen}
