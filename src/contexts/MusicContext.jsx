@@ -728,7 +728,7 @@ export const MusicProvider = ({ children }) => {
     releaseWakeLock();
 
     try {
-      localStorage.removeItem('zyron_current_track');
+      localStorage.removeItem(LAST_TRACK_KEY);
     } catch {
       // ignora erros de storage
     }
