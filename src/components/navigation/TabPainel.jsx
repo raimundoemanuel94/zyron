@@ -558,9 +558,9 @@ export default function TabPainel({
         {/* ══ 5. STATS DO TREINO ATUAL ════════════════════════════════════ */}
         <motion.div variants={stagger.item} className="grid grid-cols-3 gap-[clamp(6px,1.5vw,10px)] shrink-0">
           {[
-            { label: 'Treinos/Sem', value: weekTrainCount,  unit: 'dias', icon: Flame,    accentColor: '#FFFFFF', glowRgb: '205,255,90', featured: true },
-            { label: 'Exercícios',  value: exerciseCount,   unit: 'hoje', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
-            { label: 'Séries',      value: totalSets,       unit: 'total', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
+            { label: 'Treinados', value: weekTrainCount,  unit: '/sem', icon: Flame,    accentColor: '#FFFFFF', glowRgb: '205,255,90', featured: true },
+            { label: 'Recentes',  value: recentActivity.length, unit: 'sessões', icon: Dumbbell, accentColor: '#34D399', glowRgb: '52,211,153' },
+            { label: 'Séries hoje', value: totalSets,       unit: 'plan.', icon: Activity, accentColor: '#FB7185', glowRgb: '251,113,133' },
           ].map(({ label, value, unit, icon: Icon, accentColor, glowRgb, featured }) => (
             <motion.div
               key={label}
