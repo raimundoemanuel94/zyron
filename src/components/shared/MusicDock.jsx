@@ -228,9 +228,9 @@ export function MiniPlayer({ onExpand }) {
         exit={{ y: 80, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 320, damping: 30 }}
         onClick={onExpand}
-        className="fixed left-0 right-0 z-[54] mx-auto cursor-pointer"
+        className="fixed left-0 right-0 z-[40] mx-auto cursor-pointer"
         style={{
-          bottom: 72,
+          bottom: 'calc(72px + env(safe-area-inset-bottom))',
           maxWidth: 430,
           padding: '0 10px',
         }}
