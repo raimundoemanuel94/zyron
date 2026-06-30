@@ -219,16 +219,27 @@ export const MusicProvider = ({ children }) => {
     };
   }, [isPlaying]);
 
+  // MediaSession — controla a tela bloqueada e a central de controle.
+  // No Android (Chrome) funciona de forma completa em PWA.
+  // No iOS funciona melhor quando o app está instalado na Tela de Início
+  // (modo standalone) do que aberto direto no Safari — limitação da Apple,
+  // não do código. Quanto mais handlers registrados, mais completo o suporte.
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentTrack) return undefined;
 
+    // Artwork em múltiplos tamanhos — iOS exige isso para exibir a capa
+    const thumb = currentTrack.thumbnail || '/images/zyron-512.png';
     navigator.mediaSession.metadata = new window.MediaMetadata({
-      title: currentTrack.title || 'Treino ZYRON',
-      artist: currentTrack.artist || 'ZYRON Radio',
-      album: 'A Forca da Sua Evolucao',
+      title: currentTrack.title || 'ZYRON Radio',
+      artist: currentTrack.artist || 'ZYRON',
+      album: 'ZYRON — A Força da Sua Evolução',
       artwork: [
-        { src: currentTrack.thumbnail || '/images/zyron-512.png', sizes: '512x512', type: 'image/png' },
-        { src: currentTrack.thumbnail || '/images/zyron-192.png', sizes: '192x192', type: 'image/png' },
+        { src: thumb, sizes: '96x96', type: 'image/png' },
+        { src: thumb, sizes: '128x128', type: 'image/png' },
+        { src: thumb, sizes: '192x192', type: 'image/png' },
+        { src: thumb, sizes: '256x256', type: 'image/png' },
+        { src: thumb, sizes: '384x384', type: 'image/png' },
+        { src: thumb, sizes: '512x512', type: 'image/png' },
       ],
     });
 
@@ -239,35 +250,45 @@ export const MusicProvider = ({ children }) => {
     }
 
     const playHandler = async () => {
-      if (!isPlaying) {
-        await togglePlay();
-      }
+      if (!isPlaying) await togglePlay();
     };
-
     const pauseHandler = async () => {
-      if (isPlaying) {
-        await togglePlay();
-      }
+      if (isPlaying) await togglePlay();
+    };
+    const stopHandler = async () => {
+      if (isPlaying) await togglePlay();
     };
 
     const safeSetActionHandler = (action, handler) => {
       try {
         navigator.mediaSession.setActionHandler(action, handler);
       } catch {
-        // Some actions are not supported in all browsers.
+        // Ação não suportada nesse browser/versão — ignora silenciosamente.
       }
     };
 
     safeSetActionHandler('play', playHandler);
     safeSetActionHandler('pause', pauseHandler);
+    safeSetActionHandler('stop', stopHandler);
     safeSetActionHandler('previoustrack', () => prevTrack());
     safeSetActionHandler('nexttrack', () => nextTrack());
+    // seekto evita que alguns players Android mostrem a barra de progresso quebrada
+    safeSetActionHandler('seekto', (details) => {
+      const nativeAudio = nativeAudioRef.current;
+      if (nativeAudio?.duration && details.seekTime != null) {
+        nativeAudio.currentTime = details.seekTime;
+      } else if (playerRef.current?.seekTo) {
+        playerRef.current.seekTo(details.seekTime, true);
+      }
+    });
 
     return () => {
       safeSetActionHandler('play', null);
       safeSetActionHandler('pause', null);
+      safeSetActionHandler('stop', null);
       safeSetActionHandler('previoustrack', null);
       safeSetActionHandler('nexttrack', null);
+      safeSetActionHandler('seekto', null);
     };
   }, [currentTrack, isPlaying, playlist]);
 
