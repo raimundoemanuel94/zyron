@@ -16,6 +16,7 @@ import {
 import { useMusic } from '../../contexts/MusicContext';
 import audioUnlocker from '../../utils/audioUnlock';
 
+// ─── Equalizer animado — barras pulsando com a música ──────────────────────
 function Equalizer({ isPlaying, size = 'sm' }) {
   const heights = size === 'lg' ? [18, 26, 20, 24] : [8, 12, 9, 11];
   const durations = [0.55, 0.7, 0.6, 0.65];
@@ -25,7 +26,7 @@ function Equalizer({ isPlaying, size = 'sm' }) {
       {heights.map((height, index) => (
         <motion.div
           key={index}
-          className="rounded-full bg-lime-300"
+          className="rounded-full bg-white"
           style={{ width: size === 'lg' ? 4 : 2.5, originY: 1, height }}
           animate={
             isPlaying
@@ -58,7 +59,7 @@ function AlbumArt({ track, size = 48, radius = 12 }) {
         <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <Music2 size={size * 0.33} className="text-lime-300/40" />
+          <Music2 size={size * 0.33} className="text-white/30" />
         </div>
       )}
     </div>
@@ -69,7 +70,7 @@ function ProgressBar({ progress }) {
   return (
     <div className="w-full h-[3px] rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
       <motion.div
-        className="h-full rounded-full bg-lime-300"
+        className="h-full rounded-full bg-white"
         animate={{ width: `${Math.max(0, Math.min(100, progress || 0))}%` }}
         transition={{ duration: 0.5, ease: 'linear' }}
       />
@@ -86,10 +87,10 @@ function ControlBtn({ onClick, children, primary = false, active = false, size =
       style={{
         width: size,
         height: size,
-        background: primary ? '#cdff5a' : active ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.07)',
-        border: active && !primary ? '1px solid rgba(205,255,90,0.32)' : '1px solid transparent',
-        color: primary ? '#000' : active ? '#cdff5a' : 'rgba(255,255,255,0.75)',
-        boxShadow: primary ? '0 0 28px rgba(205,255,90,0.28), 0 6px 18px rgba(0,0,0,0.45)' : 'none',
+        background: primary ? '#FFFFFF' : active ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.07)',
+        border: active && !primary ? '1px solid rgba(255,255,255,0.32)' : '1px solid transparent',
+        color: primary ? '#000' : active ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
+        boxShadow: primary ? '0 0 28px rgba(255,255,255,0.22), 0 6px 18px rgba(0,0,0,0.45)' : 'none',
       }}
     >
       {children}
@@ -149,11 +150,11 @@ function SearchPanel({ onSelect }) {
           ref={inputRef}
           value={query}
           onChange={handleChange}
-          placeholder="Musicas, artistas, albuns..."
+          placeholder="Músicas, artistas, álbuns..."
           className="flex-1 bg-transparent outline-none text-white placeholder-white/25 text-[13px] font-medium"
         />
         {loading ? (
-          <Loader2 size={13} className="text-lime-300/60 animate-spin shrink-0" />
+          <Loader2 size={13} className="text-white/50 animate-spin shrink-0" />
         ) : (
           query && (
             <button onClick={() => { setQuery(''); setResults([]); }}>
@@ -185,9 +186,9 @@ function SearchPanel({ onSelect }) {
               </div>
               <div
                 className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center"
-                style={{ background: 'rgba(205,255,90,0.1)', border: '1px solid rgba(205,255,90,0.22)' }}
+                style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.22)' }}
               >
-                <Play size={11} className="text-lime-300 ml-0.5" />
+                <Play size={11} className="text-white ml-0.5" />
               </div>
             </motion.button>
           ))}
@@ -201,6 +202,93 @@ function SearchPanel({ onSelect }) {
   );
 }
 
+// ─── MINI PLAYER — barra persistente acima da nav, estilo Spotify ───────────
+export function MiniPlayer({ onExpand }) {
+  const { currentTrack, isPlaying, togglePlay, nextTrack, progress } = useMusic();
+
+  if (!currentTrack) return null;
+
+  const handlePlay = async (e) => {
+    e.stopPropagation();
+    await audioUnlocker.unlock();
+    togglePlay();
+  };
+
+  const handleNext = (e) => {
+    e.stopPropagation();
+    nextTrack();
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        key="mini-player"
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 80, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        onClick={onExpand}
+        className="fixed left-0 right-0 z-[54] mx-auto cursor-pointer"
+        style={{
+          bottom: 72,
+          maxWidth: 430,
+          padding: '0 10px',
+        }}
+      >
+        <div
+          className="relative overflow-hidden flex items-center gap-3 px-3 py-2.5"
+          style={{
+            background: 'rgba(20,20,23,0.96)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255,255,255,0.10)',
+            borderRadius: 16,
+            boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+          }}
+        >
+          {/* Progress bar fina no topo do mini-player */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+            <motion.div
+              className="h-full bg-white"
+              animate={{ width: `${Math.max(0, Math.min(100, progress || 0))}%` }}
+              transition={{ duration: 0.5, ease: 'linear' }}
+            />
+          </div>
+
+          <AlbumArt track={currentTrack} size={38} radius={9} />
+
+          <div className="min-w-0 flex-1">
+            <p className="text-white text-[12.5px] font-bold truncate leading-tight">{currentTrack.title}</p>
+            <p className="text-white/40 text-[10px] font-medium truncate mt-0.5">{currentTrack.artist || 'ZYRON Radio'}</p>
+          </div>
+
+          {isPlaying && (
+            <div className="shrink-0 pr-1">
+              <Equalizer isPlaying={isPlaying} size="sm" />
+            </div>
+          )}
+
+          <button
+            onClick={handlePlay}
+            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: '#FFFFFF', color: '#000' }}
+          >
+            {isPlaying ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" className="ml-0.5" />}
+          </button>
+
+          <button
+            onClick={handleNext}
+            className="shrink-0 flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.70)' }}
+          >
+            <SkipForward size={15} />
+          </button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
+// ─── PLAYER COMPLETO — bottom sheet estilo Spotify expandido ────────────────
 export default function MusicDock({ isOpen = false, onClose, initialView = 'player' }) {
   const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack, progress } = useMusic();
   const [showSearch, setShowSearch] = useState(initialView === 'search');
@@ -313,9 +401,9 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
             onClick={() => setShowSearch((value) => !value)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors"
             style={{
-              background: showSearch ? 'rgba(205,255,90,0.13)' : 'rgba(255,255,255,0.06)',
-              border: showSearch ? '1px solid rgba(205,255,90,0.28)' : '1px solid rgba(255,255,255,0.08)',
-              color: showSearch ? '#cdff5a' : 'rgba(255,255,255,0.45)',
+              background: showSearch ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)',
+              border: showSearch ? '1px solid rgba(255,255,255,0.28)' : '1px solid rgba(255,255,255,0.08)',
+              color: showSearch ? '#FFFFFF' : 'rgba(255,255,255,0.45)',
             }}
           >
             <Search size={12} />
@@ -375,7 +463,7 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
                     height: 204,
                     border: '1px solid rgba(255,255,255,0.1)',
                     boxShadow: isPlaying
-                      ? '0 0 56px rgba(205,255,90,0.16), 0 28px 56px rgba(0,0,0,0.65)'
+                      ? '0 0 56px rgba(255,255,255,0.14), 0 28px 56px rgba(0,0,0,0.65)'
                       : '0 20px 44px rgba(0,0,0,0.65)',
                   }}
                 >
@@ -383,9 +471,9 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
                     <img src={currentTrack.thumbnail} alt={currentTrack.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-neutral-900">
-                      <Music2 size={52} className="text-lime-300/20" />
+                      <Music2 size={52} className="text-white/15" />
                       <p className="text-white/20 text-[10px] font-bold uppercase tracking-widest text-center px-6">
-                        Nenhuma musica
+                        Nenhuma música
                       </p>
                     </div>
                   )}
@@ -401,9 +489,9 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
                   {isPlaying && (
                     <motion.div
                       className="absolute inset-0 rounded-[24px]"
-                      animate={{ opacity: [0.35, 0.65, 0.35] }}
+                      animate={{ opacity: [0.30, 0.55, 0.30] }}
                       transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                      style={{ border: '2px solid rgba(205,255,90,0.5)' }}
+                      style={{ border: '2px solid rgba(255,255,255,0.40)' }}
                     />
                   )}
                 </motion.div>
@@ -422,7 +510,7 @@ export default function MusicDock({ isOpen = false, onClose, initialView = 'play
                     </motion.h3>
                   </AnimatePresence>
                   <p className="text-white/40 text-[12px] font-semibold mt-1 truncate">
-                    {currentTrack?.artist || 'Abra a busca para adicionar uma musica'}
+                    {currentTrack?.artist || 'Abra a busca para adicionar uma música'}
                   </p>
                 </div>
 
