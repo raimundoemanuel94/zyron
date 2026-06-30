@@ -6,7 +6,7 @@ import ExerciseAnimation from './ExerciseAnimation';
 import { EXERCISE_ANIMATIONS, DEFAULT_ANIMATION } from '../../data/exerciseAnimations';
 import { useExerciseLoads } from '../../hooks/usePersistence';
 
-const ENABLE_EXERCISE_VISUAL_GUIDE = import.meta.env.VITE_ENABLE_EXERCISE_VISUAL_GUIDE === 'true';
+const ENABLE_EXERCISE_VISUAL_GUIDE = import.meta.env.VITE_ENABLE_EXERCISE_VISUAL_GUIDE !== 'false'; // ligado por padrão
 
 // Cores por grupo muscular - visual hierarchy
 const MUSCLE_COLORS = {
@@ -439,7 +439,7 @@ export default function WorkoutCard({
                 onClick={(e) => { e.stopPropagation(); setShowVideo(v => !v); }}
                 className="rounded-full border border-white/14 bg-black/25 px-3 py-1.5 text-[12px] font-black uppercase tracking-[0.06em] text-white/80 transition-all duration-200 hover:text-[#FFFFFF]"
               >
-                {showVideo ? 'Fechar técnica' : 'Técnica'}
+                {showVideo ? 'Fechar' : '▶ Ver movimento'}
               </button>
             )}
           </div>
