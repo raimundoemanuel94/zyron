@@ -286,7 +286,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
     }
   }, []);
 
-  const { isOnline, pendingCount, isSyncing, justReconnected } = useOnlineStatus(syncOfflineAction);
+  const { isOnline: isNetworkOnline, pendingCount: offlineQueueCount, isSyncing: isOfflineSyncing, justReconnected: networkJustReconnected } = useOnlineStatus(syncOfflineAction);
   const [notificationSheetOpen, setNotificationSheetOpen] = useState(false);
   const [lastWaterTime, setLastWaterTime] = useState(Date.now()); // Para alerta de 2 horas
   const [showPR, setShowPR] = useState(null); // Animation trigger for PR
@@ -1627,7 +1627,7 @@ export default function FichaDeTreinoScreen({ user, onLogout, onOpenAdmin }) {
 
   return (
     <>
-      <ConnectionBanner isOnline={isOnline} pendingCount={pendingCount} isSyncing={isSyncing} justReconnected={justReconnected} />
+      <ConnectionBanner isOnline={isNetworkOnline} pendingCount={offlineQueueCount} isSyncing={isOfflineSyncing} justReconnected={networkJustReconnected} />
       <motion.div 
       ref={appConstraintsRef} 
       initial={{ opacity: 0, scale: 0.98, filter: 'blur(10px)' }}
