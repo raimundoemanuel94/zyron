@@ -133,10 +133,15 @@ export default function WorkoutCard({
 
     // Bug crítico corrigido: weightValue === 0 passava como válido,
     // salvando séries com carga zero quando o campo estava vazio.
-    // Agora exige carga real (> 0) — exercícios de peso corporal puro
-    // (prancha, dead bug etc) usam type 'core' e não chamam essa validação de carga.
-    if (!Number.isFinite(weightValue) || weightValue <= 0) {
+    // Exercícios de peso corporal (type: 'core' — prancha, dead bug,
+    // bicicleta abdominal etc) legitimamente não têm carga, então
+    // só exigimos peso > 0 para exercícios compound/iso.
+    const isBodyweightExercise = ex.type === 'core';
+    if (!isBodyweightExercise && (!Number.isFinite(weightValue) || weightValue <= 0)) {
       return { error: 'Informe a carga usada nesta série (kg).' };
+    }
+    if (isBodyweightExercise && (!Number.isFinite(weightValue) || weightValue < 0)) {
+      return { error: 'Confirme a carga usada.' };
     }
 
     if (rpeValue !== null && (!Number.isFinite(rpeValue) || rpeValue < 1 || rpeValue > 10)) {
