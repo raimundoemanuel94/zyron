@@ -144,6 +144,230 @@ export const EXERCISE_ANIMATIONS = {
   'pull_up':   { ...gif('Pullups'),           muscles: ['Latíssimo do Dorso', 'Bíceps'],             tip: 'Puxe até o queixo passar da barra.',instructions: ['Pegada pronada na barra.','Puxe retraindo as escápulas.','Desça controlado.'] },
   'deadlift':  { ...gif('Barbell_Deadlift'),  muscles: ['Cadeia Posterior', 'Glúteos'],              tip: 'Barra próxima à canela, costas neutras.',instructions: ['Pés sob a barra.','Levante estendendo quadril e joelhos.','Retorne com controle.'] },
   'lunges':    { ...gif('Dumbbell_Lunges'),   muscles: ['Quadríceps', 'Glúteos', 'Isquiotibiais'],   tip: 'Passo largo para manter joelhos a 90°.',instructions: ['Halter em cada mão.','Passo à frente, joelho de trás quase no chão.','Empurre com o pé da frente.'] },
+
+  // ═══════════════════════════════════════════════════════════
+  // PROGRAMA PPL + UPPER — 12 semanas
+  // ═══════════════════════════════════════════════════════════
+
+  // ── PUSH A — Segunda ────────────────────────────────────────────────────
+  'pa1': {
+    ...gif('Barbell_Bench_Press'),
+    muscles: ['Peitorais', 'Tríceps', 'Deltoide Anterior'],
+    tip: 'Escápulas retraídas, pés firmes no chão.',
+    instructions: ['Deite no banco plano com a barra acima do peito.','Agarre a barra ligeiramente mais larga que os ombros.','Desça a barra de forma controlada até o peito baixo/esterno.','Empurre a barra para cima até os braços quase estendidos.'],
+  },
+  'pa2': {
+    ...gif('Dumbbell_Shoulder_Press'),
+    muscles: ['Deltoide Anterior e Lateral', 'Tríceps'],
+    tip: 'Cotovelos a 90°, não trave no topo.',
+    instructions: ['Halteres na altura dos ombros, palmas para frente.','Empurre para cima convergindo levemente.','Desça controlado até a linha dos ombros.'],
+  },
+  'pa3': {
+    ...gif('Dumbbell_Incline_Bench_Press'),
+    muscles: ['Peitorais (clavicular)', 'Deltoide Anterior'],
+    tip: 'Cotovelos a 45° do tronco, controle a descida.',
+    instructions: ['Banco inclinado 30–45°.','Halteres na altura do peito, palmas à frente.','Empurre convergindo levemente.','Desça controlado até o alongamento.'],
+  },
+  'pa4': {
+    ...gif('Side_Lateral_Raise'),
+    muscles: ['Deltoide Lateral (medial)'],
+    tip: 'Cotovelos levemente dobrados, suba até a linha dos ombros.',
+    instructions: ['Halteres ao lado do corpo.','Eleve os braços lateralmente até a linha dos ombros.','Desça lentamente com controle.'],
+  },
+  'pa5': {
+    ...gif('Triceps_Pushdown_-_Rope_Attachment'),
+    muscles: ['Tríceps (cabeça lateral/longa)'],
+    tip: 'Afaste as pontas da corda no final do movimento.',
+    instructions: ['Segure a corda com pegada neutra.','Empurre para baixo estendendo os cotovelos.','Afaste as mãos no final contraindo o tríceps.','Retorne controlado.'],
+  },
+  'pa6': {
+    ...gif('Lying_Triceps_Press'),
+    muscles: ['Tríceps (cabeça longa)'],
+    tip: 'Cotovelos fixos, desça até a testa.',
+    instructions: ['Deite no banco segurando a barra EZ acima do peito.','Mantenha os cotovelos fixos e dobre até a testa.','Estenda de volta sem mover os ombros.'],
+  },
+
+  // ── PULL A — Terça ──────────────────────────────────────────────────────
+  'pla1': {
+    ...gif('Pullups'),
+    muscles: ['Latíssimo do Dorso', 'Bíceps', 'Romboides'],
+    tip: 'Puxe até o queixo passar da barra, pegada larga.',
+    instructions: ['Pegada pronada, mais larga que os ombros.','Puxe o corpo retraindo as escápulas.','Desça controlado até a extensão completa.'],
+  },
+  'pla2': {
+    ...gif('Barbell_Bent_Over_Row'),
+    muscles: ['Latíssimo do Dorso', 'Romboides', 'Trapézio Médio'],
+    tip: 'Costas planas, puxe até o umbigo.',
+    instructions: ['Incline o tronco a 45° segurando a barra.','Mantenha costas neutras, joelhos levemente dobrados.','Puxe a barra ao umbigo retraindo as escápulas.','Desça lentamente.'],
+  },
+  'pla3': {
+    ...gif('Close-Grip_Front_Lat_Pulldown'),
+    muscles: ['Latíssimo do Dorso', 'Bíceps', 'Redondo Maior'],
+    tip: 'Cotovelos apontando para o chão, escápula retraída.',
+    instructions: ['Pegada neutra/fechada na barra.','Joelhos presos, tronco levemente inclinado.','Puxe até a clavícula espremendo os cotovelos para baixo.','Retorne controlado.'],
+  },
+  'pla4': {
+    ...gif('Barbell_Curl'),
+    muscles: ['Bíceps Braquial', 'Braquial'],
+    tip: 'Cotovelos fixos ao corpo, não balance o tronco.',
+    instructions: ['Pegada supinada na barra EZ.','Cotovelos presos ao tronco.','Curve até a contração máxima.','Desça lentamente.'],
+  },
+  'pla5': {
+    ...gif('Hammer_Curls'),
+    muscles: ['Bíceps', 'Braquiorradial (antebraço)'],
+    tip: 'Polegares para cima, movimento controlado.',
+    instructions: ['Pegada neutra (polegar para cima).','Cotovelos presos ao tronco.','Curve um halter por vez ou junto.','Desça com controle.'],
+  },
+  'pla6': {
+    ...gif('Face_Pull'),
+    muscles: ['Deltoide Posterior', 'Romboides', 'Manguito Rotador'],
+    tip: 'Puxe a corda em direção à testa, rotação externa.',
+    instructions: ['Polia na altura do rosto.','Puxe a corda separando as mãos em direção à testa.','Gire os ombros para fora no final.','Retorne controlado.'],
+  },
+
+  // ── LEGS A — Quarta ─────────────────────────────────────────────────────
+  'la1': {
+    ...gif('Barbell_Squat'),
+    muscles: ['Quadríceps', 'Glúteos', 'Core'],
+    tip: 'Joelhos alinhados com os pés, desça até 90°.',
+    instructions: ['Barra nos trapézios, pés na largura dos ombros.','Peito alto, lombar neutra.','Desça até 90° de quadril.','Empurre pelo calcanhar para subir.'],
+  },
+  'la2': {
+    ...gif('Leg_Press'),
+    muscles: ['Quadríceps', 'Glúteos'],
+    tip: 'Pés médios, amplitude total sem travar o joelho.',
+    instructions: ['Pés na plataforma, posição média.','Dobre os joelhos até 90°.','Empurre sem travar.','Retorne devagar.'],
+  },
+  'la3': {
+    ...gif('Leg_Extensions'),
+    muscles: ['Quadríceps (isolado)'],
+    tip: 'Extensão completa no topo, desça com controle.',
+    instructions: ['Joelhos a 90° no apoio.','Estenda até quase horizontal.','Segure 1s no topo.','Desça lentamente em 3 seg.'],
+  },
+  'la4': {
+    ...gif('Romanian_Deadlift'),
+    muscles: ['Isquiotibiais', 'Glúteos'],
+    tip: 'Costas neutras, empurre o quadril para trás.',
+    instructions: ['Halteres na frente das coxas.','Empurre o quadril para trás descendo.','Desça até sentir o alongamento.','Retorne empurrando o quadril para frente.'],
+  },
+  'la5': {
+    ...gif('Standing_Calf_Raises'),
+    muscles: ['Gastrocnêmio', 'Sóleo'],
+    tip: 'Amplitude total: desça até o alongamento máximo.',
+    instructions: ['Na borda de um degrau ou aparelho.','Suba nas pontas dos pés.','Desça abaixo da linha para alongar.','Pausa de 1s no topo.'],
+  },
+
+  // ── UPPER B — Quinta ────────────────────────────────────────────────────
+  'ub1': {
+    ...gif('Dumbbell_Incline_Bench_Press'),
+    muscles: ['Peitorais (clavicular)', 'Deltoide Anterior', 'Tríceps'],
+    tip: 'Foco no feixe clavicular — ângulo diferente do Push A.',
+    instructions: ['Banco a 30–45°.','Halteres na altura do peito.','Empurre convergindo levemente.','Desça controlado.'],
+  },
+  'ub2': {
+    ...gif('Seated_Cable_Rows'),
+    muscles: ['Latíssimo do Dorso', 'Romboides', 'Bíceps'],
+    tip: 'Tronco ereto, cotovelos próximos ao corpo.',
+    instructions: ['Pés nos apoios, tronco ereto.','Puxe o triângulo até o abdômen.','Retraia as escápulas no final.','Retorne controlado.'],
+  },
+  'ub3': {
+    ...gif('Arnold_Press'),
+    muscles: ['Deltoide (todos os feixes)', 'Tríceps'],
+    tip: 'Rotação no movimento, ativa todo o ombro.',
+    instructions: ['Halteres na frente, palmas voltadas para você.','Empurre girando as palmas para frente.','No topo, palmas para fora.','Desça revertendo a rotação.'],
+  },
+  'ub4': {
+    ...gif('Cable_Crossover'),
+    muscles: ['Peitorais', 'Deltoide Anterior'],
+    tip: 'Cruze as mãos na frente do quadril, tensão constante.',
+    instructions: ['Polias altas, um passo à frente.','Puxe os cabos para baixo e ao centro.','Cruze as mãos sentindo a contração.','Retorne controlado.'],
+  },
+  'ub5': {
+    ...gif('Concentration_Curl'),
+    muscles: ['Bíceps Braquial (pico)'],
+    tip: 'Cotovelo apoiado na coxa, isolamento total.',
+    instructions: ['Sentado, cotovelo apoiado na coxa.','Curve contraindo ao máximo.','Pausa de 1s no topo.','Desça até a extensão completa.'],
+  },
+  'ub6': {
+    ...gif('Lying_Triceps_Press'),
+    muscles: ['Tríceps (todas as cabeças)'],
+    tip: 'Descida atrás da cabeça, cotovelos estáveis.',
+    instructions: ['Halter acima da cabeça com os dois braços.','Desça atrás da cabeça flexionando o cotovelo.','Estenda de volta sem mover os ombros.'],
+  },
+  'ub7': {
+    ...gif('Side_Lateral_Raise'),
+    muscles: ['Deltoide Lateral'],
+    tip: 'Tensão constante do cabo — superior ao halter no pico.',
+    instructions: ['Polia baixa, um passo afastado.','Eleve o braço lateralmente.','Segure no topo.','Desça controlado.'],
+  },
+  'ub8': {
+    ...gif('Plank'),
+    muscles: ['Core Integral', 'Lombar', 'Ombros'],
+    tip: 'Corpo em linha reta, respiração controlada.',
+    instructions: ['Apoie-se nos antebraços e pontas dos pés.','Mantenha o corpo alinhado.','Sustente respirando de forma controlada.'],
+  },
+  'ub9': {
+    ...gif('Cable_Crunch'),
+    muscles: ['Reto Abdominal'],
+    tip: 'Flexão real de tronco — não puxada de pescoço.',
+    instructions: ['Ajoelhado de frente para a polia alta.','Flexione o tronco contraindo o abdômen.','Retorne controlado sem soltar a tensão.'],
+  },
+  'ub10': {
+    ...gif('Hanging_Leg_Raise'),
+    muscles: ['Infra-Abdominal', 'Flexores do Quadril'],
+    tip: 'Controle total, sem balançar o corpo.',
+    instructions: ['Pendure-se na barra.','Eleve as pernas até a linha do quadril.','Desça com controle total.'],
+  },
+
+  // ── LEGS B + CORE — Sexta ───────────────────────────────────────────────
+  'lb1': {
+    ...gif('Barbell_Deadlift'),
+    muscles: ['Cadeia Posterior', 'Glúteos', 'Lombar'],
+    tip: 'Barra próxima à canela, costas neutras.',
+    instructions: ['Pés sob a barra, pegada na largura dos ombros.','Levante estendendo quadril e joelhos juntos.','Mantenha a barra próxima ao corpo.','Retorne com controle total.'],
+  },
+  'lb2': {
+    ...gif('Dumbbell_Lunges'),
+    muscles: ['Quadríceps', 'Glúteos'],
+    tip: 'Pé traseiro elevado, tronco levemente inclinado.',
+    instructions: ['Pé de trás apoiado num banco elevado.','Halteres nas mãos.','Desça até o joelho de trás quase tocar o chão.','Empurre com o pé da frente.'],
+  },
+  'lb3': {
+    ...gif('Lying_Leg_Curls'),
+    muscles: ['Isquiotibiais (isolado)'],
+    tip: 'Quadril no apoio, curl completo e controlado.',
+    instructions: ['Deite de bruços no aparelho.','Curve as pernas em direção ao glúteo.','Pausa de 1s no topo.','Desça até a extensão completa (3 seg).'],
+  },
+  'lb4': {
+    ...gif('Barbell_Hip_Thrust'),
+    muscles: ['Glúteos', 'Isquiotibiais'],
+    tip: 'Espreme o glúteo no topo por 1 segundo.',
+    instructions: ['Apoie as costas no banco, barra sobre o quadril.','Empurre o quadril para cima até ficar paralelo ao chão.','Pausa de 1s no topo.','Desça controlado.'],
+  },
+  'lb5': {
+    ...gif('Seated_Calf_Raise'),
+    muscles: ['Sóleo', 'Gastrocnêmio'],
+    tip: 'Joelho a 90°, foco no sóleo — diferente do Legs A.',
+    instructions: ['Pés na plataforma, joelhos sob o apoio.','Suba na ponta dos pés.','Desça até o alongamento total.','Pausa de 1s no topo.'],
+  },
+  'lb6': {
+    ...gif('Crunches'),
+    muscles: ['Reto Abdominal', 'Core Profundo'],
+    tip: 'Lombar colada no chão, movimento contralateral.',
+    instructions: ['Deitado, braços e pernas estendidos.','Leve braço e perna opostos ao centro alternando.','Mantenha a lombar sempre no chão.'],
+  },
+  'lb7': {
+    ...gif('Ab_Roller'),
+    muscles: ['Core Integral', 'Reto Abdominal'],
+    tip: 'Extensão parcial se ainda não domina o movimento completo.',
+    instructions: ['Ajoelhado segurando a roda.','Role para frente mantendo o core contraído.','Volte controlado sem deixar o quadril cair.'],
+  },
+  'lb8': {
+    ...gif('Air_Bike'),
+    muscles: ['Reto Abdominal', 'Oblíquos'],
+    tip: 'Rotação real do tronco, não só do pescoço.',
+    instructions: ['Deitado, mãos atrás da cabeça.','Leve cotovelo ao joelho oposto alternando.','Mantenha o movimento controlado, sem puxar o pescoço.'],
+  },
 };
 
 // ─── Fallback padrão ──────────────────────────────────────────────────────────
