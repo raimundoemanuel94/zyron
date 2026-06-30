@@ -709,9 +709,35 @@ export const MusicProvider = ({ children }) => {
     );
   };
 
+  // Para a música por completo e esconde o MiniPlayer (fecha de vez)
+  const stopPlayback = () => {
+    const nativeAudio = nativeAudioRef.current;
+    const hasNativeSource = Boolean(nativeAudioUrlRef.current);
+
+    if (hasNativeSource && nativeAudio) {
+      nativeAudio.pause();
+      nativeAudio.removeAttribute('src');
+      nativeAudio.load();
+      nativeAudioUrlRef.current = null;
+    } else if (playerRef.current?.stopVideo) {
+      playerRef.current.stopVideo();
+    }
+
+    setIsPlaying(false);
+    setCurrentTrack(null);
+    releaseWakeLock();
+
+    try {
+      localStorage.removeItem('zyron_current_track');
+    } catch {
+      // ignora erros de storage
+    }
+  };
+
   const contextValue = {
     isPlaying,
     currentTrack,
+    stopPlayback,
     volume,
     playlist,
     progress,
