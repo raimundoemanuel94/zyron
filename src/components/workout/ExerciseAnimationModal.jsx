@@ -86,8 +86,8 @@ export default function ExerciseAnimationModal({ exercise, animData, setControls
           <div className="relative shrink-0 w-10 h-10 rounded-[10px] overflow-hidden bg-neutral-900">
             {!allFailed && (src0 || src1) ? (
               <>
-                {src0 && <img src={src0} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${currentFrame === 0 ? 'opacity-100' : 'opacity-0'}`} onError={handleImg0Error} crossOrigin="anonymous" />}
-                {src1 && <img src={src1} alt="" className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${currentFrame === 1 ? 'opacity-100' : 'opacity-0'}`} onError={handleImg1Error} crossOrigin="anonymous" />}
+                {src0 && <img src={src0} alt="" className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out" style={{ opacity: currentFrame === 0 ? 1 : 0 }} onError={handleImg0Error} crossOrigin="anonymous" />}
+                {src1 && <img src={src1} alt="" className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out" style={{ opacity: currentFrame === 1 ? 1 : 0 }} onError={handleImg1Error} crossOrigin="anonymous" />}
               </>
             ) : null}
           </div>
