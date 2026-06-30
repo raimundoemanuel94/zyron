@@ -98,6 +98,23 @@ const registerServiceWorkerInProd = async () => {
   }
 };
 
+// Pede armazenamento persistente — protege dados de treino/cargas salvos
+// localmente de serem apagados pelo navegador quando o aparelho está com
+// pouco espaço. Especialmente importante no Safari/iOS, que tem política
+// de expiração de 7 dias para dados não persistidos.
+const requestPersistentStorage = async () => {
+  if (!('storage' in navigator) || !('persist' in navigator.storage)) return;
+  try {
+    const alreadyPersisted = await navigator.storage.persisted();
+    if (!alreadyPersisted) {
+      const granted = await navigator.storage.persist();
+      console.log(`[Storage] Persistência ${granted ? 'concedida' : 'negada'} pelo navegador`);
+    }
+  } catch (err) {
+    console.warn('[Storage] Falha ao solicitar persistência:', err);
+  }
+};
+
 if (import.meta.env.DEV) {
   window.addEventListener('load', () => {
     cleanupServiceWorkersInDev();
@@ -107,6 +124,7 @@ if (import.meta.env.DEV) {
     registerServiceWorkerInProd().catch((err) => {
       console.warn('[SW] Unexpected registration error:', err);
     });
+    requestPersistentStorage();
   });
 }
 
