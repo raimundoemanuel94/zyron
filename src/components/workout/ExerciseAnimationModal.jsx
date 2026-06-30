@@ -40,7 +40,7 @@ export default function ExerciseAnimationModal({ exercise, animData, setControls
     if (!allFailed && (src0 || src1)) {
       frameIntervalRef.current = setInterval(() => {
         setCurrentFrame((f) => (f === 0 ? 1 : 0));
-      }, 750);
+      }, 1100); // mais lento = sensação de movimento controlado, não "tremido"
     }
     return () => clearInterval(frameIntervalRef.current);
   }, [src0, src1, allFailed]);
@@ -151,8 +151,30 @@ export default function ExerciseAnimationModal({ exercise, animData, setControls
           <div className="relative w-full mt-4 rounded-[20px] overflow-hidden bg-gradient-to-b from-neutral-800 to-neutral-900" style={{ aspectRatio: '4 / 3', border: '1px solid rgba(255,255,255,0.08)' }}>
             {!allFailed && (src0 || src1) ? (
               <>
-                {src0 && <img src={src0} alt={`${exercise.name} início`} className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${currentFrame === 0 ? 'opacity-100' : 'opacity-0'}`} crossOrigin="anonymous" onError={handleImg0Error} />}
-                {src1 && <img src={src1} alt={`${exercise.name} contração`} className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 ${currentFrame === 1 ? 'opacity-100' : 'opacity-0'}`} crossOrigin="anonymous" onError={handleImg1Error} />}
+                {src0 && (
+                  <motion.img
+                    src={src0} alt={`${exercise.name} início`}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    crossOrigin="anonymous" onError={handleImg0Error}
+                    animate={{
+                      opacity: currentFrame === 0 ? 1 : 0,
+                      scale: currentFrame === 0 ? 1.015 : 1,
+                    }}
+                    transition={{ opacity: { duration: 0.65, ease: 'easeInOut' }, scale: { duration: 1.1, ease: 'easeInOut' } }}
+                  />
+                )}
+                {src1 && (
+                  <motion.img
+                    src={src1} alt={`${exercise.name} contração`}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    crossOrigin="anonymous" onError={handleImg1Error}
+                    animate={{
+                      opacity: currentFrame === 1 ? 1 : 0,
+                      scale: currentFrame === 1 ? 1.015 : 1,
+                    }}
+                    transition={{ opacity: { duration: 0.65, ease: 'easeInOut' }, scale: { duration: 1.1, ease: 'easeInOut' } }}
+                  />
+                )}
               </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
