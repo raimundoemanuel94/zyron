@@ -131,8 +131,12 @@ export default function WorkoutCard({
       return { error: 'Informe as reps reais desta série.' };
     }
 
-    if (weightValue < 0) {
-      return { error: 'Confirme a carga usada.' };
+    // Bug crítico corrigido: weightValue === 0 passava como válido,
+    // salvando séries com carga zero quando o campo estava vazio.
+    // Agora exige carga real (> 0) — exercícios de peso corporal puro
+    // (prancha, dead bug etc) usam type 'core' e não chamam essa validação de carga.
+    if (!Number.isFinite(weightValue) || weightValue <= 0) {
+      return { error: 'Informe a carga usada nesta série (kg).' };
     }
 
     if (rpeValue !== null && (!Number.isFinite(rpeValue) || rpeValue < 1 || rpeValue > 10)) {
